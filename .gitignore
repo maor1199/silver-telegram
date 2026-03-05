@@ -1,17 +1,10 @@
-# Dependencies
+# v0 runtime files (should only exist in preview, not in git)
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+
+# Common ignores
 node_modules/
-
-# Nested repo (avoid "does not have a commit checked out")
-silver-telegram/
-
-# Env (keep secrets out of repo)
-.env
-*.local
-
-# Build / cache
-dist
-.vite
-
-# OS / editor
+.next/
+.env*.local
 .DS_Store
-*.log
