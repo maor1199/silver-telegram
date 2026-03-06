@@ -20,6 +20,7 @@ import { type ListingResult } from "./pages/ListingBuilder";
 import { runAnalysis, type AnalysisResult } from "./integration/analysisApi";
 import ListingBuilderPage from "./app/listing-builder/page";
 import AnalyzeResultsPage from "./app/analyze/results/page";
+import { Logo } from "./components/Logo";
 
 const TOOLS_MENU_ITEMS: { path: string; label: string; description: string; Icon: React.ComponentType<{ className?: string }> }[] = [
   { path: "/listing-builder", label: "AI Listing Builder", description: "Generate Amazon listings & high-end visuals", Icon: Sparkles },
@@ -255,7 +256,7 @@ export default function App() {
         <div className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-h-[46px] items-center gap-5">
             <Link to="/" className="flex shrink-0 items-center py-1" aria-label="SellerMentor home">
-              <img src="/logo.png" alt="SellerMentor" className="h-[38px] w-auto max-w-[200px] object-contain object-left" />
+              <Logo />
             </Link>
             {/* Main nav: Analysis | TOOLS (dropdown) | Pricing */}
             <nav className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-white/5 p-1">
