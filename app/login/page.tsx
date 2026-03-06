@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { createClient } from "@/lib/supabase/client"
 import { Loader2 } from "lucide-react"
+import { Logo } from "@/components/logo"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -46,15 +47,7 @@ export default function LoginPage() {
       <div className="relative w-full max-w-[420px]">
         {/* Logo */}
         <div className="mb-8 flex justify-center">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-              <span className="text-base font-bold text-primary-foreground">S</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-base font-semibold text-foreground leading-none">SellerMentor</span>
-              <span className="text-[11px] text-muted-foreground leading-none mt-0.5">Expert product analysis</span>
-            </div>
-          </Link>
+          <Logo size="md" />
         </div>
 
         {/* Card */}

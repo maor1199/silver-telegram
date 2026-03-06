@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Menu, X, LogOut, ChevronDown, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
+import { Logo } from "@/components/logo"
 import type { Session } from "@supabase/supabase-js"
 
 const TOOLS_MENU_ITEMS = [
@@ -58,16 +59,8 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6">
-        <div className="flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <span className="text-sm font-bold text-primary-foreground">S</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-foreground leading-none">SellerMentor</span>
-              <span className="text-[10px] text-muted-foreground leading-none mt-0.5">Expert product analysis</span>
-            </div>
-          </Link>
+        <div className="flex items-center">
+          <Logo size="sm" />
         </div>
 
         <nav className="hidden items-center gap-1 md:flex">

@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Logo } from "@/components/logo"
 
 const footerLinks = {
   Product: [
@@ -23,15 +24,7 @@ export function Footer() {
       <div className="mx-auto max-w-[1200px] px-6 py-16">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">S</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-foreground leading-none">SellerMentor</span>
-                <span className="text-[10px] text-muted-foreground leading-none mt-0.5">Expert product analysis</span>
-              </div>
-            </div>
+            <Logo size="sm" />
             <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
               Economics-first product validation for Amazon sellers. Know before you invest.
             </p>
