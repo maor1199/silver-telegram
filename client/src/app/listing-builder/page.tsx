@@ -6,6 +6,7 @@ import { useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { Loader2, Sparkles, FileText } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
 
 // In dev use relative /api so Vite proxy forwards to backend (avoids Failed to fetch)
 const rawApi = (import.meta.env.VITE_API_URL ?? "").trim().replace(/\/$/, "");
@@ -41,6 +42,7 @@ type CopyResult = {
 };
 
 export default function ListingBuilderPage() {
+  const { isAuthConfigured, requireAuth } = useAuth();
   const [productName, setProductName] = useState("");
   const [productDescription, setProductDescription] = useState("");
   const [keywords, setKeywords] = useState("");
@@ -49,7 +51,7 @@ export default function ListingBuilderPage() {
   const [error, setError] = useState<string | null>(null);
   const [copy, setCopy] = useState<CopyResult | null>(null);
 
-  const handleGenerate = async () => {
+  const doGenerate = async () => {
     if (!productName.trim()) {
       setError("Enter a product name.");
       return;
@@ -93,6 +95,17 @@ export default function ListingBuilderPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGenerate = () => {
+    if (!isAuthConfigured) {
+      doGenerate();
+      return;
+    }
+    requireAuth(doGenerate, {
+      title: "Sign in to generate content",
+      message: "Sign in with Google to see the results.",
+    });
   };
 
   return (

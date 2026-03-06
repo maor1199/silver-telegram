@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom";
-import type { User } from "@supabase/supabase-js";
 import {
   Search,
   DollarSign,
@@ -16,6 +15,7 @@ import {
   DollarSign as DollarSignNav,
 } from "lucide-react";
 import { supabase, type ReportRow } from "./lib/supabase";
+import { useAuth } from "./contexts/AuthContext";
 import { type ListingResult } from "./pages/ListingBuilder";
 import { runAnalysis, type AnalysisResult } from "./integration/analysisApi";
 import ListingBuilderPage from "./app/listing-builder/page";
@@ -108,6 +108,7 @@ function mapReportRowToListingResult(r: ReportRow): ListingResult {
 }
 
 export default function App() {
+  const { user, requireAuth, isAuthConfigured } = useAuth();
   const [keyword, setKeyword] = useState("");
   const [sellingPrice, setSellingPrice] = useState("");
   const [unitCost, setUnitCost] = useState("");
@@ -118,7 +119,6 @@ export default function App() {
   const [searchingMarketData, setSearchingMarketData] = useState(false);
   const [, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
   const [, setSelectedReport] = useState<AnalysisResult | null>(null);
@@ -131,14 +131,6 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [showEmailAuth, setShowEmailAuth] = useState(false);
-  useEffect(() => {
-    if (!supabase) return;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
-    return () => subscription.unsubscribe();
-  }, []);
 
   const refetchReports = () => {
     if (!supabase || !user) return;
@@ -198,6 +190,17 @@ export default function App() {
   };
 
   const analyze = async () => {
+    if (!isAuthConfigured) {
+      await runAnalyzeLogic();
+      return;
+    }
+    requireAuth(runAnalyzeLogic, {
+      title: "Sign in to analyze",
+      message: "Sign in with Google to see the results.",
+    });
+  };
+
+  const runAnalyzeLogic = async () => {
     setLoading(true);
     setSearchingMarketData(true);
     setError(null);
