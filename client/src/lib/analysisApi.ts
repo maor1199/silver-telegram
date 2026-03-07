@@ -7,6 +7,7 @@ export interface RunAnalysisParams {
   complexity?: string
 }
 
+// 1. הפונקציה שמושכת את הנתונים מה-API
 export async function runAnalysis(params: RunAnalysisParams): Promise<Record<string, unknown>> {
   const res = await fetch("/api/analyze", {
     method: "POST",
@@ -27,4 +28,15 @@ export async function runAnalysis(params: RunAnalysisParams): Promise<Record<str
   }
 
   return (await res.json()) as Record<string, unknown>
+}
+
+// 2. הפונקציה שהייתה חסרה - ה-"גשר" ל-UI
+export function normalizeAnalysisResponse(data: any) {
+  // כאן אנחנו מוודאים שהנתונים מה-Backend הופכים למבנה שה-UI של ה-V0 מצפה לו
+  return {
+    viabilityScore: data.viability_score ?? data.viabilityScore ?? 0,
+    netProfit: data.net_profit ?? data.netProfit ?? 0,
+    riskLevel: data.risk_level ?? data.riskLevel ?? "Medium",
+    executionRoadmap: data.execution_roadmap ?? data.executionRoadmap ?? [],
+  }
 }
