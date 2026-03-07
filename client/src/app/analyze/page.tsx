@@ -11,6 +11,7 @@ import { ArrowLeft, ArrowRight, AlertCircle } from "lucide-react"
 import { setAnalysisResult } from "@/lib/analysis-store"
 import { runAnalysis } from "@/lib/analysisApi"
 
+export const dynamic = 'force-dynamic';
 const TOTAL_STEPS = 6
 
 export default function AnalyzePage() {
