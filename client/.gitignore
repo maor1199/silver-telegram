@@ -1,5 +1,19 @@
-# Logs
-logs
+# --- Node / Build ---
+node_modules/
+.next/
+dist/
+dist-ssr/
+out/
+build/
+
+# --- Environment Variables ---
+.env*.local
+.env.development
+.env.test
+.env.production
+
+# --- Logs ---
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,20 +21,19 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# --- Editor & OS ---
+.DS_Store
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-.vercel
+# --- Vercel / v0 ---
+.vercel/
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
