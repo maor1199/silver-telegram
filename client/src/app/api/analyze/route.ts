@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { normalizeAnalysisResponse } from "@/lib/analysisApi"
 
-const BACKEND_URL = (process.env.ANALYZE_BACKEND_URL || "https://unresuscitable-unskirted-shaniqua.ngrok-free.dev").trim()
+const BACKEND_URL = (process.env.ANALYZE_BACKEND_URL || "http://localhost:3001").trim()
+
+function backendUnavailableMessage(status: number): string {
+  if (status === 502 || status === 503) {
+    return "Analysis engine is unavailable. Start the backend (e.g. run the server in the project root or set ANALYZE_BACKEND_URL in client .env)."
+  }
+  return `Backend returned ${status}.`
+}
 
 export async function POST(request: NextRequest) {
-
   try {
     const body = await request.json()
 
@@ -19,20 +25,26 @@ export async function POST(request: NextRequest) {
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}))
-      return NextResponse.json(
-        { error: errorData.error || `Backend returned ${res.status}` },
-        { status: res.status }
-      )
+      const message =
+        (errorData as { error?: string }).error ||
+        backendUnavailableMessage(res.status)
+      return NextResponse.json({ error: message }, { status: res.status })
     }
 
     const raw = await res.json()
-    // Normalize the response so the client always gets a consistent shape
     const normalized = normalizeAnalysisResponse(raw)
     return NextResponse.json(normalized ?? raw)
   } catch (error) {
-    console.error("Analysis API error:", error)
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error("Analysis API error:", msg)
+    const isNetwork =
+      /fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|network/i.test(msg)
     return NextResponse.json(
-      { error: "Analysis failed — unable to reach engine" },
+      {
+        error: isNetwork
+          ? "Cannot reach the analysis engine. Ensure the backend is running (e.g. in server folder or via ngrok) and ANALYZE_BACKEND_URL points to it."
+          : "Analysis failed — unable to reach engine.",
+      },
       { status: 502 }
     )
   }

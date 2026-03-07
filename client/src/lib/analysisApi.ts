@@ -30,13 +30,14 @@ export async function runAnalysis(params: RunAnalysisParams): Promise<Record<str
   return (await res.json()) as Record<string, unknown>
 }
 
-// 2. הפונקציה שהייתה חסרה - ה-"גשר" ל-UI
-export function normalizeAnalysisResponse(data: any) {
-  // כאן אנחנו מוודאים שהנתונים מה-Backend הופכים למבנה שה-UI של ה-V0 מצפה לו
+// 2. Merge normalized camelCase fields into full backend response (so War Room gets verdict, report, etc.)
+export function normalizeAnalysisResponse(data: any): Record<string, unknown> {
+  if (!data || typeof data !== "object") return typeof data === "object" ? { ...data } : {}
   return {
+    ...data,
     viabilityScore: data.viability_score ?? data.viabilityScore ?? 0,
     netProfit: data.net_profit ?? data.netProfit ?? 0,
     riskLevel: data.risk_level ?? data.riskLevel ?? "Medium",
     executionRoadmap: data.execution_roadmap ?? data.executionRoadmap ?? [],
-  }
+  } as Record<string, unknown>
 }

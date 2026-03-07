@@ -32,18 +32,22 @@ export function Navbar() {
   const [session, setSession] = useState<Session | null>(null)
 
   useEffect(() => {
+    let isMounted = true
     const supabase = createClient()
     if (!supabase) return
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
+      if (isMounted) setSession(session)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
+      if (isMounted) setSession(session)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const handleLogout = async () => {
