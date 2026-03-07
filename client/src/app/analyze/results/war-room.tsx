@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
@@ -35,8 +35,9 @@ import {
   ChevronRight,
   Flame,
 } from "lucide-react"
-import { getAnalysisResult } from "@/lib/analysis-store"
+import { getAnalysisResult, setAnalysisResult } from "@/lib/analysis-store"
 import { normalizeAnalysisResponse } from "@/lib/analysisApi"
+import { createClient } from "@/lib/supabase/client"
 import { AnalysisProfitCards } from "@/components/analysis-profit-cards"
 import { cn } from "@/lib/utils"
 
@@ -287,6 +288,8 @@ function matchSection(sections: ReportSection[], keywords: string[]): string[] {
    ══════════════════════════════════════════════════════════ */
 export default function WarRoom() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const analysisId = searchParams.get("id")
   const [data, setData] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -294,22 +297,54 @@ export default function WarRoom() {
   const [activeTab, setActiveTab] = useState<"overview" | "deep-dive" | "execution">("overview")
 
   useEffect(() => {
-    try {
-      const raw = getAnalysisResult()
-      if (raw) {
-        if (raw.ok === false) {
-          setError(typeof raw.error === "string" ? raw.error : "The analysis engine returned an error.")
+    let cancelled = false
+
+    async function load() {
+      if (analysisId) {
+        const supabase = createClient()
+        if (supabase) {
+          const { data: row, error: fetchError } = await supabase
+            .from("analyses")
+            .select("results")
+            .eq("id", analysisId)
+            .single()
+          if (cancelled) return
+          if (!fetchError && row?.results && typeof row.results === "object") {
+            const raw = row.results as Record<string, unknown>
+            const normalized = normalizeAnalysisResponse(raw)
+            setData(normalized ? (normalized as Record<string, unknown>) : raw)
+            setAnalysisResult(normalized ?? raw)
+            setLoading(false)
+            return
+          }
+          if (fetchError || !row) {
+            setError("Report not found or you don't have access to it.")
+            setLoading(false)
+            return
+          }
         }
-        // Normalize so all fields are in canonical camelCase
-        const normalized = normalizeAnalysisResponse(raw)
-        setData(normalized ? (normalized as unknown as Record<string, unknown>) : raw)
       }
-    } catch (e) {
-      console.error("[v0] Failed to load analysis data:", e)
-      setError("Failed to load analysis data.")
+
+      try {
+        const raw = getAnalysisResult()
+        if (raw) {
+          if (raw.ok === false) {
+            setError(typeof raw.error === "string" ? raw.error : "The analysis engine returned an error.")
+          } else {
+            const normalized = normalizeAnalysisResponse(raw)
+            setData(normalized ? (normalized as unknown as Record<string, unknown>) : raw)
+          }
+        }
+      } catch (e) {
+        console.error("[v0] Failed to load analysis data:", e)
+        setError("Failed to load analysis data.")
+      }
+      setLoading(false)
     }
-    setLoading(false)
-  }, [router])
+
+    load()
+    return () => { cancelled = true }
+  }, [router, analysisId])
 
   if (loading) return <LoadingSkeleton />
   if (error) return <ErrorState message={error} onRetry={() => router.replace("/analyze")} />

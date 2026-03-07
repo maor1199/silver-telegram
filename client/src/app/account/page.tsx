@@ -1,15 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { User, FileText, CreditCard, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react"
+import { User, FileText, CreditCard, ArrowRight, Loader2, Eye, EyeOff, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
+
+type AnalysisRow = {
+  id: string
+  user_id: string
+  keyword: string
+  results: Record<string, unknown>
+  created_at: string
+}
 
 const sidebarItems = [
   { id: "profile", label: "Profile", icon: User },
@@ -296,7 +305,95 @@ function ProfileSection({
 
 /* ─── Analyses Section ─── */
 
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  } catch {
+    return iso
+  }
+}
+
+function getScoreFromResults(results: Record<string, unknown>): string {
+  const score =
+    results.viabilityScore ?? results.viability_score ?? results.score
+  if (typeof score === "number" && Number.isFinite(score)) return `${score}`
+  if (typeof score === "string") return score
+  return "—"
+}
+
+function getVerdictFromResults(results: Record<string, unknown>): string {
+  const v = results.verdict
+  if (v === "GO" || v === "NO_GO") return String(v)
+  if (typeof v === "string") return v
+  return "—"
+}
+
 function AnalysesSection() {
+  const router = useRouter()
+  const [reports, setReports] = useState<AnalysisRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Delete this report? This cannot be undone.")) return
+    const supabase = createClient()
+    if (!supabase) return
+    setDeletingId(id)
+    const { error: deleteError } = await supabase.from("analyses").delete().eq("id", id)
+    setDeletingId(null)
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+    setReports((prev) => prev.filter((r) => r.id !== id))
+  }
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      const supabase = createClient()
+      if (!supabase) {
+        setLoading(false)
+        setError("Authentication service unavailable.")
+        return
+      }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (cancelled) return
+      if (!session?.user) {
+        setLoading(false)
+        setReports([])
+        return
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from("analyses")
+        .select("id, user_id, keyword, results, created_at")
+        .order("created_at", { ascending: false })
+
+      if (cancelled) return
+      if (fetchError) {
+        setError(fetchError.message)
+        setReports([])
+      } else {
+        setReports((data as AnalysisRow[]) ?? [])
+      }
+      setLoading(false)
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
     <div className="animate-in fade-in duration-300">
       <div className="mb-6">
@@ -306,26 +403,79 @@ function AnalysesSection() {
         </p>
       </div>
 
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card py-20 text-center shadow-sm">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary">
-          <FileText className="h-7 w-7 text-muted-foreground/40" />
+      {loading ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="mt-4 text-sm text-muted-foreground">Loading reports…</p>
         </div>
-        <h3 className="mt-6 text-base font-semibold text-foreground">
-          No analyses yet
-        </h3>
-        <p className="mt-2 max-w-xs text-sm text-muted-foreground leading-relaxed">
-          Run your first product analysis to see reports here.
-        </p>
-        <Button
-          className="mt-8 h-10 rounded-xl bg-primary px-6 text-primary-foreground hover:bg-primary/90 font-medium"
-          asChild
-        >
-          <Link href="/analyze">
-            Start Analysis
-            <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Link>
-        </Button>
-      </div>
+      ) : error ? (
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive">
+          {error}
+        </div>
+      ) : reports.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card py-20 text-center shadow-sm">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary">
+            <FileText className="h-7 w-7 text-muted-foreground/40" />
+          </div>
+          <h3 className="mt-6 text-base font-semibold text-foreground">
+            No analyses yet
+          </h3>
+          <p className="mt-2 max-w-xs text-sm text-muted-foreground leading-relaxed">
+            Run your first product analysis to see reports here.
+          </p>
+          <Button
+            className="mt-8 h-10 rounded-xl bg-primary px-6 text-primary-foreground hover:bg-primary/90 font-medium"
+            asChild
+          >
+            <Link href="/analyze">
+              Start Analysis
+              <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+          <ul className="divide-y divide-border">
+            {reports.map((row) => {
+              const keyword = typeof row.keyword === "string" ? row.keyword.trim() : "—"
+              const score = getScoreFromResults(row.results ?? {})
+              const verdict = getVerdictFromResults(row.results ?? {})
+              return (
+                <li key={row.id} className="flex flex-wrap items-center justify-between gap-4 p-4 sm:px-6">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground truncate">{keyword || "Untitled"}</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                      {formatDate(row.created_at)} · Score {score} · {verdict}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      className="rounded-xl bg-primary px-4 text-primary-foreground hover:bg-primary/90 h-9 text-sm"
+                      onClick={() => router.push(`/analyze/results?id=${encodeURIComponent(row.id)}`)}
+                    >
+                      View Report
+                      <ArrowRight className="ml-1.5 h-4 w-4" />
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(row.id)}
+                      disabled={deletingId === row.id}
+                      className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
+                      aria-label="Delete report"
+                    >
+                      {deletingId === row.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

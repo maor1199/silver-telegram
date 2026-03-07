@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { normalizeAnalysisResponse } from "@/lib/analysisApi"
+import { createClient } from "@/lib/supabase/server"
 
 const BACKEND_URL = (process.env.ANALYZE_BACKEND_URL || "http://localhost:3001").trim()
 
@@ -33,7 +34,34 @@ export async function POST(request: NextRequest) {
 
     const raw = await res.json()
     const normalized = normalizeAnalysisResponse(raw)
-    return NextResponse.json(normalized ?? raw)
+    const analysisData = normalized ?? raw
+
+    // Save to Supabase analyses table if user is authenticated
+    try {
+      const supabase = await createClient()
+      const authHeader = request.headers.get("Authorization")
+      const accessToken = authHeader?.replace(/^Bearer\s+/i, "").trim()
+      if (accessToken) {
+        const { data: { user } } = await supabase.auth.getUser(accessToken)
+        if (user?.id) {
+          const keyword = typeof body?.keyword === "string" ? body.keyword.trim() : ""
+          const { error: insertError } = await supabase.from("analyses").insert({
+            user_id: user.id,
+            keyword: keyword || "unknown",
+            results: analysisData,
+            created_at: new Date().toISOString(),
+          })
+          if (insertError) {
+            console.error("Failed to save analysis to Supabase:", insertError.message)
+          }
+        }
+      }
+    } catch (saveErr) {
+      console.error("Supabase save error:", saveErr)
+      // Do not fail the response; analysis already succeeded
+    }
+
+    return NextResponse.json(analysisData)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     console.error("Analysis API error:", msg)
