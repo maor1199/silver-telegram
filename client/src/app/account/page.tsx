@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils"
 type AnalysisRow = {
   id: string
   user_id: string
-  keyword: string
+  product_name: string
   results: Record<string, unknown>
   created_at: string
 }
@@ -375,7 +375,7 @@ function AnalysesSection() {
 
       const { data, error: fetchError } = await supabase
         .from("analyses")
-        .select("id, user_id, keyword, results, created_at")
+        .select("id, user_id, product_name, results, created_at")
         .order("created_at", { ascending: false })
 
       if (cancelled) return
@@ -437,13 +437,13 @@ function AnalysesSection() {
         <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           <ul className="divide-y divide-border">
             {reports.map((row) => {
-              const keyword = typeof row.keyword === "string" ? row.keyword.trim() : "—"
+              const productName = typeof row.product_name === "string" ? row.product_name.trim() : "—"
               const score = getScoreFromResults(row.results ?? {})
               const verdict = getVerdictFromResults(row.results ?? {})
               return (
                 <li key={row.id} className="flex flex-wrap items-center justify-between gap-4 p-4 sm:px-6">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground truncate">{keyword || "Untitled"}</p>
+                    <p className="font-medium text-foreground truncate">{productName || "Untitled"}</p>
                     <p className="mt-0.5 text-sm text-muted-foreground">
                       {formatDate(row.created_at)} · Score {score} · {verdict}
                     </p>

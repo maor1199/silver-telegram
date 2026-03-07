@@ -44,10 +44,10 @@ export async function POST(request: NextRequest) {
       if (accessToken) {
         const { data: { user } } = await supabase.auth.getUser(accessToken)
         if (user?.id) {
-          const keyword = typeof body?.keyword === "string" ? body.keyword.trim() : ""
+          const product_name = typeof body?.keyword === "string" ? body.keyword.trim() : ""
           const { error: insertError } = await supabase.from("analyses").insert({
             user_id: user.id,
-            keyword: keyword || "unknown",
+            product_name: product_name || "unknown",
             results: analysisData,
             created_at: new Date().toISOString(),
           })
