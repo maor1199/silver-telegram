@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
           const { error: insertError } = await supabase.from("analyses").insert({
             user_id: user.id,
             product_name: product_name || "unknown",
-            results: analysisData,
+            analysis_data: analysisData,
             created_at: new Date().toISOString(),
           })
           if (insertError) {

@@ -305,12 +305,12 @@ export default function WarRoom() {
         if (supabase) {
           const { data: row, error: fetchError } = await supabase
             .from("analyses")
-            .select("results")
+            .select("analysis_data")
             .eq("id", analysisId)
             .single()
           if (cancelled) return
-          if (!fetchError && row?.results && typeof row.results === "object") {
-            const raw = row.results as Record<string, unknown>
+          if (!fetchError && row?.analysis_data && typeof row.analysis_data === "object") {
+            const raw = row.analysis_data as Record<string, unknown>
             const normalized = normalizeAnalysisResponse(raw)
             setData(normalized ? (normalized as Record<string, unknown>) : raw)
             setAnalysisResult(normalized ?? raw)

@@ -16,7 +16,7 @@ type AnalysisRow = {
   id: string
   user_id: string
   product_name: string
-  results: Record<string, unknown>
+  analysis_data: Record<string, unknown>
   created_at: string
 }
 
@@ -375,7 +375,7 @@ function AnalysesSection() {
 
       const { data, error: fetchError } = await supabase
         .from("analyses")
-        .select("id, user_id, product_name, results, created_at")
+        .select("id, user_id, product_name, analysis_data, created_at")
         .order("created_at", { ascending: false })
 
       if (cancelled) return
@@ -438,8 +438,8 @@ function AnalysesSection() {
           <ul className="divide-y divide-border">
             {reports.map((row) => {
               const productName = typeof row.product_name === "string" ? row.product_name.trim() : "—"
-              const score = getScoreFromResults(row.results ?? {})
-              const verdict = getVerdictFromResults(row.results ?? {})
+              const score = getScoreFromResults(row.analysis_data ?? {})
+              const verdict = getVerdictFromResults(row.analysis_data ?? {})
               return (
                 <li key={row.id} className="flex flex-wrap items-center justify-between gap-4 p-4 sm:px-6">
                   <div className="min-w-0 flex-1">
