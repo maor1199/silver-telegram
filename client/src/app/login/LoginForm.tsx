@@ -29,7 +29,11 @@ export default function LoginForm() {
     }
     setLoading(true)
     const supabase = createClient()
-    if (!supabase) { setError("Authentication service unavailable."); setLoading(false); return }
+    if (!supabase) {
+      setError("Authentication not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env.local (see .env.example).")
+      setLoading(false)
+      return
+    }
     const { error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
