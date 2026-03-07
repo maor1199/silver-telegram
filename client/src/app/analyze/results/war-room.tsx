@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
+import { toast } from "@/hooks/use-toast"
 import {
   ArrowRight,
   XCircle,
@@ -34,6 +35,7 @@ import {
   Activity,
   ChevronRight,
   Flame,
+  Save,
 } from "lucide-react"
 import { getAnalysisResult, setAnalysisResult } from "@/lib/analysis-store"
 import { normalizeAnalysisResponse } from "@/lib/analysisApi"
@@ -294,6 +296,8 @@ export default function WarRoom() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
   const [activeTab, setActiveTab] = useState<"overview" | "deep-dive" | "execution">("overview")
 
   useEffect(() => {
@@ -499,6 +503,34 @@ export default function WarRoom() {
     })
   }
 
+  const handleSaveToMyReports = async () => {
+    if (!data) return
+    const supabase = createClient()
+    if (!supabase) return
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user?.id) {
+      router.push("/login?redirect=/analyze/results")
+      return
+    }
+    const R = (typeof data?.report === "object" && data.report != null ? data.report : data) as Record<string, unknown>
+    const productName = safeStr(data?.keyword ?? R?.keyword ?? data?.name ?? R?.name, "Product analysis").trim() || "Product analysis"
+    setSaving(true)
+    setSaveSuccess(false)
+    const { error: insertError } = await supabase.from("analyses").insert({
+      user_id: session.user.id,
+      product_name: productName,
+      analysis_data: data,
+      created_at: new Date().toISOString(),
+    })
+    setSaving(false)
+    if (insertError) {
+      toast({ title: "Save failed", description: insertError.message, variant: "destructive" })
+      return
+    }
+    setSaveSuccess(true)
+    setTimeout(() => setSaveSuccess(false), 3000)
+  }
+
   const fmt = (val: unknown) => {
     if (val == null) return "N/A"
     const n = Number(val)
@@ -549,6 +581,14 @@ export default function WarRoom() {
                 <span className="text-[10px] text-muted-foreground/50">AI Investment Decision Engine</span>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSaveToMyReports}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors disabled:opacity-50"
+                >
+                  {saveSuccess ? <Check className="h-3 w-3 text-emerald-500" /> : <Save className="h-3 w-3" />}
+                  {saveSuccess ? "Saved" : saving ? "Saving…" : "Save to My Reports"}
+                </button>
                 <button
                   onClick={handleCopyJson}
                   className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
