@@ -17,7 +17,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalOptions, setAuthModalOptions] = useState<{ title?: string; message?: string }>({});
-  const [pendingAction, setPendingAction] = useState<(() => void | Promise<void>) | null>(null);
+  type PendingActionFn = () => void | Promise<void>;
+  const [_pendingAction, setPendingAction] = useState<(() => PendingActionFn) | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
@@ -28,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setPendingAction((prev) => {
           if (prev) {
             const act = prev();
-            if (typeof act === "function") act();
+            act();
             return null;
           }
           return prev;
@@ -53,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPendingAction((prev) => {
       if (prev) {
         const act = prev();
-        if (typeof act === "function") act();
+        act();
       }
       return null;
     });

@@ -91,7 +91,8 @@ export type AnalyzeParams = {
 
 /** In dev use "" so relative /api goes through Vite proxy; in prod use VITE_API_URL. */
 export function getAnalyzeApiBase(): string {
-  const rawApi = (typeof import.meta !== "undefined" && (import.meta as unknown as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL ?? "").trim();
+  const base = (typeof import.meta !== "undefined" && (import.meta as unknown as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL) ?? "";
+  const rawApi = typeof base === "string" ? base.trim() : "";
   const isDev = typeof import.meta !== "undefined" && (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
   return isDev ? "" : (rawApi || "");
 }
