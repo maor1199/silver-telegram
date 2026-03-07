@@ -35,9 +35,11 @@ import {
   Flame,
   Rocket,
   TrendingUp as TrendUp,
+  Loader2,
 } from "lucide-react"
-import { getAnalysisResult } from "@/lib/analysis-store"
+import { getAnalysisResult } from "@/lib/supabase/analysis-store"
 import { cn } from "@/lib/utils"
+import { useRequireAuth } from "@/hooks/use-require-auth"
 
 /* ══════════════════════════════════════════════════════════
    HELPER COMPONENTS
@@ -71,7 +73,7 @@ function LoadingSkeleton() {
   )
 }
 
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorState({ message, onRetry, onNewAnalysis }: { message: string; onRetry: () => void; onNewAnalysis: () => void }) {
   return (
     <div className="relative flex min-h-screen flex-col bg-background">
       <Navbar />
@@ -86,9 +88,9 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
             <Button onClick={onRetry}>
               <RefreshCw className="mr-2 h-4 w-4" /> Retry
             </Button>
-            <Link href="/analyze">
-              <Button variant="outline">New Analysis</Button>
-            </Link>
+            <Button variant="outline" onClick={onNewAnalysis} type="button">
+              New Analysis
+            </Button>
           </div>
         </div>
       </main>
@@ -198,6 +200,7 @@ function StatCard({ label, value, sub, icon, color }: {
    ══════════════════════════════════════════════════════════ */
 export default function WarRoom() {
   const router = useRouter()
+  const { loading: authLoading } = useRequireAuth()
   const [data, setData] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -213,7 +216,11 @@ export default function WarRoom() {
         }
         setData(result)
       } else {
-        setError("No analysis data found. Please run a new analysis.")
+        // No data — force redirect to analyze page (full navigation so no error screen flashes)
+        if (typeof window !== "undefined") {
+          window.location.replace("/analyze")
+        }
+        return
       }
     } catch {
       setError("Failed to load analysis data.")
@@ -221,8 +228,25 @@ export default function WarRoom() {
     setLoading(false)
   }, [router])
 
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background">
+        <Navbar />
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Checking sign-in...</p>
+        </div>
+      </div>
+    )
+  }
   if (loading) return <LoadingSkeleton />
-  if (error && !data) return <ErrorState message={error} onRetry={() => router.replace("/analyze")} />
+  if (error && !data) return (
+    <ErrorState
+      message={error}
+      onRetry={() => router.replace("/analyze")}
+      onNewAnalysis={() => router.push("/analyze")}
+    />
+  )
   if (!data) return <LoadingSkeleton />
 
   /* ── Safe extraction helpers ─────────────────────────── */
@@ -470,9 +494,9 @@ export default function WarRoom() {
               </div>
 
               <div className="mt-5 flex items-center justify-center gap-3">
-                <Link href="/analyze">
-                  <Button size="sm" variant="outline" className="rounded-xl text-xs">New Analysis</Button>
-                </Link>
+                <Button size="sm" variant="outline" className="rounded-xl text-xs" asChild>
+                  <Link href="/analyze">New Analysis</Link>
+                </Button>
               </div>
             </div>
           </section>
@@ -860,11 +884,11 @@ export default function WarRoom() {
 
           {/* Bottom CTA */}
           <div className="mt-14 flex items-center justify-center gap-4">
-            <Link href="/analyze">
-              <Button size="lg" className="rounded-xl gap-2">
+            <Button size="lg" className="rounded-xl gap-2" asChild>
+              <Link href="/analyze">
                 Run Another Analysis <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </main>

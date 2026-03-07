@@ -1,14 +1,15 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Navbar } from "@/components/navbar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { createClient } from "@/lib/supabase/client"
-import { Loader2 } from "lucide-react"
+import { Loader2, ArrowLeft } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -17,6 +18,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get("redirect") || "/analyze"
 
   const handleLogin = async () => {
     setError(null)
@@ -35,15 +38,25 @@ export default function LoginPage() {
     if (authError) {
       setError(authError.message)
     } else {
-      router.push("/analyze")
+      router.push(redirectTo)
       router.refresh()
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#fef3c7]/40 via-background to-[#dbeafe]/20" />
-      <div className="relative w-full max-w-[420px]">
+    <div className="relative flex min-h-screen flex-col bg-background">
+      <Navbar />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#fef3c7]/40 via-background to-[#dbeafe]/20" style={{ top: "4rem" }} />
+      <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-8">
+        <div className="absolute left-6 top-6 flex items-center">
+          <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground" asChild>
+            <Link href="/">
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Link>
+          </Button>
+        </div>
+        <div className="w-full max-w-[420px]">
         {/* Logo */}
         <div className="mb-8 flex justify-center">
           <Link href="/" className="flex items-center gap-2.5">
@@ -127,6 +140,7 @@ export default function LoginPage() {
             Sign up
           </Link>
         </p>
+        </div>
       </div>
     </div>
   )

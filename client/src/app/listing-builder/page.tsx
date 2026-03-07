@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { cn } from "@/lib/utils"
+import { useRequireAuth } from "@/hooks/use-require-auth"
 
 /* ── Config ── */
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://unresuscitable-unskirted-shaniqua.ngrok-free.dev"
@@ -34,12 +35,26 @@ function bulletToText(b: unknown): { header: string; content: string } {
     return { header: String((b as BulletPoint).header), content: String((b as BulletPoint).content) }
   }
   const str = String(b ?? "")
-  const match = str.match(/^([A-Z][A-Z\s&/]+)([:\-–]\s?)(.+)$/s)
+  const match = str.match(/^([A-Z][A-Z\s&/]+)([:\-–]\s?)([\s\S]+)$/)
   if (match) return { header: match[1].trim(), content: match[3].trim() }
   return { header: "", content: str }
 }
 
 export default function ListingBuilderPage() {
+  const { loading: authLoading } = useRequireAuth()
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background">
+        <Navbar />
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Checking sign-in...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Navbar />
