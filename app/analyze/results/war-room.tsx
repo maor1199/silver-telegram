@@ -304,8 +304,7 @@ export default function WarRoom() {
         const normalized = normalizeAnalysisResponse(raw)
         setData(normalized ? (normalized as unknown as Record<string, unknown>) : raw)
       }
-    } catch (e) {
-      console.error("[v0] Failed to load analysis data:", e)
+    } catch {
       setError("Failed to load analysis data.")
     }
     setLoading(false)
