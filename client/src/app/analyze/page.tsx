@@ -7,14 +7,16 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, ArrowRight, AlertCircle } from "lucide-react"
+import { ArrowLeft, ArrowRight, AlertCircle, Loader2 } from "lucide-react"
 import { setAnalysisResult } from "@/lib/analysis-store"
 import { runAnalysis } from "@/lib/analysisApi"
+import { useRequireAuth } from "@/hooks/use-require-auth"
 
 export const dynamic = 'force-dynamic';
 const TOTAL_STEPS = 6
 
 export default function AnalyzePage() {
+  const { loading: authLoading } = useRequireAuth()
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
     product: "",
@@ -111,6 +113,19 @@ export default function AnalyzePage() {
       setProgressWidth(0)
       setApiError(err instanceof Error ? err.message : "Analysis failed — unable to reach engine")
     }
+  }
+
+  /* ─── Auth gate (same as Listing Copywriter) ─────────────── */
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background">
+        <Navbar />
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Checking sign-in...</p>
+        </div>
+      </div>
+    )
   }
 
   /* ─── Loading State ─────────────────────────────────────── */
