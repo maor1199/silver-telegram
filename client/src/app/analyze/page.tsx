@@ -9,8 +9,17 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, ArrowRight, AlertCircle, Loader2 } from "lucide-react"
 import { setAnalysisResult } from "@/lib/analysis-store"
-import { runAnalysis } from "@/lib/analysisApi"
+import { runAnalysis, UsageLimitError } from "@/lib/analysisApi"
 import { useRequireAuth } from "@/hooks/use-require-auth"
+import { createClient } from "@/lib/supabase/client"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export const dynamic = 'force-dynamic';
 const TOTAL_STEPS = 6
@@ -30,6 +39,7 @@ export default function AnalyzePage() {
   const [analysisStep, setAnalysisStep] = useState(0)
   const [progressWidth, setProgressWidth] = useState(0)
   const [apiError, setApiError] = useState<string | null>(null)
+  const [showUsageLimitModal, setShowUsageLimitModal] = useState(false)
   const router = useRouter()
 
   const analysisMessages = [
@@ -95,14 +105,19 @@ export default function AnalyzePage() {
     setAnalysisStep(0)
 
     try {
-      const result = await runAnalysis({
-        keyword: formData.product,
-        sellingPrice: Number(formData.sellingPrice) || 0,
-        unitCost: Number(formData.manufacturingCost) || 0,
-        shippingCost: Number(formData.shippingCost) || 0,
-        differentiation: formData.advantage || undefined,
-        complexity: formData.complexity || undefined,
-      })
+      const supabase = createClient()
+      const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: { session: null } }
+      const result = await runAnalysis(
+        {
+          keyword: formData.product,
+          sellingPrice: Number(formData.sellingPrice) || 0,
+          unitCost: Number(formData.manufacturingCost) || 0,
+          shippingCost: Number(formData.shippingCost) || 0,
+          differentiation: formData.advantage || undefined,
+          complexity: formData.complexity || undefined,
+        },
+        { accessToken: session?.access_token ?? undefined }
+      )
 
       setAnalysisResult(result as Record<string, unknown>)
       setProgressWidth(100)
@@ -111,7 +126,11 @@ export default function AnalyzePage() {
     } catch (err) {
       setIsAnalyzing(false)
       setProgressWidth(0)
-      setApiError(err instanceof Error ? err.message : "Analysis failed — unable to reach engine")
+      if (err instanceof UsageLimitError) {
+        setShowUsageLimitModal(true)
+      } else {
+        setApiError(err instanceof Error ? err.message : "Analysis failed — unable to reach engine")
+      }
     }
   }
 
@@ -238,6 +257,38 @@ export default function AnalyzePage() {
   /* ─── Multi-step Wizard ─────────────────────────────────── */
   return (
     <div className="relative flex min-h-screen flex-col">
+      {/* Usage limit modal (403) */}
+      <Dialog open={showUsageLimitModal} onOpenChange={setShowUsageLimitModal}>
+        <DialogContent className="sm:max-w-md text-center" showCloseButton={true}>
+          <DialogHeader>
+            <DialogTitle className="text-xl">
+              Analysis limit reached
+            </DialogTitle>
+            <DialogDescription className="mt-2 text-left">
+              You have reached the free tier limit of 5 analyses. Upgrade to PRO for unlimited analyses and more features.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-center">
+            <Button
+              variant="secondary"
+              onClick={() => setShowUsageLimitModal(false)}
+              className="rounded-xl"
+            >
+              Close
+            </Button>
+            <Button
+              className="rounded-xl"
+              onClick={() => {
+                setShowUsageLimitModal(false)
+                router.push("/pricing")
+              }}
+            >
+              Upgrade to PRO
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#fef3c7]/60 via-background to-[#dbeafe]/30" />
       <Navbar />
       <main className="relative flex-1 flex items-center justify-center">

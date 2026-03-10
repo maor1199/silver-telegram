@@ -7,11 +7,33 @@ export interface RunAnalysisParams {
   complexity?: string
 }
 
-// 1. הפונקציה שמושכת את הנתונים מה-API
-export async function runAnalysis(params: RunAnalysisParams): Promise<Record<string, unknown>> {
+export interface RunAnalysisOptions {
+  /** Pass the user's access token so the API can enforce usage limits and save to My Reports. */
+  accessToken?: string | null
+}
+
+/** Thrown when the user has reached the free tier analysis limit (403). */
+export class UsageLimitError extends Error {
+  readonly status = 403
+  readonly code = "USAGE_LIMIT"
+  constructor(message: string) {
+    super(message)
+    this.name = "UsageLimitError"
+  }
+}
+
+export async function runAnalysis(
+  params: RunAnalysisParams,
+  options?: RunAnalysisOptions
+): Promise<Record<string, unknown>> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
+  if (options?.accessToken?.trim()) {
+    headers["Authorization"] = `Bearer ${options.accessToken.trim()}`
+  }
+
   const res = await fetch("/api/analyze", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({
       keyword: params.keyword,
       sellingPrice: params.sellingPrice,
@@ -23,8 +45,11 @@ export async function runAnalysis(params: RunAnalysisParams): Promise<Record<str
   })
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error((err as { error?: string }).error ?? `Analysis failed (${res.status})`)
+    const err = await res.json().catch(() => ({})) as { error?: string; code?: string }
+    if (res.status === 403 && err.code === "USAGE_LIMIT") {
+      throw new UsageLimitError(err.error ?? "Usage limit reached.")
+    }
+    throw new Error(err.error ?? `Analysis failed (${res.status})`)
   }
 
   return (await res.json()) as Record<string, unknown>
