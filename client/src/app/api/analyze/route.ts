@@ -60,6 +60,9 @@ export async function POST(req: Request) {
     const shippingCost = Number(body.shippingCost ?? body.shipping ?? 2) || 2
 
     const marketData = await getMarketData(typeof keyword === "string" ? keyword : "cat cave")
+    if (!marketData.success) {
+      console.warn("[Analyze] Using stub market data — new fields will show placeholders. Check Vercel → Logs after running analysis to see why.")
+    }
 
     const result = await analyzeProduct({
       keyword: typeof keyword === "string" ? keyword : "cat cave",

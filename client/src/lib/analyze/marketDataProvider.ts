@@ -92,7 +92,10 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
     newSellersInTop20: 0,
   }
 
-  if (!keyword || !apiKey) return stub
+  if (!keyword || !apiKey) {
+    if (!apiKey) console.warn("[Rainforest] RAINFOREST_API_KEY missing in this environment (client/.env locally, Vercel env in production).")
+    return stub
+  }
 
   try {
     const url = new URL(RAINFOREST_BASE)
@@ -103,11 +106,18 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
     url.searchParams.set("number_of_results", String(TOP_N))
 
     const res = await fetch(url.toString(), { signal: AbortSignal.timeout(15000) })
-    if (!res.ok) return stub
+    if (!res.ok) {
+      const body = await res.text().catch(() => "")
+      console.warn("[Rainforest] Request failed:", res.status, body.slice(0, 150))
+      return stub
+    }
 
     const data = (await res.json()) as { search_results?: unknown[] }
     const results = data?.search_results
-    if (!Array.isArray(results) || results.length === 0) return stub
+    if (!Array.isArray(results) || results.length === 0) {
+      console.warn("[Rainforest] No search_results in response.")
+      return stub
+    }
 
     const topCompetitors: TopCompetitor[] = []
     const topTitles: string[] = []
