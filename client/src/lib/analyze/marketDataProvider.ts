@@ -3,7 +3,7 @@
  */
 
 const RAINFOREST_BASE = "https://api.rainforestapi.com/request"
-const TOP_N = 5
+const TOP_N = 10
 
 export type TopCompetitor = {
   position: number
@@ -11,6 +11,9 @@ export type TopCompetitor = {
   price: number
   ratingsTotal: number
   rating?: number
+  /** Brand from Rainforest when available; otherwise inferred from first word of title */
+  brand?: string
+  sponsored?: boolean
 }
 
 export type MarketDataResult = {
@@ -26,6 +29,15 @@ export type MarketDataResult = {
   topCompetitors?: TopCompetitor[]
   painPoints?: string[]
   competitorsWithOver1000Reviews?: number
+  /** Min/max price in top results — for price compression and narrow band signals */
+  priceMin?: number
+  priceMax?: number
+  /** Share of top results that are sponsored (0–1) — PPC saturation signal */
+  sponsoredShare?: number
+  /** Brand name → count in top results. Used for market domination. */
+  brandCounts?: Record<string, number>
+  /** Top brand(s) by presence; empty if fragmented */
+  dominantBrandNames?: string[]
 }
 
 function parsePrice(value: unknown): number {
@@ -51,6 +63,17 @@ function extractPainPointsFromTitles(titles: string[]): string[] {
   }
   if (out.length === 0) out.push("quality", "value", "fit")
   return out.slice(0, 6)
+}
+
+/** Infer brand from title: first word (or first two if first is short). */
+function inferBrandFromTitle(title: string): string {
+  const t = title.trim()
+  if (!t) return ""
+  const parts = t.split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return ""
+  const first = parts[0] ?? ""
+  if (first.length <= 2 && parts.length > 1) return `${first} ${parts[1] ?? ""}`.trim()
+  return first
 }
 
 export async function getMarketData(keyword: string): Promise<MarketDataResult> {
@@ -93,6 +116,8 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
     let sumRating = 0
     let ratingCount = 0
     let competitorsWithOver1000Reviews = 0
+    let sponsoredCount = 0
+    const brandCounts: Record<string, number> = {}
 
     for (let i = 0; i < Math.min(TOP_N, results.length); i++) {
       const r = results[i] as Record<string, unknown>
@@ -101,6 +126,14 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
       const price = parsePrice(priceVal)
       const ratingsTotal = typeof r?.ratings_total === "number" ? r.ratings_total : 0
       const rating = typeof r?.rating === "number" ? r.rating : undefined
+      const sponsored = r?.sponsored === true
+      if (sponsored) sponsoredCount++
+      const brandRaw = typeof (r?.brand as string) === "string" ? (r.brand as string).trim() : ""
+      const brand = brandRaw || inferBrandFromTitle(title)
+      if (brand) {
+        const key = brand.toLowerCase()
+        brandCounts[key] = (brandCounts[key] ?? 0) + 1
+      }
 
       topCompetitors.push({
         position: i + 1,
@@ -108,6 +141,8 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
         price,
         ratingsTotal,
         rating,
+        brand: brand || undefined,
+        sponsored: sponsored || undefined,
       })
       if (title) topTitles.push(title)
       if (price > 0) {
@@ -131,6 +166,14 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
           )
         : 1800
 
+    const priceMin = topPrices.length > 0 ? Math.min(...topPrices) : undefined
+    const priceMax = topPrices.length > 0 ? Math.max(...topPrices) : undefined
+    const sponsoredShare = topCompetitors.length > 0 ? sponsoredCount / topCompetitors.length : 0
+    const brandEntries = Object.entries(brandCounts).sort((a, b) => b[1] - a[1])
+    const maxBrandCount = brandEntries[0]?.[1] ?? 0
+    const dominantBrand = maxBrandCount >= 2 && maxBrandCount / topCompetitors.length >= 0.4
+    const dominantBrandNames = dominantBrand ? brandEntries.filter(([, c]) => c >= 2).map(([name]) => name) : []
+
     const painPoints = extractPainPointsFromTitles(topTitles)
 
     return {
@@ -138,7 +181,7 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
       avgPrice,
       avgRating,
       avgReviews,
-      dominantBrand: false,
+      dominantBrand,
       topTitles,
       topPrices,
       newSellersInTop10: 0,
@@ -146,6 +189,11 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
       topCompetitors,
       painPoints,
       competitorsWithOver1000Reviews,
+      priceMin,
+      priceMax,
+      sponsoredShare,
+      brandCounts: Object.keys(brandCounts).length > 0 ? brandCounts : undefined,
+      dominantBrandNames: dominantBrandNames.length > 0 ? dominantBrandNames : undefined,
     }
   } catch (err) {
     console.warn("[marketDataProvider] Rainforest fetch failed:", err instanceof Error ? err.message : err)

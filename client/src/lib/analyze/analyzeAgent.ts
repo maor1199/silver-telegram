@@ -20,9 +20,14 @@ type AnalyzeInput = {
     newSellersInTop20?: number
     topTitles?: string[]
     topPrices?: number[]
-    topCompetitors?: { position: number; title: string; price: number; ratingsTotal: number; rating?: number }[]
+    topCompetitors?: { position: number; title: string; price: number; ratingsTotal: number; rating?: number; brand?: string; sponsored?: boolean }[]
     painPoints?: string[]
     competitorsWithOver1000Reviews?: number
+    priceMin?: number
+    priceMax?: number
+    sponsoredShare?: number
+    brandCounts?: Record<string, number>
+    dominantBrandNames?: string[]
   } | null
 }
 
@@ -68,6 +73,11 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const competitorsWithOver1000Reviews = market?.competitorsWithOver1000Reviews ?? 0
   const painPoints = Array.isArray(market?.painPoints) ? market.painPoints : []
   const topCompetitors = market?.topCompetitors ?? []
+  const priceMin = market?.priceMin
+  const priceMax = market?.priceMax
+  const sponsoredShare = market?.sponsoredShare ?? 0
+  const brandCounts = market?.brandCounts ?? {}
+  const dominantBrandNames = market?.dominantBrandNames ?? []
 
   const diffInputLower = differentiationInput.toLowerCase()
   const mentionsPainPoint = painPoints.length > 0 && painPoints.some((p) => diffInputLower.includes(String(p).toLowerCase()))
@@ -195,20 +205,47 @@ export async function analyzeProduct(input: AnalyzeInput) {
   }
   const aiInsights = await getAIInsights(aiInput)
 
-  const why_this_decision_raw = aiInsights?.decision_conversation?.length
-    ? aiInsights.decision_conversation
-    : verdict === "NO_GO"
-      ? [
-          "Profit after ads is too thin — PPC will eat it.",
-          `Market avg ${avgReviews} reviews; you'll burn a lot to get traction.`,
-          "Unless you have a real differentiator and budget, skip it.",
-        ]
-      : [
-          `$${profitAfterAds.toFixed(0)}/unit after ads — room to play.`,
-          `Competition: ${avgReviews < 1000 ? "workable" : "tough"}.`,
-          "Worth testing. Nail one differentiator and control ACoS.",
-        ]
-  const why_this_decision = premiumRiskWarning ? [premiumRiskWarning, ...why_this_decision_raw] : why_this_decision_raw
+  // ─── 1. WHY THIS DECISION: 2–3 strongest real data signals only ───
+  const whyBullets: string[] = []
+  if (hasRealMarketData) {
+    if (!passesMarginRule) {
+      whyBullets.push(`Net margin ${estimatedMarginPercent.toFixed(1)}% is below the ${marginThresholdPct}% threshold — unit economics fail the viability test.`)
+    }
+    if (avgReviews >= 2000) {
+      whyBullets.push(`Top listings average ${avgReviews.toLocaleString()} reviews — strong review moat makes it hard for new entrants to compete on social proof.`)
+    } else if (avgReviews >= 500 && avgReviews < 2000) {
+      whyBullets.push(`Market has ${avgReviews.toLocaleString()} avg reviews in top results — moderate barrier; differentiation and budget matter.`)
+    }
+    if (dominantBrand && dominantBrandNames.length > 0) {
+      whyBullets.push(`${dominantBrandNames.slice(0, 2).join(" and ")} appear repeatedly in top results — brand concentration limits new-seller share.`)
+    } else if (dominantBrand) {
+      whyBullets.push("One or few brands dominate top positions — high barrier for new sellers.")
+    }
+    if (competitorsWithOver1000Reviews >= 3) {
+      whyBullets.push(`${competitorsWithOver1000Reviews} of top results have 1,000+ reviews — PPC and conversion will be expensive.`)
+    }
+    if (sellingPrice > 0 && avgPrice > 0 && sellingPrice > avgPrice * 1.15) {
+      whyBullets.push(`Your price ($${sellingPrice.toFixed(2)}) is above market avg ($${avgPrice.toFixed(2)}) — differentiation must justify the premium.`)
+    }
+    if (profitAfterAds >= 15 && passesMarginRule) {
+      whyBullets.push(`Profit after ads $${profitAfterAds.toFixed(0)}/unit and ${estimatedMarginPercent.toFixed(1)}% margin meet the bar — economics support a GO.`)
+    } else if (profitAfterAds < 10 && whyBullets.length < 2) {
+      whyBullets.push(`Profit after ads $${profitAfterAds.toFixed(0)}/unit is too thin — PPC and returns would erase margin.`)
+    }
+  } else {
+    if (!passesMarginRule) {
+      whyBullets.push(`Net margin ${estimatedMarginPercent.toFixed(1)}% is below the ${marginThresholdPct}% threshold.`)
+    }
+    if (profitAfterAds >= 15 && passesMarginRule) {
+      whyBullets.push(`Profit after ads $${profitAfterAds.toFixed(0)}/unit and margin pass — run again with live market data for full picture.`)
+    } else if (profitAfterAds < 10) {
+      whyBullets.push(`Profit after ads $${profitAfterAds.toFixed(0)}/unit is too low to sustain launch.`)
+    }
+  }
+  const why_this_decision = (premiumRiskWarning ? [premiumRiskWarning] : []).concat(whyBullets.slice(0, 4))
+  if (why_this_decision.length === 0) {
+    why_this_decision.push(verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : "Economics and market signals support a cautious GO; differentiate and control ACoS.")
+  }
 
   const review_intelligence = aiInsights?.review_intelligence?.length
     ? aiInsights.review_intelligence
@@ -229,6 +266,59 @@ export async function analyzeProduct(input: AnalyzeInput) {
         "Seasonality often improves in colder months and Q4 gifting.",
         "Saturation risk is real — winners differentiate on materials, size niche, or bundle value.",
       ]
+
+  // ─── 2. WHAT MOST SELLERS MISS: one insight from combined real signals ───
+  let what_most_sellers_miss = ""
+  if (hasRealMarketData) {
+    const parts: string[] = []
+    if (dominantBrand && dominantBrandNames.length > 0) {
+      parts.push(`A few brands (${dominantBrandNames.slice(0, 2).join(", ")}) repeat in the top results.`)
+    }
+    if (sponsoredShare >= 0.6) {
+      parts.push("Most top slots are sponsored — ad spend is the real gate.")
+    }
+    if (priceMin != null && priceMax != null && priceMax > 0 && (priceMax - priceMin) / priceMax < 0.25) {
+      parts.push(`Prices are tightly clustered ($${priceMin.toFixed(0)}–$${priceMax.toFixed(0)}) so undercutting barely works.`)
+    }
+    if (avgReviews >= 5000) {
+      parts.push("Review counts in the thousands mean new listings get outranked on both organic and PPC.")
+    }
+    what_most_sellers_miss = parts.length ? parts.join(" ") + " Most beginners underestimate this." : `Top listings average ${avgReviews.toLocaleString()} reviews — the real barrier is social proof, not just price. Most beginners underestimate this.`
+  } else {
+    what_most_sellers_miss = "Enable live market data (Rainforest API) to see what most sellers miss in this niche."
+  }
+
+  // ─── 3. MARKET DOMINATION ANALYSIS ───
+  let market_domination_analysis = ""
+  if (hasRealMarketData && topCompetitors.length > 0) {
+    if (dominantBrand && dominantBrandNames.length > 0) {
+      const names = dominantBrandNames.slice(0, 3).join(", ")
+      market_domination_analysis = `Market domination detected: ${names} appear repeatedly in the top ${topCompetitors.length} results. New sellers face established brand trust and review moats; winning share requires clear differentiation and sustained PPC, not just a lower price.`
+    } else {
+      const uniqueBrands = new Set(topCompetitors.map((c) => (c as { brand?: string }).brand?.toLowerCase()).filter(Boolean)).size
+      market_domination_analysis = `Top ${topCompetitors.length} results show ${uniqueBrands} distinct brands — no single player dominates. Entry is more feasible; differentiation and execution matter more than overcoming a brand moat.`
+    }
+  } else if (hasRealMarketData) {
+    market_domination_analysis = "Insufficient brand distribution data in this snapshot; run with full Rainforest results for domination analysis."
+  } else {
+    market_domination_analysis = "Live market data required to assess brand domination."
+  }
+
+  // ─── 4. DIFFICULTY SCORE: from review moat, brand dominance, ad saturation, price pressure ───
+  let difficultyScore = 0
+  if (hasRealMarketData) {
+    if (avgReviews >= 10000) difficultyScore += 3
+    else if (avgReviews >= 2000) difficultyScore += 2
+    else if (avgReviews >= 500) difficultyScore += 1
+    if (dominantBrand) difficultyScore += 2
+    if (sponsoredShare >= 0.7) difficultyScore += 1
+    if (competitorsWithOver1000Reviews >= 4) difficultyScore += 1
+    if (priceMin != null && priceMax != null && priceMax > 0 && (priceMax - priceMin) / priceMax < 0.2) difficultyScore += 1
+  }
+  const difficultyLevel = difficultyScore >= 6 ? "Very High" : difficultyScore >= 4 ? "High" : difficultyScore >= 2 ? "Medium" : "Low"
+  const difficulty_score_display = hasRealMarketData
+    ? `${difficultyLevel} (${difficultyScore}/8 — review moat, brand concentration, ad saturation, price band)`
+    : "Unknown (enable live market data)"
 
   const dominantControl = hasRealMarketData && dominantBrand
     ? [
@@ -420,22 +510,65 @@ export async function analyzeProduct(input: AnalyzeInput) {
   strategicIntelligenceParts.push(`Launch Capital Required: $${launchCapitalRequired.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}. ${launchCapitalConsultantInsight}`)
   const strategicIntelligence = strategicIntelligenceParts.join(" ")
 
+  // ─── 5. EXPERT INSIGHT (consultant secret): synthesize real signals only ───
   const nicheHint = keyword.replace(/\s+/g, " ").slice(0, 30)
   const painHint = painPoints.length > 0 ? painPoints[0] : "quality and fit"
-  const consultantSecret = isHighComplexity
-    ? `In ${nicheHint}, high-complexity items get hit with returns; the 12% buffer is table stakes—and in this niche, Amazon's "Frequently Returned" badge is a killer, so focus 100% on ${painHint} to avoid it.`
-    : complexity === "medium"
-      ? `In this niche, moderate complexity means more QC and returns; the 8% buffer is what pros use—and watch for the "Frequently Returned" badge; double down on ${painHint} in your listing to stay off it.`
-      : !differentiationStrong
-        ? `In ${nicheHint}, generic products burn 50%+ on PPC; add a clear differentiator (50+ chars). Insider note: in this category, returns often spike on ${painHint}—address it in bullets and images or expect the badge.`
-        : passesMarginRule
-          ? `Your differentiation gives you room to defend margin; in ${nicheHint} the real lever is keeping "${differentiationInput.slice(0, 40)}${differentiationInput.length > 40 ? "…" : ""}" front and center—buyers in this niche punish generic claims.`
-          : `In ${nicheHint}, strong differentiation helps conversion; improve unit economics to clear the bar. Niche tip: focus 100% on ${painHint} in your main image and first bullet—it's where this category gets returned.`
+  let consultantSecret = ""
+  if (hasRealMarketData) {
+    const bits: string[] = []
+    if (dominantBrand && dominantBrandNames.length > 0) {
+      bits.push(`Brand concentration (${dominantBrandNames[0]} etc.) means you win with differentiation and proof, not price.`)
+    }
+    if (avgReviews >= 2000) {
+      bits.push(`With ${avgReviews.toLocaleString()}+ reviews on top results, your main image and first bullet must answer "${painHint}" or you'll bleed on returns and ads.`)
+    }
+    if (sponsoredShare >= 0.6) {
+      bits.push("Most top slots are paid — expect high CPC; long-tail and exact match are the only way to start.")
+    }
+    if (priceMin != null && priceMax != null && priceMax > 0 && (priceMax - priceMin) / priceMax < 0.25) {
+      bits.push("Prices are compressed; margin comes from conversion and repeat, not undercutting.")
+    }
+    if (!differentiationStrong) {
+      bits.push(`Generic positioning in "${nicheHint}" burns 50%+ on PPC; add a clear, specific differentiator (50+ chars) tied to ${painHint}.`)
+    }
+    consultantSecret = bits.length > 0 ? bits.join(" ") : `In ${nicheHint}, focus on ${painHint} in listing and images — that's where this category gets returned and where you can stand out.`
+  } else {
+    consultantSecret = `Run with live market data to get a data-backed expert take for "${nicheHint}".`
+  }
+
+  // ─── 6. OPPORTUNITY: from real pain points → one differentiation opportunity ───
+  let opportunity_from_data = ""
+  if (hasRealMarketData && painPoints.length > 0) {
+    const topPain = painPoints[0]
+    const suggestions: Record<string, string> = {
+      durable: "A reinforced design or stress-point warranty could create a clear advantage.",
+      durability: "Highlight materials and construction; show stress tests in images.",
+      quality: "Address quality complaints with specs and close-up proof in the main image.",
+      size: "Offer size clarity (dimensions, comparison) and reduce returns.",
+      sizing: "Clear sizing guide and fit expectations to cut returns and bad reviews.",
+      comfort: "Emphasize comfort features and materials; use lifestyle imagery.",
+      washable: "Lead with washability and care instructions to capture that segment.",
+      sturdy: "Reinforced build and durability claims with visuals.",
+      fit: "Improve fit description and sizing; reduce mismatch returns.",
+      material: "Premium or specific materials as differentiator with proof.",
+      fabric: "Fabric quality and care as a selling point.",
+    }
+    const key = topPain.toLowerCase().replace(/\s+/g, "")
+    opportunity_from_data = suggestions[key] ?? `Reviews in this niche often mention "${topPain}". A product that explicitly solves for ${topPain} (and shows it in bullets and images) can capture buyers who filter by that concern.`
+  } else if (hasRealMarketData) {
+    opportunity_from_data = "Enable pain-point extraction (e.g. from titles/reviews) to surface a concrete differentiation opportunity."
+  } else {
+    opportunity_from_data = "Live market data required to identify a data-based opportunity."
+  }
 
   const sectionHelp: Record<string, string> = {
     financialStressTest: "Aggregator 15% rule: net margin = (Selling Price − All Costs) / Selling Price. Must be ≥ 15% for GO.",
     strategicIntelligence: "Why this product passes or fails the Aggregator bar — margin, positioning, and next steps.",
-    whyThisDecision: "Short, cutting reasons behind the GO or NO_GO verdict — like a mentor's direct take.",
+    whyThisDecision: "2–3 strongest data signals behind the GO or NO_GO verdict (reviews, margin, brand dominance, PPC).",
+    whatMostSellersMiss: "Non-obvious structural dynamic in the market from live data (brand concentration, ad saturation, price band).",
+    marketDominationAnalysis: "Whether a few brands control the top results and how that impacts new sellers.",
+    difficultyScore: "Estimated entry difficulty from review moat, brand dominance, ad saturation, and price pressure.",
+    opportunity: "One concrete differentiation opportunity inferred from common complaints or pain points in the niche.",
     reviewIntelligence: "What buyers complain about and what they love in this niche, from real competitor data.",
     marketTrends: "Live market snapshot (avg price, rating, reviews) and seasonality for this keyword.",
     competition: "How crowded the niche is, dominant control, new-seller opportunity, and your price vs market.",
@@ -484,6 +617,12 @@ export async function analyzeProduct(input: AnalyzeInput) {
     operational_risk_buffer: operationalRiskBufferDollars,
     ppc_competition_floor: acosFloor,
     consultant_secret: consultantSecret,
+    what_most_sellers_miss: what_most_sellers_miss,
+    market_domination_analysis: market_domination_analysis,
+    difficulty_score: difficultyScore,
+    difficulty_level: difficultyLevel,
+    difficulty_score_display: difficulty_score_display,
+    opportunity: opportunity_from_data,
     launch_capital_required: launchCapitalRequired,
     launch_capital_breakdown: launchCapitalBreakdown,
     launch_capital_consultant_insight: launchCapitalConsultantInsight,
@@ -545,6 +684,12 @@ export async function analyzeProduct(input: AnalyzeInput) {
     operationalRiskBuffer: operationalRiskBufferDollars,
     ppcCompetitionFloor: acosFloor,
     consultantSecret: consultantSecret,
+    whatMostSellersMiss: what_most_sellers_miss,
+    marketDominationAnalysis: market_domination_analysis,
+    difficultyScore: difficultyScore,
+    difficultyLevel: difficultyLevel,
+    difficultyScoreDisplay: difficulty_score_display,
+    opportunity: opportunity_from_data,
     launchCapitalRequired: launchCapitalRequired,
     launchCapitalBreakdown: launchCapitalBreakdown,
     launchCapitalConsultantInsight: launchCapitalConsultantInsight,

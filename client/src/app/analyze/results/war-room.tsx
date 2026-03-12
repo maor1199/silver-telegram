@@ -486,6 +486,11 @@ export default function WarRoom() {
   const launchCapitalRequired = R?.launchCapitalRequired ?? analysisData?.launchCapitalRequired ?? R?.launch_capital_required
   const launchCapitalBreakdown = (R?.launchCapitalBreakdown ?? analysisData?.launchCapitalBreakdown ?? R?.launch_capital_breakdown) as Record<string, unknown> | null
   const financialStressTest = safeStr(R?.financialStressTest ?? analysisData?.financialStressTest ?? R?.financial_stress_test)
+  const whatMostSellersMiss = safeStr(R?.whatMostSellersMiss ?? analysisData?.whatMostSellersMiss ?? R?.what_most_sellers_miss)
+  const marketDominationAnalysis = safeStr(R?.marketDominationAnalysis ?? analysisData?.marketDominationAnalysis ?? R?.market_domination_analysis)
+  const difficultyScoreDisplay = safeStr(R?.difficultyScoreDisplay ?? analysisData?.difficultyScoreDisplay ?? R?.difficulty_score_display)
+  const difficultyLevel = safeStr(R?.difficultyLevel ?? analysisData?.difficultyLevel ?? R?.difficulty_level)
+  const opportunity = safeStr(R?.opportunity ?? analysisData?.opportunity)
 
   // ── Verdict styling ────────────────────────────────── 
   const verdictConfig = {
@@ -731,7 +736,7 @@ export default function WarRoom() {
                   <SectionHeader
                     icon={<Brain className="h-5 w-5 text-amber-600" />}
                     title="Expert Insight"
-                    sub="The single most important takeaway from the AI consultant"
+                    sub="Synthesized from real market signals (reviews, brands, PPC, price band)"
                     badge="Expert"
                   />
                   <div className="rounded-2xl border-2 border-amber-300/60 dark:border-amber-700/40 bg-amber-50/50 dark:bg-amber-950/20 p-6 shadow-sm">
@@ -741,6 +746,69 @@ export default function WarRoom() {
                       </div>
                       <p className="text-sm font-medium text-foreground leading-relaxed">{consultantSecret}</p>
                     </div>
+                  </div>
+                </section>
+              )}
+
+              {/* What Most Sellers Miss */}
+              {whatMostSellersMiss && (
+                <section>
+                  <SectionHeader
+                    icon={<Eye className="h-5 w-5 text-primary" />}
+                    title="What Most Sellers Miss"
+                    sub="Non-obvious structural dynamic in the market"
+                    badge="Data"
+                  />
+                  <div className="rounded-2xl border border-border bg-card p-6">
+                    <p className="text-sm text-foreground leading-relaxed">{whatMostSellersMiss}</p>
+                  </div>
+                </section>
+              )}
+
+              {/* Market Domination Analysis */}
+              {marketDominationAnalysis && (
+                <section>
+                  <SectionHeader
+                    icon={<Users className="h-5 w-5 text-primary" />}
+                    title="Market Domination Analysis"
+                    sub="Brand concentration in top results and impact on new sellers"
+                    badge="Data"
+                  />
+                  <div className="rounded-2xl border border-border bg-card p-6">
+                    <p className="text-sm text-foreground leading-relaxed">{marketDominationAnalysis}</p>
+                  </div>
+                </section>
+              )}
+
+              {/* Difficulty Score */}
+              {(difficultyScoreDisplay || difficultyLevel) && (
+                <section>
+                  <SectionHeader
+                    icon={<BarChart3 className="h-5 w-5 text-primary" />}
+                    title="Entry Difficulty"
+                    sub="Estimated difficulty for a new seller to break into this niche"
+                    badge="Data"
+                  />
+                  <div className="rounded-2xl border border-border bg-card p-6">
+                    <p className="text-sm font-semibold text-foreground">{difficultyLevel || difficultyScoreDisplay}</p>
+                    {difficultyScoreDisplay && difficultyScoreDisplay !== difficultyLevel && (
+                      <p className="mt-2 text-xs text-muted-foreground">{difficultyScoreDisplay}</p>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* Opportunity (from pain points) */}
+              {opportunity && (
+                <section>
+                  <SectionHeader
+                    icon={<Target className="h-5 w-5 text-emerald-600" />}
+                    title="Opportunity"
+                    sub="Differentiation opportunity from common complaints in the niche"
+                    badge="Data"
+                  />
+                  <div className="rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-6">
+                    <p className="text-sm text-foreground leading-relaxed">{opportunity}</p>
                   </div>
                 </section>
               )}
