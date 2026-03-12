@@ -111,11 +111,11 @@ export async function POST(req: Request) {
     const stack = err.stack
     console.error("Analysis API error:", msg)
     if (stack) console.error(stack)
-    const isDev = process.env.NODE_ENV !== "production"
+    const safeMessage = (msg || "").slice(0, 300)
     return NextResponse.json(
       {
-        error: isDev ? `Analysis failed: ${msg}` : "Analysis failed — unable to run engine.",
-        ...(isDev && { detail: stack }),
+        error: `Analysis failed: ${safeMessage || "unable to run engine."}`,
+        ...(process.env.NODE_ENV !== "production" && stack && { detail: stack }),
       },
       { status: 500 }
     )
