@@ -6,6 +6,8 @@ import { analyzeProduct } from "@/lib/analyze/analyzeAgent"
 import { getMarketData } from "@/lib/analyze/marketDataProvider"
 
 const FREE_TIER_ANALYSIS_LIMIT = 5
+/** Emails that bypass the free-tier limit (unlimited analyses). */
+const UNLIMITED_ANALYSIS_EMAILS = new Set(["pardilov11@gmail.com"].map((e) => e.toLowerCase()))
 
 export async function POST(req: Request) {
   try {
@@ -44,7 +46,8 @@ export async function POST(req: Request) {
       .single()
 
     const currentCount = usageRow?.analysis_count ?? 0
-    if (currentCount >= FREE_TIER_ANALYSIS_LIMIT) {
+    const hasUnlimited = user?.email && UNLIMITED_ANALYSIS_EMAILS.has(user.email.toLowerCase())
+    if (!hasUnlimited && currentCount >= FREE_TIER_ANALYSIS_LIMIT) {
       return NextResponse.json(
         {
           error: "You have reached the free tier limit of 5 analyses. Upgrade to PRO for unlimited analyses.",
