@@ -37,14 +37,8 @@ export async function runAnalysis(
   options?: RunAnalysisOptions
 ): Promise<Record<string, unknown>> {
   const token = options?.accessToken?.trim()
-  if (!token) {
-    throw new AuthRequiredError("You must be signed in to run an analysis. Please log in and try again.")
-  }
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${token}`,
-  }
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
+  if (token) headers["Authorization"] = `Bearer ${token}`
 
   const res = await fetch("/api/analyze", {
     method: "POST",

@@ -1,10 +1,10 @@
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js'
 import { createServerClient as createSSRClient } from '@supabase/ssr'
 
-/** Production-ready cookie options for Supabase auth cookies */
+/** Cookie options: production-ready (httpOnly, secure on HTTPS, sameSite). In dev (localhost) secure is false so cookies work over HTTP. */
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: true,
+  secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
   path: '/',
 }

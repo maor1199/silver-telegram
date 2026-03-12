@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { cookies } from "next/headers"
 import { normalizeAnalysisResponse } from "@/lib/analysisApi"
 import { createClient, createClientWithToken } from "@/lib/supabase/server"
 
@@ -15,10 +16,16 @@ function backendUnavailableMessage(status: number): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const authHeader = request.headers.get("Authorization")
-    const accessToken = authHeader?.replace(/^Bearer\s+/i, "").trim()
+    let accessToken = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim()
 
-    // Require auth for usage tracking and limit check
+    // Fallback: if no Bearer token, try session from cookies (same-origin cookie-based auth)
+    if (!accessToken) {
+      const cookieStore = await cookies()
+      const supabaseFromCookies = await createClient(cookieStore)
+      const { data: { session } } = await supabaseFromCookies.auth.getSession()
+      accessToken = session?.access_token?.trim() ?? undefined
+    }
+
     if (!accessToken) {
       return NextResponse.json(
         { error: "Authentication required.", code: "UNAUTHORIZED" },

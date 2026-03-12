@@ -28,13 +28,47 @@ const sidebarItems = [
 
 
 
+const emptyProfile = { firstName: "", lastName: "", email: "" }
+
 export default function AccountPage() {
   const [activeSection, setActiveSection] = useState("profile")
-  const [profile, setProfile] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "john@example.com",
-  })
+  const [profile, setProfile] = useState(emptyProfile)
+  const [profileLoading, setProfileLoading] = useState(true)
+
+  useEffect(() => {
+    const supabase = createClient()
+    if (!supabase) {
+      setProfileLoading(false)
+      return
+    }
+    const client = supabase
+
+    function setProfileFromUser(user: { email?: string | null; user_metadata?: Record<string, unknown> | null }) {
+      const meta = user?.user_metadata ?? {}
+      const first = String(meta.first_name ?? meta.given_name ?? "").trim()
+      const last = String(meta.last_name ?? meta.family_name ?? "").trim()
+      const full = String(meta.full_name ?? meta.name ?? "").trim()
+      const firstName = first || (full ? full.split(/\s+/)[0] ?? "" : "")
+      const lastName = last || (full ? full.split(/\s+/).slice(1).join(" ") ?? "" : "")
+      setProfile({
+        firstName: firstName || "",
+        lastName: lastName || "",
+        email: user?.email ?? "",
+      })
+    }
+
+    async function load() {
+      const { data: { user } } = await client.auth.getUser()
+      if (user) setProfileFromUser(user)
+      setProfileLoading(false)
+    }
+
+    load()
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) setProfileFromUser(session.user)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   return (
     <div className="relative flex min-h-screen flex-col">
@@ -93,7 +127,7 @@ export default function AccountPage() {
             {/* Main content */}
             <div className="flex-1 min-w-0">
               {activeSection === "profile" && (
-                <ProfileSection profile={profile} setProfile={setProfile} />
+                <ProfileSection profile={profile} setProfile={setProfile} loading={profileLoading} />
               )}
               {activeSection === "analyses" && <AnalysesSection />}
             </div>
@@ -111,9 +145,11 @@ export default function AccountPage() {
 function ProfileSection({
   profile,
   setProfile,
+  loading,
 }: {
   profile: { firstName: string; lastName: string; email: string }
   setProfile: (p: { firstName: string; lastName: string; email: string }) => void
+  loading?: boolean
 }) {
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [newPassword, setNewPassword] = useState("")
@@ -158,6 +194,21 @@ function ProfileSection({
         setPwSuccess(false)
       }, 2000)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="animate-in fade-in duration-300">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-foreground">Profile</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">Manage your personal information.</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-12 shadow-sm flex flex-col items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="mt-4 text-sm text-muted-foreground">Loading profile…</p>
+        </div>
+      </div>
+    )
   }
 
   return (

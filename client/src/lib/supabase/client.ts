@@ -1,7 +1,12 @@
-import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 let client: SupabaseClient | null = null
 
+/**
+ * Browser Supabase client. Uses @supabase/ssr so the session is stored in cookies,
+ * which persist on the production domain and are sent with same-origin API requests.
+ */
 export function createClient(): SupabaseClient | null {
   if (client) return client
 
@@ -12,6 +17,6 @@ export function createClient(): SupabaseClient | null {
     return null
   }
 
-  client = createSupabaseClient(supabaseUrl, supabaseAnonKey)
+  client = createBrowserClient(supabaseUrl, supabaseAnonKey)
   return client
 }

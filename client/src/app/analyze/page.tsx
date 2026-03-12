@@ -12,6 +12,7 @@ import { setAnalysisResult } from "@/lib/analysis-store"
 import { runAnalysis, UsageLimitError, AuthRequiredError } from "@/lib/analysisApi"
 import { useRequireAuth } from "@/hooks/use-require-auth"
 import { useSession } from "@/hooks/use-session"
+import { createClient } from "@/lib/supabase/client"
 import {
   Dialog,
   DialogContent,
@@ -111,14 +112,20 @@ export default function AnalyzePage() {
       setProgressWidth(0)
       return
     }
-    const token = session?.access_token?.trim()
-    if (!token) {
-      setApiError("Session lost. Redirecting to sign in…")
-      router.replace(`/login?redirect=${encodeURIComponent("/analyze")}`)
-      return
+    const supabase = createClient()
+    let token = session?.access_token?.trim() || undefined
+    if (!token && supabase) {
+      const { data: { session: s1 } } = await supabase.auth.getSession()
+      token = s1?.access_token?.trim() || undefined
     }
-    try {
-      const result = await runAnalysis(
+    if (!token && supabase) {
+      await supabase.auth.refreshSession()
+      const { data: { session: s2 } } = await supabase.auth.getSession()
+      token = s2?.access_token?.trim() || undefined
+    }
+
+    const runRequest = (accessToken?: string | null) =>
+      runAnalysis(
         {
           keyword: formData.product,
           sellingPrice: Number(formData.sellingPrice) || 0,
@@ -127,10 +134,21 @@ export default function AnalyzePage() {
           differentiation: formData.advantage || undefined,
           complexity: formData.complexity || undefined,
         },
-        { accessToken: token }
+        { accessToken: accessToken || undefined }
       )
 
-      setAnalysisResult(result as Record<string, unknown>)
+    try {
+      let result: Record<string, unknown>
+      try {
+        result = await runRequest(token) as Record<string, unknown>
+      } catch (firstErr) {
+        if (!(firstErr instanceof AuthRequiredError) || !supabase) throw firstErr
+        await supabase.auth.refreshSession()
+        const { data: { session: refreshed } } = await supabase.auth.getSession()
+        result = await runRequest(refreshed?.access_token) as Record<string, unknown>
+      }
+
+      setAnalysisResult(result)
       setProgressWidth(100)
       await new Promise((resolve) => setTimeout(resolve, 600))
       router.push("/analyze/results")
@@ -140,13 +158,35 @@ export default function AnalyzePage() {
       if (err instanceof UsageLimitError) {
         setShowUsageLimitModal(true)
       } else if (err instanceof AuthRequiredError) {
-        setApiError(err.message)
-        router.replace(`/login?redirect=${encodeURIComponent("/analyze")}`)
+        setApiError(err.message + " Click 'Sign in again' below to re-authenticate.")
+        // Don't auto-redirect; let user click so they see the message and can retry after signing in
+        try {
+          sessionStorage.setItem("analyze-form-draft", JSON.stringify(formData))
+        } catch {
+          /* ignore */
+        }
       } else {
         setApiError(err instanceof Error ? err.message : "Analysis failed — unable to reach engine")
       }
     }
   }
+
+  /* Restore form draft after login redirect (no data loss) */
+  useEffect(() => {
+    if (authLoading || !session) return
+    try {
+      const raw = sessionStorage.getItem("analyze-form-draft")
+      if (raw) {
+        const draft = JSON.parse(raw) as typeof formData
+        if (draft && typeof draft === "object") {
+          setFormData((prev) => ({ ...prev, ...draft }))
+        }
+        sessionStorage.removeItem("analyze-form-draft")
+      }
+    } catch {
+      sessionStorage.removeItem("analyze-form-draft")
+    }
+  }, [authLoading, session])
 
   /* ─── Auth gate (same as Listing Copywriter) ─────────────── */
   if (authLoading) {
@@ -329,9 +369,19 @@ export default function AnalyzePage() {
           {apiError && (
             <div className="mb-8 flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4">
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-destructive">Analysis failed</p>
                 <p className="mt-1 text-sm text-muted-foreground">{apiError}</p>
+                {(apiError.includes("Sign in") || apiError.includes("session") || apiError.includes("Authentication")) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => router.replace(`/login?redirect=${encodeURIComponent("/analyze")}`)}
+                  >
+                    Sign in again
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -486,24 +536,27 @@ export default function AnalyzePage() {
           </div>
 
           {/* Navigation */}
-          <div className="mt-10 flex items-center justify-between">
-            <Button
-              variant="ghost"
-              onClick={() => setStep(step - 1)}
-              disabled={step === 1}
-              className="gap-2 text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <Button
-              onClick={handleContinue}
-              disabled={!isStepValid()}
-              className="gap-2 rounded-xl px-8 h-11"
-            >
-              {step === TOTAL_STEPS ? "Analyze" : "Continue"}
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+          <div className="mt-10 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                onClick={() => setStep(step - 1)}
+                disabled={step === 1}
+                className="gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+              <Button
+                onClick={handleContinue}
+                disabled={!isStepValid()}
+                className="gap-2 rounded-xl px-8 h-11"
+                title={!isStepValid() ? "Complete all fields to continue" : undefined}
+              >
+                {step === TOTAL_STEPS ? "Analyze" : "Continue"}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </main>
