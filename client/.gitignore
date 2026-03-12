@@ -7,6 +7,7 @@ out/
 build/
 
 # --- Environment Variables ---
+.env
 .env*.local
 .env.development
 .env.test

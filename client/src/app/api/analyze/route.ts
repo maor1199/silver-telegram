@@ -100,10 +100,17 @@ export async function POST(req: Request) {
 
     return NextResponse.json(analysisData)
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
+    const err = error instanceof Error ? error : new Error(String(error))
+    const msg = err.message
+    const stack = err.stack
     console.error("Analysis API error:", msg)
+    if (stack) console.error(stack)
+    const isDev = process.env.NODE_ENV !== "production"
     return NextResponse.json(
-      { error: "Analysis failed — unable to run engine." },
+      {
+        error: isDev ? `Analysis failed: ${msg}` : "Analysis failed — unable to run engine.",
+        ...(isDev && { detail: stack }),
+      },
       { status: 500 }
     )
   }

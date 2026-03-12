@@ -195,8 +195,7 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
       brandCounts: Object.keys(brandCounts).length > 0 ? brandCounts : undefined,
       dominantBrandNames: dominantBrandNames.length > 0 ? dominantBrandNames : undefined,
     }
-  } catch (err) {
-    console.warn("[marketDataProvider] Rainforest fetch failed:", err instanceof Error ? err.message : err)
+  } catch {
     return stub
   }
 }
