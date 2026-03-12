@@ -22,17 +22,33 @@ export class UsageLimitError extends Error {
   }
 }
 
+/** Thrown when the request is not authenticated (401). */
+export class AuthRequiredError extends Error {
+  readonly status = 401
+  readonly code = "UNAUTHORIZED"
+  constructor(message: string = "Authentication required.") {
+    super(message)
+    this.name = "AuthRequiredError"
+  }
+}
+
 export async function runAnalysis(
   params: RunAnalysisParams,
   options?: RunAnalysisOptions
 ): Promise<Record<string, unknown>> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" }
-  if (options?.accessToken?.trim()) {
-    headers["Authorization"] = `Bearer ${options.accessToken.trim()}`
+  const token = options?.accessToken?.trim()
+  if (!token) {
+    throw new AuthRequiredError("You must be signed in to run an analysis. Please log in and try again.")
+  }
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`,
   }
 
   const res = await fetch("/api/analyze", {
     method: "POST",
+    credentials: "include",
     headers,
     body: JSON.stringify({
       keyword: params.keyword,
@@ -46,6 +62,9 @@ export async function runAnalysis(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { error?: string; code?: string }
+    if (res.status === 401 || err.code === "UNAUTHORIZED") {
+      throw new AuthRequiredError(err.error ?? "Your session expired or you're not signed in. Please log in again.")
+    }
     if (res.status === 403 && err.code === "USAGE_LIMIT") {
       throw new UsageLimitError(err.error ?? "Usage limit reached.")
     }

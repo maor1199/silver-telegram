@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     if (!accessToken) {
       return NextResponse.json(
         { error: "Authentication required.", code: "UNAUTHORIZED" },
-        { status: 401 }
+        { status: 401, headers: { "X-Auth-Failure": "no-token" } }
       )
     }
 
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     if (!user?.id) {
       return NextResponse.json(
         { error: "Invalid or expired session.", code: "UNAUTHORIZED" },
-        { status: 401 }
+        { status: 401, headers: { "X-Auth-Failure": "invalid-token" } }
       )
     }
 

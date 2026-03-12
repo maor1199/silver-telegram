@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, ArrowRight, AlertCircle, Loader2 } from "lucide-react"
 import { setAnalysisResult } from "@/lib/analysis-store"
-import { runAnalysis, UsageLimitError } from "@/lib/analysisApi"
+import { runAnalysis, UsageLimitError, AuthRequiredError } from "@/lib/analysisApi"
 import { useRequireAuth } from "@/hooks/use-require-auth"
-import { createClient } from "@/lib/supabase/client"
+import { useSession } from "@/hooks/use-session"
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ const TOTAL_STEPS = 6
 
 export default function AnalyzePage() {
   const { loading: authLoading } = useRequireAuth()
+  const { session, hasSupabase } = useSession()
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
     product: "",
@@ -104,9 +105,19 @@ export default function AnalyzePage() {
     setProgressWidth(0)
     setAnalysisStep(0)
 
+    if (!hasSupabase) {
+      setApiError("Sign-in is not available. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY and redeploy.")
+      setIsAnalyzing(false)
+      setProgressWidth(0)
+      return
+    }
+    const token = session?.access_token?.trim()
+    if (!token) {
+      setApiError("Session lost. Redirecting to sign in…")
+      router.replace(`/login?redirect=${encodeURIComponent("/analyze")}`)
+      return
+    }
     try {
-      const supabase = createClient()
-      const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: { session: null } }
       const result = await runAnalysis(
         {
           keyword: formData.product,
@@ -116,7 +127,7 @@ export default function AnalyzePage() {
           differentiation: formData.advantage || undefined,
           complexity: formData.complexity || undefined,
         },
-        { accessToken: session?.access_token ?? undefined }
+        { accessToken: token }
       )
 
       setAnalysisResult(result as Record<string, unknown>)
@@ -128,6 +139,9 @@ export default function AnalyzePage() {
       setProgressWidth(0)
       if (err instanceof UsageLimitError) {
         setShowUsageLimitModal(true)
+      } else if (err instanceof AuthRequiredError) {
+        setApiError(err.message)
+        router.replace(`/login?redirect=${encodeURIComponent("/analyze")}`)
       } else {
         setApiError(err instanceof Error ? err.message : "Analysis failed — unable to reach engine")
       }

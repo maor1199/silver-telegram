@@ -1,6 +1,25 @@
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createServerClient as createSSRClient } from '@supabase/ssr'
 
-export async function createClient() {
+/** Production-ready cookie options for Supabase auth cookies */
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'lax' as const,
+  path: '/',
+}
+
+type CookieStore = Awaited<ReturnType<typeof import('next/headers').cookies>>
+
+type CookieToSet = { name: string; value: string; options?: Record<string, unknown> }
+
+/**
+ * Create a Supabase client for the server.
+ * - When cookieStore is provided (e.g. from next/headers cookies()), uses @supabase/ssr
+ *   with cookie storage and production-safe options: httpOnly, secure, sameSite: 'lax'.
+ * - When called with no args, returns a plain client (e.g. for API routes that use Bearer token).
+ */
+export async function createClient(cookieStore?: CookieStore | null): Promise<SupabaseClient> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -8,6 +27,25 @@ export async function createClient() {
     throw new Error(
       'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.'
     )
+  }
+
+  if (cookieStore) {
+    return createSSRClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet: CookieToSet[]) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, { ...COOKIE_OPTIONS, ...options })
+            )
+          } catch {
+            // Ignore in Server Components / middleware where set is not allowed
+          }
+        },
+      },
+    })
   }
 
   return createSupabaseClient(supabaseUrl, supabaseAnonKey)
