@@ -1,24 +1,17 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { normalizeAnalysisResponse } from "@/lib/analysisApi"
 import { createClient, createClientWithToken } from "@/lib/supabase/server"
+import { analyzeProduct } from "@/lib/analyze/analyzeAgent"
+import { getMarketData } from "@/lib/analyze/marketDataProvider"
 
-const BACKEND_URL = (process.env.ANALYZE_BACKEND_URL || "http://localhost:3001").trim()
 const FREE_TIER_ANALYSIS_LIMIT = 5
 
-function backendUnavailableMessage(status: number): string {
-  if (status === 502 || status === 503) {
-    return "Analysis engine is unavailable. Start the backend (e.g. run the server in the project root or set ANALYZE_BACKEND_URL in client .env)."
-  }
-  return `Backend returned ${status}.`
-}
-
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await request.json()
-    let accessToken = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim()
+    const body = await req.json().catch(() => ({}))
+    let accessToken = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim()
 
-    // Fallback: if no Bearer token, try session from cookies (same-origin cookie-based auth)
     if (!accessToken) {
       const cookieStore = await cookies()
       const supabaseFromCookies = await createClient(cookieStore)
@@ -44,7 +37,6 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClientWithToken(accessToken)
 
-    // Check usage limit (create record if missing)
     const { data: usageRow } = await supabase
       .from("user_usage")
       .select("analysis_count")
@@ -62,30 +54,32 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const res = await fetch(`${BACKEND_URL}/api/analyze`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
-      },
-      body: JSON.stringify(body),
+    const keyword = body.keyword ?? body.product ?? body.search_term ?? "cat cave"
+    const sellingPrice = Number(body.sellingPrice ?? body.price ?? 44) || 44
+    const unitCost = Number(body.unitCost ?? body.cost ?? 4) || 4
+    const shippingCost = Number(body.shippingCost ?? body.shipping ?? 2) || 2
+
+    const marketData = await getMarketData(typeof keyword === "string" ? keyword : "cat cave")
+
+    const result = await analyzeProduct({
+      keyword: typeof keyword === "string" ? keyword : "cat cave",
+      sellingPrice,
+      unitCost,
+      shippingCost,
+      fbaFee: body.fbaFee,
+      assumedAcos: body.assumedAcos,
+      stage: body.stage,
+      complexity: body.complexity,
+      differentiation: body.differentiation,
+      marketData,
     })
 
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}))
-      const message =
-        (errorData as { error?: string }).error ||
-        backendUnavailableMessage(res.status)
-      return NextResponse.json({ error: message }, { status: res.status })
-    }
-
-    const raw = await res.json()
+    const raw = (result && typeof result === "object" ? result : {}) as Record<string, unknown>
     const normalized = normalizeAnalysisResponse(raw)
     const analysisData = normalized ?? raw
 
-    // Increment usage (create row if not exists)
     const newCount = currentCount + 1
-    const { error: upsertError } = await supabase.from("user_usage").upsert(
+    await supabase.from("user_usage").upsert(
       {
         user_id: user.id,
         analysis_count: newCount,
@@ -93,40 +87,24 @@ export async function POST(request: NextRequest) {
       },
       { onConflict: "user_id" }
     )
-    if (upsertError) {
-      console.error("Failed to update user_usage:", upsertError.message)
-      // Do not fail the response; analysis already succeeded
-    }
 
-    // Save to Supabase analyses table
-    try {
-      const product_name = typeof body?.keyword === "string" ? body.keyword.trim() : ""
-      const { error: insertError } = await supabase.from("analyses").insert({
-        user_id: user.id,
-        product_name: product_name || "unknown",
-        analysis_data: analysisData,
-        created_at: new Date().toISOString(),
-      })
-      if (insertError) {
-        console.error("Failed to save analysis to Supabase:", insertError.message)
-      }
-    } catch (saveErr) {
-      console.error("Supabase save error:", saveErr)
-    }
+    const product_name = typeof body?.keyword === "string" ? body.keyword.trim() : ""
+    await supabase.from("analyses").insert({
+      user_id: user.id,
+      product_name: product_name || "unknown",
+      analysis_data: analysisData as Record<string, unknown>,
+      created_at: new Date().toISOString(),
+    }).then(({ error }) => {
+      if (error) console.error("Failed to save analysis to Supabase:", error.message)
+    })
 
     return NextResponse.json(analysisData)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     console.error("Analysis API error:", msg)
-    const isNetwork =
-      /fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|network/i.test(msg)
     return NextResponse.json(
-      {
-        error: isNetwork
-          ? "Cannot reach the analysis engine. Ensure the backend is running (e.g. in server folder or via ngrok) and ANALYZE_BACKEND_URL points to it."
-          : "Analysis failed — unable to reach engine.",
-      },
-      { status: 502 }
+      { error: "Analysis failed — unable to run engine." },
+      { status: 500 }
     )
   }
 }
