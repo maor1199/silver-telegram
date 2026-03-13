@@ -544,30 +544,6 @@ export default function WarRoom() {
 
   const ic = "h-4 w-4 text-primary shrink-0"
 
-  /* ── Execution Plan: group into phases ──────────────── */
-  const executionPhases: { phase: string; steps: string[] }[] = []
-  if (fActionPlan.length > 0) {
-    const monthPattern = /^(month\s*\d+|week\s*\d+|phase\s*\d+|q[1-4])\s*[:\-–]/i
-    let currentPhase = "Launch Phase"
-    let currentSteps: string[] = []
-
-    for (const step of fActionPlan) {
-      const match = step.match(monthPattern)
-      if (match) {
-        if (currentSteps.length > 0) {
-          executionPhases.push({ phase: currentPhase, steps: [...currentSteps] })
-        }
-        currentPhase = match[1].trim()
-        currentSteps = [step.replace(monthPattern, "").replace(/^\s*[:\-–]\s*/, "").trim() || step]
-      } else {
-        currentSteps.push(step)
-      }
-    }
-    if (currentSteps.length > 0) {
-      executionPhases.push({ phase: currentPhase, steps: currentSteps })
-    }
-  }
-
   return (
     <div className="relative flex min-h-screen flex-col bg-background">
       <Navbar />
@@ -701,63 +677,100 @@ export default function WarRoom() {
           </section>
 
           {/* ═══════════════════════════════════════════════
-              TAB: OVERVIEW
+              SECTION 1 — OVERVIEW (Decision Layer)
+              Verdict + Primary Reason + Core Metrics + Why This Decision + Expert + What Most Miss + What Would Flip
               ═══════════════════════════════════════════════ */}
           {activeTab === "overview" && (
-            <div className="mt-10 flex flex-col gap-10 animate-in fade-in duration-300">
+            <div className="mt-10 flex flex-col gap-8 animate-in fade-in duration-300">
 
-              {/* Why This Decision */}
+              {/* Primary Reason — one short sentence for the verdict */}
+              {(fWhy?.[0] || consultantSecret) && (
+                <section>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Primary Reason</h3>
+                  <p className="text-sm font-medium text-foreground leading-relaxed">
+                    {String(fWhy?.[0] ?? consultantSecret).split(/[.!?]/).slice(0, 2).join(". ").trim() || String(fWhy?.[0] ?? consultantSecret)}
+                    {!(String(fWhy?.[0] ?? consultantSecret).endsWith(".")) ? "." : ""}
+                  </p>
+                </section>
+              )}
+
+              {/* Core Metrics Snapshot — compact repeat of banner metrics */}
+              <section>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Core Metrics Snapshot</h3>
+                <AnalysisProfitCards
+                  netProfit={profitAfterAds}
+                  profitBreakdown={pb ? {
+                    sellingPrice: Number(pb.sellingPrice) || 0,
+                    referralFee: Number(pb.referralFee) || 0,
+                    fbaFee: Number(pb.fbaFee) || 0,
+                    cogs: Number(pb.cogs) || 0,
+                    ppcCostPerUnit: Number(pb.ppcCostPerUnit) || 0,
+                    assumedAcosPercent: Number(pb.assumedAcosPercent) || 0,
+                    profitAfterAds: Number(pb.profitAfterAds) || 0,
+                  } : undefined}
+                  profitAfterAds={profitAfterAds}
+                />
+                <div className="mt-3 flex flex-wrap gap-4">
+                  {score != null && !isNaN(score) && (
+                    <span className="text-xs text-muted-foreground">Viability Score: <strong className="text-foreground">{score}/100</strong></span>
+                  )}
+                  {confidence != null && !isNaN(confidence) && (
+                    <span className="text-xs text-muted-foreground">Confidence: <strong className="text-foreground">{confidence}%</strong></span>
+                  )}
+                  {estimatedMargin && (
+                    <span className="text-xs text-muted-foreground">Estimated Margin: <strong className="text-foreground">{estimatedMargin}</strong></span>
+                  )}
+                </div>
+              </section>
+
+              {/* Why This Decision — exactly three bullets (Observation → implication) */}
               <section>
                 <SectionHeader
                   icon={<Shield className="h-5 w-5 text-primary" />}
                   title="Why This Decision"
-                  sub="Key factors that influenced the AI verdict"
+                  sub="Observation → implication"
                   helpText={help("whyThisDecision")}
                 />
                 <div className="rounded-2xl border border-border bg-card p-6">
-                  {(fWhy || []).length > 0 ? (
+                  {(fWhy && fWhy.length > 0) ? (
                     <ul className="flex flex-col gap-3.5">
-                      {(fWhy || []).map((reason, i) => (
+                      {fWhy.slice(0, 3).map((reason, i) => (
                         <li key={i} className="flex items-start gap-3 text-sm text-foreground leading-relaxed">
-                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                           {String(reason)}
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-sm text-muted-foreground/60 italic">The advisor did not provide explicit reasoning for this verdict.</p>
+                    <p className="text-sm text-muted-foreground/60 italic">No explicit reasoning provided for this verdict.</p>
                   )}
                 </div>
               </section>
 
-              {/* Expert Insight — consultantSecret (most important tip) */}
-              {consultantSecret && (
+              {/* Expert Insight — short, max 3 sentences */}
+              {(consultantSecret || (typeof fStratIntel === "string" ? fStratIntel : (fStratIntel as string[])?.[0])) && (
                 <section>
                   <SectionHeader
                     icon={<Brain className="h-5 w-5 text-amber-600" />}
                     title="Expert Insight"
-                    sub="Synthesized from real market signals (reviews, brands, PPC, price band)"
+                    sub="Summary of the market situation"
                     badge="Expert"
                   />
                   <div className="rounded-2xl border-2 border-amber-300/60 dark:border-amber-700/40 bg-amber-50/50 dark:bg-amber-950/20 p-6 shadow-sm">
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/40">
-                        <Lightbulb className="h-5 w-5 text-amber-600" />
-                      </div>
-                      <p className="text-sm font-medium text-foreground leading-relaxed">{consultantSecret}</p>
-                    </div>
+                    <p className="text-sm font-medium text-foreground leading-relaxed">
+                      {consultantSecret || (typeof fStratIntel === "string" ? fStratIntel : (fStratIntel as string[])?.[0])}
+                    </p>
                   </div>
                 </section>
               )}
 
-              {/* What Most Sellers Miss */}
+              {/* What Most Sellers Miss — one short insight */}
               {whatMostSellersMiss && (
                 <section>
                   <SectionHeader
                     icon={<Eye className="h-5 w-5 text-primary" />}
                     title="What Most Sellers Miss"
-                    sub="Non-obvious structural dynamic in the market"
-                    badge="Data"
+                    sub="Hidden dynamic in the niche"
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <p className="text-sm text-foreground leading-relaxed">{whatMostSellersMiss}</p>
@@ -765,362 +778,18 @@ export default function WarRoom() {
                 </section>
               )}
 
-              {/* Market Domination Analysis */}
-              {marketDominationAnalysis && (
-                <section>
-                  <SectionHeader
-                    icon={<Users className="h-5 w-5 text-primary" />}
-                    title="Market Domination Analysis"
-                    sub="Brand concentration in top results and impact on new sellers"
-                    badge="Data"
-                  />
-                  <div className="rounded-2xl border border-border bg-card p-6">
-                    <p className="text-sm text-foreground leading-relaxed">{marketDominationAnalysis}</p>
-                  </div>
-                </section>
-              )}
-
-              {/* Difficulty Score */}
-              {(difficultyScoreDisplay || difficultyLevel) && (
-                <section>
-                  <SectionHeader
-                    icon={<BarChart3 className="h-5 w-5 text-primary" />}
-                    title="Entry Difficulty"
-                    sub="Estimated difficulty for a new seller to break into this niche"
-                    badge="Data"
-                  />
-                  <div className="rounded-2xl border border-border bg-card p-6">
-                    <p className="text-sm font-semibold text-foreground">{difficultyLevel || difficultyScoreDisplay}</p>
-                    {difficultyScoreDisplay && difficultyScoreDisplay !== difficultyLevel && (
-                      <p className="mt-2 text-xs text-muted-foreground">{difficultyScoreDisplay}</p>
-                    )}
-                  </div>
-                </section>
-              )}
-
-              {/* Opportunity (from pain points) */}
-              {opportunity && (
-                <section>
-                  <SectionHeader
-                    icon={<Target className="h-5 w-5 text-emerald-600" />}
-                    title="Opportunity"
-                    sub="Differentiation opportunity from common complaints in the niche"
-                    badge="Data"
-                  />
-                  <div className="rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-6">
-                    <p className="text-sm text-foreground leading-relaxed">{opportunity}</p>
-                  </div>
-                </section>
-              )}
-
-              {/* Profit Breakdown */}
-              {pb && (
-                <section>
-                  <SectionHeader
-                    icon={<DollarSign className="h-5 w-5 text-primary" />}
-                    title="Profit Breakdown"
-                    sub="Full unit economics with PPC-adjusted margins"
-                    badge="Unit Economics"
-                    helpText={help("profitBreakdown")}
-                  />
-                  <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
-                    <div className="grid gap-3">
-                      {[
-                        { label: "Selling Price", value: fmt(pb.sellingPrice), negative: false },
-                        { label: "Referral Fee (15%)", value: fmt(pb.referralFee), negative: true },
-                        { label: "FBA Fee", value: fmt(pb.fbaFee), negative: true },
-                        { label: "COGS (Unit + Shipping)", value: fmt(pb.cogs), negative: true },
-                      ].map((row) => (
-                        <div key={row.label} className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">{row.negative ? `\u2212 ${row.label}` : row.label}</span>
-                          <span className={cn("font-semibold", row.negative ? "text-red-500" : "text-foreground")}>
-                            {row.negative ? `-${row.value}` : row.value}
-                          </span>
-                        </div>
-                      ))}
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          {`\u2212 PPC Cost`}
-                          {pb.assumedAcosPercent != null && (
-                            <span className="ml-1 text-xs text-muted-foreground/60">(ACoS {Number(pb.assumedAcosPercent)}%)</span>
-                          )}
-                        </span>
-                        <span className="font-semibold text-red-500">-{fmt(pb.ppcCostPerUnit)}</span>
-                      </div>
-                      <div className="my-2 border-t border-border" />
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-foreground">= Profit After Ads</span>
-                        <span className={cn("text-xl font-black", (Number(pb.profitAfterAds) ?? 0) >= 0 ? "text-emerald-600" : "text-red-600")}>
-                          {fmt(pb.profitAfterAds)}
-                        </span>
-                      </div>
-                    </div>
-                    {profitExplanation && (
-                      <p className="mt-6 text-[13px] text-muted-foreground leading-relaxed border-t border-border pt-5">{profitExplanation}</p>
-                    )}
-                  </div>
-                </section>
-              )}
-
-              {/* Net Profit / ROI / Amazon Fees cards */}
-              <AnalysisProfitCards
-                netProfit={profitAfterAds}
-                profitBreakdown={pb ? {
-                  sellingPrice: Number(pb.sellingPrice) || 0,
-                  referralFee: Number(pb.referralFee) || 0,
-                  fbaFee: Number(pb.fbaFee) || 0,
-                  cogs: Number(pb.cogs) || 0,
-                  ppcCostPerUnit: Number(pb.ppcCostPerUnit) || 0,
-                  assumedAcosPercent: Number(pb.assumedAcosPercent) || 0,
-                  profitAfterAds: Number(pb.profitAfterAds) || 0,
-                } : undefined}
-                profitAfterAds={profitAfterAds}
-              />
-
-              {/* Market Reality Summary */}
-              {(typeof fMarketReality === "string" ? fMarketReality : ((fMarketReality as string[]) || []).length > 0) && (
-                <section>
-                  <SectionHeader
-                    icon={<Eye className="h-5 w-5 text-primary" />}
-                    title="Market Reality"
-                    sub="Current competitive landscape analysis"
-                    badge="Intelligence"
-                  />
-                  <div className="rounded-2xl border border-border bg-card p-6">
-                    {typeof fMarketReality === "string" ? (
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{fMarketReality}</p>
-                    ) : (
-                      <ul className="flex flex-col gap-3">
-                        {((fMarketReality as string[]) || []).map((item, i) => (
-                          <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
-                            <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-primary/60" />
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </section>
-              )}
-
-              {/* Strategic Intelligence Summary */}
-              {(typeof fStratIntel === "string" ? fStratIntel : ((fStratIntel as string[]) || []).length > 0) && (
-                <section>
-                  <SectionHeader
-                    icon={<Crosshair className="h-5 w-5 text-primary" />}
-                    title="Strategic Intelligence"
-                    sub="Deep market positioning and moat analysis"
-                  />
-                  <div className="rounded-2xl border border-border bg-card p-6">
-                    {typeof fStratIntel === "string" ? (
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{fStratIntel}</p>
-                    ) : (
-                      <ul className="flex flex-col gap-3">
-                        {((fStratIntel as string[]) || []).map((item, i) => (
-                          <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
-                            <Zap className="mt-0.5 h-4 w-4 shrink-0 text-primary/60" />
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </section>
-              )}
-
-              {/* Risks & Opportunities Side-by-Side */}
-              {(fRisks.length > 0 || fOpportunities.length > 0) && (
-                <section>
-                  <SectionHeader
-                    icon={<Activity className="h-5 w-5 text-primary" />}
-                    title="Risk / Opportunity Matrix"
-                    sub="Threats to monitor and advantages to exploit"
-                  />
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <InsightBlock
-                      icon={<TrendingDown className="h-4 w-4 text-red-500 shrink-0" />}
-                      title="Risks"
-                      items={fRisks}
-                      accent="red"
-                      helpText={help("risks")}
-                    />
-                    <InsightBlock
-                      icon={<TrendingUp className="h-4 w-4 text-emerald-500 shrink-0" />}
-                      title="Opportunities"
-                      items={fOpportunities}
-                      accent="green"
-                      helpText={help("opportunities")}
-                    />
-                  </div>
-                </section>
-              )}
-
-
-
-              {/* Differentiation Gap Tip */}
-              {differentiationGapTip && (
-                <section>
-                  <SectionHeader
-                    icon={<AlertTriangle className="h-5 w-5 text-amber-500" />}
-                    title="Differentiation Warning"
-                    sub={differentiationScore ? `Your differentiation score: ${differentiationScore}` : "Key gap identified in your product positioning"}
-                  />
-                  <div className="rounded-2xl border-2 border-amber-200/60 dark:border-amber-800/40 bg-amber-50/30 dark:bg-amber-950/10 p-6">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-                      <p className="text-sm text-foreground leading-relaxed">{differentiationGapTip}</p>
-                    </div>
-                  </div>
-                </section>
-              )}
-
-              {/* Financial Stress Test */}
-              {financialStressTest && (
-                <section>
-                  <SectionHeader
-                    icon={<DollarSign className="h-5 w-5 text-primary" />}
-                    title="Financial Stress Test"
-                    sub="Worst-case scenario analysis for your margins"
-                  />
-                  <div className="rounded-2xl border border-border bg-card p-6">
-                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{financialStressTest}</p>
-                  </div>
-                </section>
-              )}
-
-              {/* Launch Capital Required */}
-              {launchCapitalRequired != null && Number(launchCapitalRequired) > 0 && (
-                <section>
-                  <SectionHeader
-                    icon={<DollarSign className="h-5 w-5 text-primary" />}
-                    title="Launch Capital Required"
-                    sub="Estimated investment needed to launch this product"
-                    badge="Investment"
-                  />
-                  <div className="rounded-2xl border border-border bg-card p-6">
-                    <p className="text-3xl font-black text-foreground">${Number(launchCapitalRequired).toLocaleString()}</p>
-                    {launchCapitalBreakdown && (
-                      <div className="mt-4 grid gap-2">
-                        {launchCapitalBreakdown.inventory != null && (
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Inventory</span>
-                            <span className="font-semibold text-foreground">${Number(launchCapitalBreakdown.inventory).toLocaleString()}</span>
-                          </div>
-                        )}
-                        {launchCapitalBreakdown.ppcMarketing != null && (
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">PPC / Marketing</span>
-                            <span className="font-semibold text-foreground">${Number(launchCapitalBreakdown.ppcMarketing).toLocaleString()}</span>
-                          </div>
-                        )}
-                        {launchCapitalBreakdown.vineAndMisc != null && (
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Vine + Misc</span>
-                            <span className="font-semibold text-foreground">${Number(launchCapitalBreakdown.vineAndMisc).toLocaleString()}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </section>
-              )}
-            </div>
-          )}
-
-          {/* ═══════════════════════════════════════════════
-              TAB: DEEP DIVE
-              ═══════════════════════════════════════════════ */}
-          {activeTab === "deep-dive" && (
-            <div className="mt-10 flex flex-col gap-10 animate-in fade-in duration-300">
-
-              {/* Market Reality Deep Dive */}
-              <section>
-                <SectionHeader
-                  icon={<TrendingUp className="h-5 w-5 text-primary" />}
-                  title="Market Reality Deep Dive"
-                  sub="Review intelligence, demand trends, and competitive landscape"
-                  badge="Research"
-                />
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  <InsightBlock icon={<Star className={ic} />} title="Review Intelligence" items={fReviewIntel} accent="blue" helpText={help("reviewIntelligence")} />
-                  <InsightBlock icon={<TrendingUp className={ic} />} title="Market Trends" items={fMarketTrends} accent="green" helpText={help("marketTrends")} />
-                  <InsightBlock icon={<Users className={ic} />} title="Competition Analysis" items={fCompetition} accent="amber" helpText={help("competition")} />
-                </div>
-              </section>
-
-              {/* Profit & Advertising Reality */}
-              <section>
-                <SectionHeader
-                  icon={<DollarSign className="h-5 w-5 text-primary" />}
-                  title="Profit & Advertising Reality"
-                  sub="Unit economics, margins, and advertising cost analysis"
-                  badge="Financials"
-                />
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <InsightBlock icon={<DollarSign className={ic} />} title="Profitability Analysis" items={fProfitReality} accent="green" helpText={help("profitability")} />
-                  <InsightBlock icon={<Megaphone className={ic} />} title="Advertising Pressure" items={fAdReality} accent="red" helpText={help("advertising")} />
-                </div>
-              </section>
-
-              {/* Strategic Intelligence Grid */}
-              <section>
-                <SectionHeader
-                  icon={<Brain className="h-5 w-5 text-primary" />}
-                  title="Strategic Intelligence Grid"
-                  sub="Differentiation angles, risk vectors, and opportunity mapping"
-                  badge="Strategy"
-                />
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  <InsightBlock icon={<AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />} title="Risk Vectors" items={fRisks} accent="red" helpText={help("risks")} />
-                  <InsightBlock icon={<Target className="h-4 w-4 text-emerald-500 shrink-0" />} title="Opportunity Map" items={fOpportunities} accent="green" helpText={help("opportunities")} />
-                  <InsightBlock icon={<Lightbulb className="h-4 w-4 text-amber-500 shrink-0" />} title="Differentiation Angles" items={fDiffIdeas} accent="amber" helpText={help("differentiationIdeas")} />
-                </div>
-              </section>
-
-              {/* Alternative Keywords */}
-              {(altKeywords || []).length > 0 && (
-                <section>
-                  <SectionHeader
-                    icon={<Target className="h-5 w-5 text-primary" />}
-                    title="Alternative Keywords"
-                    sub="Related product ideas with estimated CPC"
-                    helpText={help("alternativeKeywords")}
-                  />
-                  <div className="rounded-2xl border border-border bg-card p-6">
-                    <div className="flex flex-wrap gap-2.5">
-                      {(altKeywords || []).map((kw, i) => (
-                        <button
-                          key={i}
-                          className="inline-flex items-center gap-2.5 rounded-full border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10 hover:border-primary/40"
-                          onClick={() => navigator.clipboard.writeText(kw.keyword)}
-                          title={`Click to copy: ${kw.keyword}`}
-                        >
-                          <span>{kw.keyword}</span>
-                          {kw.cpc && (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
-                              {kw.cpc}<span className="font-normal text-primary/60">/click</span>
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="mt-3 text-xs text-muted-foreground/60">Click a keyword to copy it to your clipboard.</p>
-                  </div>
-                </section>
-              )}
-
-              {/* What Would Make GO (NO-GO only) */}
-              {verdict === "NO-GO" && (whatWouldMakeGo || []).length > 0 && (
+              {/* What Would Flip This Decision — three conditions (NO-GO → GO) */}
+              {(whatWouldMakeGo?.length ?? 0) > 0 && (
                 <section>
                   <SectionHeader
                     icon={<Lightbulb className="h-5 w-5 text-primary" />}
-                    title="What Would Make This a GO"
-                    sub="Changes that could flip this verdict"
+                    title="What Would Flip This Decision"
+                    sub="Conditions that could change a NO-GO into a GO"
                     helpText={help("whatWouldMakeGo")}
                   />
                   <div className="rounded-2xl border border-emerald-200/50 dark:border-emerald-800/30 bg-emerald-50/30 dark:bg-emerald-950/10 p-6">
                     <ul className="flex flex-col gap-3.5">
-                      {(whatWouldMakeGo || []).map((item, i) => (
+                      {whatWouldMakeGo.slice(0, 3).map((item, i) => (
                         <li key={i} className="flex items-start gap-3 text-sm text-foreground leading-relaxed">
                           <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-xs font-bold text-emerald-700 dark:text-emerald-400">{i + 1}</span>
                           {String(item)}
@@ -1134,173 +803,296 @@ export default function WarRoom() {
           )}
 
           {/* ═══════════════════════════════════════════════
-              TAB: EXECUTION PLAN (12-Month Roadmap)
+              SECTION 2 — DEEP DIVE (Market Intelligence Layer)
+              Market Signals, Entry Reality, Market Domination, Competition, Opportunity, Profit Reality, Launch Capital
               ═══════════════════════════════════════════════ */}
-          {activeTab === "execution" && (
-            <div className="mt-10 flex flex-col gap-10 animate-in fade-in duration-300">
+          {activeTab === "deep-dive" && (
+            <div className="mt-10 flex flex-col gap-8 animate-in fade-in duration-300">
 
+              {/* Market Signals — snapshot: avg price, avg reviews, brand distribution, ad presence */}
               <section>
                 <SectionHeader
-                  icon={<ClipboardList className="h-5 w-5 text-primary" />}
-                  title="Execution Roadmap"
-                  sub="Step-by-step tactical action items with phased timeframes"
-                  badge="12-Month Plan"
-                  helpText={help("executionPlan")}
+                  icon={<BarChart3 className="h-5 w-5 text-primary" />}
+                  title="Market Signals"
+                  sub="Average price, reviews, brand distribution, ad presence"
                 />
-
-                {/* Timeline Roadmap */}
-                {(executionPhases || []).length > 1 ? (
-                  <div className="flex flex-col gap-0">
-                    {(executionPhases || []).map((phase, pi) => (
-                      <div key={pi} className="relative flex gap-5">
-                        {/* Timeline Connector */}
-                        <div className="flex flex-col items-center">
-                          <div className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 z-10",
-                            pi === 0 ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"
-                          )}>
-                            <Calendar className="h-4 w-4" />
-                          </div>
-                          {pi < executionPhases.length - 1 && (
-                            <div className="w-px flex-1 bg-border" />
-                          )}
-                        </div>
-
-                        {/* Phase Content */}
-                        <div className="flex-1 pb-8">
-                          <span className="inline-block rounded-lg bg-primary/10 border border-primary/20 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-primary mb-3">
-                            {phase.phase}
-                          </span>
-                          <div className="rounded-2xl border border-border bg-card p-5">
-                            <ol className="flex flex-col gap-3">
-                              {(phase.steps || []).map((step, si) => (
-                                <li key={si} className="flex items-start gap-3">
-                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-muted-foreground">
-                                    {si + 1}
-                                  </span>
-                                  <p className="text-sm text-foreground leading-relaxed pt-0.5">{step}</p>
-                                </li>
-                              ))}
-                            </ol>
-                          </div>
-                        </div>
+                <div className="rounded-2xl border border-border bg-card p-6">
+                  {(() => {
+                    const snap = (R?.marketSnapshot ?? analysisData?.marketSnapshot ?? R?.liveMarketComparison ?? analysisData?.liveMarketComparison) as Record<string, unknown> | undefined
+                    if (!snap) {
+                      const str = typeof fMarketReality === "string" ? fMarketReality : (fMarketReality as string[])?.[0]
+                      if (str) return <p className="text-sm text-foreground leading-relaxed">{str}</p>
+                      return <p className="text-sm text-muted-foreground/60 italic">No market snapshot available.</p>
+                    }
+                    const avgPrice = snap?.avgPrice != null ? Number(snap.avgPrice) : null
+                    const avgReviews = snap?.avgReviews != null ? Number(snap.avgReviews) : null
+                    const avgRating = snap?.avgRating != null ? Number(snap.avgRating) : null
+                    const dominantBrand = snap?.dominantBrand === true
+                    return (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {avgPrice != null && <div><span className="text-xs text-muted-foreground">Avg price</span><p className="font-semibold text-foreground">${avgPrice.toFixed(2)}</p></div>}
+                        {avgReviews != null && <div><span className="text-xs text-muted-foreground">Avg reviews</span><p className="font-semibold text-foreground">{avgReviews.toLocaleString()}</p></div>}
+                        {avgRating != null && <div><span className="text-xs text-muted-foreground">Avg rating</span><p className="font-semibold text-foreground">{avgRating}</p></div>}
+                        <div><span className="text-xs text-muted-foreground">Brand distribution</span><p className="font-semibold text-foreground">{dominantBrand ? "Dominant brand(s) in top results" : "Fragmented / many brands"}</p></div>
+                        {fAdReality.length > 0 && <div className="sm:col-span-2"><span className="text-xs text-muted-foreground">Ad presence</span><p className="text-sm text-foreground mt-1">{fAdReality[0]}</p></div>}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  /* Flat numbered list fallback */
-                  <div className="rounded-2xl border border-border bg-card p-6">
-                    {(fActionPlan || []).length > 0 ? (
-                      <ol className="flex flex-col gap-4">
-                        {(fActionPlan || []).map((step, i) => (
-                          <li key={i} className="flex items-start gap-4">
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm">
-                              {i + 1}
-                            </span>
-                            <p className="text-sm text-foreground leading-relaxed pt-1.5">{String(step)}</p>
-                          </li>
-                        ))}
-                      </ol>
-                    ) : (
-                      <p className="text-sm text-muted-foreground/60 italic">The advisor did not generate specific action steps for this product.</p>
-                    )}
-                  </div>
-                )}
+                    )
+                  })()}
+                </div>
               </section>
 
-              {/* Honeymoon Roadmap (30-day Action Plan) */}
-              {(honeymoonRoadmap || []).length > 0 && (
+              {/* Entry Reality — how difficult entering is (reasoning, avoid HIGH/LOW labels) */}
+              <section>
+                <SectionHeader
+                  icon={<Target className="h-5 w-5 text-primary" />}
+                  title="Entry Reality"
+                  sub="How difficult it is to enter this niche"
+                />
+                <div className="rounded-2xl border border-border bg-card p-6">
+                  {(() => {
+                    const reasoning = typeof fMarketReality === "string" ? fMarketReality : (fMarketReality as string[])?.join(" ") || difficultyScoreDisplay || difficultyLevel
+                    if (reasoning) {
+                      return <p className="text-sm text-foreground leading-relaxed">{reasoning}</p>
+                    }
+                    if (fReviewIntel[0] || fMarketTrends[0]) {
+                      return <p className="text-sm text-foreground leading-relaxed">{fReviewIntel[0] || fMarketTrends[0]}</p>
+                    }
+                    return <p className="text-sm text-muted-foreground/60 italic">No entry analysis available.</p>
+                  })()}
+                </div>
+              </section>
+
+              {/* Market Domination — one brand vs many */}
+              {marketDominationAnalysis && (
                 <section>
                   <SectionHeader
-                    icon={<Flame className="h-5 w-5 text-amber-500" />}
-                    title="30-Day Honeymoon Roadmap"
-                    sub="Critical first-month actions to maximize your Amazon honeymoon period"
-                    badge="Launch Plan"
+                    icon={<Users className="h-5 w-5 text-primary" />}
+                    title="Market Domination"
+                    sub="Whether the niche is controlled by one brand or many"
                   />
-                  <div className="rounded-2xl border-2 border-amber-200/50 dark:border-amber-800/30 bg-amber-50/20 dark:bg-amber-950/10 p-6">
-                    <ol className="flex flex-col gap-4">
-                      {(honeymoonRoadmap || []).map((step, i) => (
-                        <li key={i} className="flex items-start gap-4">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white shadow-sm">
-                            {i + 1}
-                          </span>
-                          <p className="text-sm text-foreground leading-relaxed pt-1.5">{String(step)}</p>
-                        </li>
-                      ))}
-                    </ol>
+                  <div className="rounded-2xl border border-border bg-card p-6">
+                    <p className="text-sm text-foreground leading-relaxed">{marketDominationAnalysis}</p>
                   </div>
                 </section>
               )}
 
-              {/* Quick Stats Recap */}
+              {/* Competition Reality — how listings compete (reviews, pricing, positioning) */}
+              {(fCompetition?.length ?? 0) > 0 && (
+                <section>
+                  <SectionHeader
+                    icon={<Users className="h-5 w-5 text-primary" />}
+                    title="Competition Reality"
+                    sub="How listings compete in this niche"
+                    helpText={help("competition")}
+                  />
+                  <div className="rounded-2xl border border-border bg-card p-6">
+                    <ul className="flex flex-col gap-2.5">
+                      {fCompetition.slice(0, 6).map((item, i) => (
+                        <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
+                          <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-primary/60" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </section>
+              )}
+
+              {/* Opportunity — one realistic differentiation opportunity */}
               <section>
                 <SectionHeader
-                  icon={<BarChart3 className="h-5 w-5 text-primary" />}
-                  title="Key Metrics Recap"
-                  sub="At-a-glance numbers to inform your launch decision"
+                  icon={<Lightbulb className="h-5 w-5 text-emerald-600" />}
+                  title="Opportunity"
+                  sub="One realistic differentiation opportunity"
+                />
+                <div className="rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-6">
+                  {opportunity ? (
+                    <p className="text-sm text-foreground leading-relaxed">{opportunity}</p>
+                  ) : fDiffIdeas[0] ? (
+                    <p className="text-sm text-foreground leading-relaxed">{fDiffIdeas[0]}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground/60 italic">No opportunity identified.</p>
+                  )}
+                </div>
+              </section>
+
+              {/* Profit Reality — real profitability (margin + PPC assumptions) */}
+              <section>
+                <SectionHeader
+                  icon={<DollarSign className="h-5 w-5 text-primary" />}
+                  title="Profit Reality"
+                  sub="Real profitability based on margin and PPC assumptions"
+                />
+                <div className="rounded-2xl border border-border bg-card p-6">
+                  {profitExplanation ? (
+                    <p className="text-sm text-foreground leading-relaxed">{profitExplanation}</p>
+                  ) : fProfitReality[0] ? (
+                    <ul className="flex flex-col gap-2.5">
+                      {fProfitReality.slice(0, 4).map((item, i) => (
+                        <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : pb ? (
+                    <p className="text-sm text-foreground leading-relaxed">
+                      Net profit after ads: {fmt(pb.profitAfterAds)} per unit. ROI and margin depend on your COGS, FBA/referral fees, and assumed ACoS.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground/60 italic">No profit analysis available.</p>
+                  )}
+                </div>
+              </section>
+
+              {/* Launch Capital — inventory, PPC, misc */}
+              <section>
+                <SectionHeader
+                  icon={<DollarSign className="h-5 w-5 text-primary" />}
+                  title="Launch Capital"
+                  sub="Estimated inventory, PPC, and misc"
+                  badge="Investment"
+                />
+                <div className="rounded-2xl border border-border bg-card p-6">
+                  {launchCapitalRequired != null && Number(launchCapitalRequired) > 0 ? (
+                    <>
+                      <p className="text-2xl font-black text-foreground">${Number(launchCapitalRequired).toLocaleString()}</p>
+                      {launchCapitalBreakdown && (
+                        <div className="mt-4 flex flex-col gap-2">
+                          {launchCapitalBreakdown.inventory != null && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Inventory</span>
+                              <span className="font-semibold text-foreground">${Number(launchCapitalBreakdown.inventory).toLocaleString()}</span>
+                            </div>
+                          )}
+                          {launchCapitalBreakdown.ppcMarketing != null && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">PPC</span>
+                              <span className="font-semibold text-foreground">${Number(launchCapitalBreakdown.ppcMarketing).toLocaleString()}</span>
+                            </div>
+                          )}
+                          {launchCapitalBreakdown.vineAndMisc != null && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Misc (Vine, etc.)</span>
+                              <span className="font-semibold text-foreground">${Number(launchCapitalBreakdown.vineAndMisc).toLocaleString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground/60 italic">No launch capital estimate available.</p>
+                  )}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════
+              SECTION 3 — EXECUTION PLAN (Action Layer)
+              30-Day Launch Plan (Week 1, Week 2, Week 3–4), Alternative Keywords (max 3), Early Strategy Guidance
+              ═══════════════════════════════════════════════ */}
+          {activeTab === "execution" && (
+            <div className="mt-10 flex flex-col gap-8 animate-in fade-in duration-300">
+
+              {/* 30-Day Launch Plan — three phases: Week 1, Week 2, Week 3–4 */}
+              <section>
+                <SectionHeader
+                  icon={<Calendar className="h-5 w-5 text-primary" />}
+                  title="30-Day Launch Plan"
+                  sub="Week 1 · Week 2 · Week 3–4"
+                  helpText={help("executionPlan")}
                 />
                 {(() => {
-                  // Compute ROI & Amazon Fees using exact logic from analysis-profit-cards
-                  const pbObj = pb as Record<string, unknown> | null
-                  const _cogs = Number(pbObj?.cogs) || 0
-                  const _fbaFee = Number(pbObj?.fbaFee) || 0
-                  const _referralFee = Number(pbObj?.referralFee) || 0
-                  const _ppcCost = Number(pbObj?.ppcCostPerUnit) || 0
-                  const _profit = profitAfterAds ?? (Number(pbObj?.profitAfterAds) || 0)
-                  const totalCost = _cogs + _fbaFee + _referralFee + _ppcCost
-                  const roiValue = totalCost > 0 ? (_profit / totalCost) * 100 : 0
-                  const amazonFeesSum = _fbaFee + _referralFee
+                  const steps = honeymoonRoadmap?.length ? honeymoonRoadmap : fActionPlan
+                  if (!steps?.length) {
+                    return (
+                      <div className="rounded-2xl border border-border bg-card p-6">
+                        <p className="text-sm text-muted-foreground/60 italic">No 30-day plan available.</p>
+                      </div>
+                    )
+                  }
+                  const n = steps.length
+                  const week1 = steps.slice(0, Math.ceil(n / 3))
+                  const week2 = steps.slice(week1.length, week1.length + Math.ceil(n / 3))
+                  const week34 = steps.slice(week1.length + week2.length)
+                  const phases = [
+                    { label: "Week 1", items: week1 },
+                    { label: "Week 2", items: week2 },
+                    { label: "Week 3–4", items: week34 },
+                  ].filter(p => p.items.length > 0)
                   return (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                      <StatCard
-                        label="Verdict"
-                        value={verdict}
-                        icon={<Shield className="h-4 w-4" />}
-                        color={verdict === "GO" ? "green" : verdict === "GO-BUT" ? "amber" : verdict === "NO-GO" ? "red" : undefined}
-                      />
-                      {score != null && !isNaN(score) && (
-                        <StatCard
-                          label="Score"
-                          value={`${score}/100`}
-                          icon={<Target className="h-4 w-4" />}
-                          color={score >= 70 ? "green" : score >= 40 ? "amber" : "red"}
-                        />
-                      )}
-                      {profitAfterAds != null && !isNaN(profitAfterAds) && (
-                        <StatCard
-                          label="Net Profit"
-                          value={`$${profitAfterAds.toFixed(2)}`}
-                          icon={<DollarSign className="h-4 w-4" />}
-                          color={profitAfterAds >= 0 ? "green" : "red"}
-                        />
-                      )}
-                      {pb && (
-                        <StatCard
-                          label="ROI"
-                          value={`${roiValue.toFixed(1)}%`}
-                          icon={<TrendingUp className="h-4 w-4" />}
-                          color={roiValue >= 0 ? "green" : "red"}
-                        />
-                      )}
-                      {pb && amazonFeesSum > 0 && (
-                        <StatCard
-                          label="Amazon Fees"
-                          value={`$${amazonFeesSum.toFixed(2)}`}
-                          sub="FBA + Referral"
-                          icon={<DollarSign className="h-4 w-4" />}
-                          color="amber"
-                        />
-                      )}
-                      <StatCard
-                        label="Action Items"
-                        value={`${fActionPlan.length}`}
-                        sub="steps in execution plan"
-                        icon={<ClipboardList className="h-4 w-4" />}
-                        color="blue"
-                      />
+                    <div className="flex flex-col gap-6">
+                      {phases.map((phase, pi) => (
+                        <div key={pi} className="rounded-2xl border border-border bg-card p-5">
+                          <span className="inline-block rounded-lg bg-primary/10 border border-primary/20 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-primary mb-3">
+                            {phase.label}
+                          </span>
+                          <ol className="flex flex-col gap-2.5">
+                            {phase.items.map((step, si) => (
+                              <li key={si} className="flex items-start gap-3 text-sm text-foreground leading-relaxed">
+                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-muted-foreground">{si + 1}</span>
+                                {String(step)}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      ))}
                     </div>
                   )
                 })()}
+              </section>
+
+              {/* Alternative Keywords — maximum 3 */}
+              {altKeywords.length > 0 && (
+                <section>
+                  <SectionHeader
+                    icon={<Target className="h-5 w-5 text-primary" />}
+                    title="Alternative Keywords"
+                    sub="Up to 3 keyword angles"
+                    helpText={help("alternativeKeywords")}
+                  />
+                  <div className="rounded-2xl border border-border bg-card p-6">
+                    <div className="flex flex-wrap gap-2.5">
+                      {altKeywords.slice(0, 3).map((kw, i) => (
+                        <button
+                          key={i}
+                          className="inline-flex items-center gap-2.5 rounded-full border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10 hover:border-primary/40"
+                          onClick={() => navigator.clipboard.writeText(kw.keyword)}
+                          title={`Copy: ${kw.keyword}`}
+                        >
+                          <span>{kw.keyword}</span>
+                          {kw.cpc && (
+                            <span className="text-[11px] font-bold text-primary/80">{kw.cpc}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs text-muted-foreground/60">Click to copy.</p>
+                  </div>
+                </section>
+              )}
+
+              {/* Early Strategy Guidance — one short recommendation */}
+              <section>
+                <SectionHeader
+                  icon={<Zap className="h-5 w-5 text-primary" />}
+                  title="Early Strategy Guidance"
+                  sub="How to approach this niche"
+                />
+                <div className="rounded-2xl border border-border bg-card p-6">
+                  {(() => {
+                    const guidance = (typeof fStratIntel === "string" ? fStratIntel : (fStratIntel as string[])?.[0])
+                      || consultantSecret
+                      || fActionPlan[0]
+                      || (fOpportunities[0] ? `Focus on: ${fOpportunities[0]}` : null)
+                    if (guidance) {
+                      const short = String(guidance).split(/[.!?]/).slice(0, 3).join(". ").trim()
+                      return <p className="text-sm text-foreground leading-relaxed">{short}{!short.endsWith(".") ? "." : ""}</p>
+                    }
+                    return <p className="text-sm text-muted-foreground/60 italic">No early strategy guidance available.</p>
+                  })()}
+                </div>
               </section>
             </div>
           )}

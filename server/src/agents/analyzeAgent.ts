@@ -20,9 +20,11 @@ type AnalyzeInput = {
     newSellersInTop20?: number;
     topTitles?: string[];
     topPrices?: number[];
-    topCompetitors?: { position: number; title: string; price: number; ratingsTotal: number; rating?: number }[];
+    topCompetitors?: { position: number; title: string; price: number; ratingsTotal: number; rating?: number; brand?: string; sponsored?: boolean }[];
     painPoints?: string[];
     competitorsWithOver1000Reviews?: number;
+    market_snapshot?: { avg_price: number; avg_reviews: number; brand_distribution: string; ad_presence: string };
+    advertising_pressure?: number;
   } | null;
 };
 
@@ -192,9 +194,52 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   const confidence = Math.max(35, Math.min(92, Math.round(55 + (score - 50) * 0.7)));
 
+  const totalUnitCostForRoi = cogs + referralFee + fbaFee + ppcCostPerUnit;
+  const estimatedRoiPct = totalUnitCostForRoi > 0 ? (profitAfterAds / totalUnitCostForRoi) * 100 : 0;
+
+  const advertisingPressure = market?.advertising_pressure ?? (hasRealMarketData ? 0.4 : 0);
+  const priceBandLow = avgPrice * 0.75;
+  const priceBandHigh = avgPrice * 1.25;
+  const pricePositionInside = sellingPrice >= priceBandLow && sellingPrice <= priceBandHigh;
+  const productVsMarket = {
+    price_position: hasRealMarketData
+      ? pricePositionInside
+        ? `User price $${sellingPrice.toFixed(2)} is inside the dominant price band ($${priceBandLow.toFixed(0)}–$${priceBandHigh.toFixed(0)}).`
+        : sellingPrice > priceBandHigh
+          ? `User price is above the dominant band; differentiation must justify premium.`
+          : `User price is below the dominant band; margin pressure or perceived quality risk.`
+      : "No SERP data; price position vs market unknown.",
+    review_barrier: hasRealMarketData
+      ? avgReviews >= 5000
+        ? `Strong: top listings average ${avgReviews.toLocaleString()}+ reviews; new listings struggle for visibility.`
+        : avgReviews >= 1000
+          ? `Moderate: ${avgReviews.toLocaleString()} avg reviews; achievable with budget and time.`
+          : `Lower barrier: ${avgReviews.toLocaleString()} avg reviews; entry more feasible.`
+      : "Review barrier unknown without SERP data.",
+    advertising_environment: hasRealMarketData
+      ? advertisingPressure >= 0.5
+        ? `High PPC competition: ${(advertisingPressure * 100).toFixed(0)}% of first-page results are sponsored.`
+        : advertisingPressure >= 0.25
+          ? `Moderate ad presence; expect meaningful CPC.`
+          : `Lower sponsored share; organic opportunity exists.`
+      : "Ad pressure unknown without SERP data.",
+    differentiation_strength: differentiationInput.length >= 50 && mentionsPainPoint
+      ? "Strong: user described differentiation that aligns with market pain points."
+      : differentiationInput.length >= 20
+        ? "Moderate: some differentiation; could be sharper for conversion."
+        : "Weak or missing; generic positioning increases PPC cost and risk.",
+    product_risk: complexity === "high"
+      ? "High complexity: returns and QC buffer (12%) applied; focus on quality to avoid Frequently Returned badge."
+      : complexity === "medium"
+        ? "Moderate complexity: 8% buffer; watch returns and listing clarity."
+        : "Lower complexity; standard margin rules apply.",
+  };
+
   const aiInput = {
     keyword,
     sellingPrice,
+    unitCost: effectiveUnitCost,
+    shippingCost,
     profitAfterAds,
     verdict,
     avgPrice,
@@ -205,13 +250,34 @@ export async function analyzeProduct(input: AnalyzeInput) {
     newSellersInTop20,
     topTitles: market?.topTitles ?? [],
     topPrices: market?.topPrices ?? [],
+    differentiation: differentiationInput || undefined,
+    complexity: complexity || undefined,
+    market_snapshot: market?.market_snapshot
+      ? {
+          avg_price: market.market_snapshot.avg_price,
+          avg_reviews: market.market_snapshot.avg_reviews,
+          brand_distribution: market.market_snapshot.brand_distribution,
+          ad_presence: market.market_snapshot.ad_presence,
+        }
+      : undefined,
+    product_vs_market: productVsMarket,
+    landed_cost: cogs,
+    estimated_margin: estimatedMarginPercent,
+    estimated_roi: estimatedRoiPct,
+    topCompetitors: topCompetitors.map((c) => ({
+      position: c.position,
+      title: c.title,
+      price: c.price,
+      ratingsTotal: c.ratingsTotal,
+      brand: "brand" in c ? (c as { brand?: string }).brand : undefined,
+      sponsored: "sponsored" in c ? (c as { sponsored?: boolean }).sponsored : undefined,
+    })),
   };
   const aiInsights = await getAIInsights(aiInput);
 
   const why_this_decision_raw =
-    aiInsights?.decision_conversation?.length
-      ? aiInsights.decision_conversation
-      : verdict === "NO_GO"
+    (aiInsights?.why_this_decision?.length ? aiInsights.why_this_decision : aiInsights?.decision_conversation?.length ? aiInsights.decision_conversation : null)
+      ?? (verdict === "NO_GO"
         ? [
             "Profit after ads is too thin — PPC will eat it.",
             `Market avg ${avgReviews} reviews; you'll burn a lot to get traction.`,
@@ -221,10 +287,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
             `$${profitAfterAds.toFixed(0)}/unit after ads — room to play.`,
             `Competition: ${avgReviews < 1000 ? "workable" : "tough"}.`,
             "Worth testing. Nail one differentiator and control ACoS."
-          ];
+          ]);
   const why_this_decision = premiumRiskWarning
-    ? [premiumRiskWarning, ...why_this_decision_raw]
-    : why_this_decision_raw;
+    ? [premiumRiskWarning, ...why_this_decision_raw].slice(0, 5)
+    : why_this_decision_raw.slice(0, 5);
 
   const review_intelligence = aiInsights?.review_intelligence?.length
     ? aiInsights.review_intelligence
@@ -268,7 +334,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
           "Expect higher CPC on broad terms; long-tail is your profitability path."
         ];
 
-  const competition = dominantControl;
+  const competition = (aiInsights?.competition_reality?.length ? aiInsights.competition_reality : undefined) ?? dominantControl;
 
   const beginnerFit = (() => {
     const hasMargin = profitAfterAds >= 10;
@@ -281,11 +347,13 @@ export async function analyzeProduct(input: AnalyzeInput) {
     return ["Challenging for beginners: thin margin or high competition.", "Best for sellers with existing traffic, brand, or deep PPC experience."];
   })();
 
-  const profitability = [
-    `Assumed economics: price $${sellingPrice.toFixed(2)} | COGS $${cogs.toFixed(2)} | referral $${referralFee.toFixed(2)} | FBA $${fbaFee.toFixed(2)} | ads $${ppcCostPerUnit.toFixed(2)} (ACoS ${(assumedAcos * 100).toFixed(0)}%) ⇒ profit after ads $${profitAfterAds.toFixed(2)}.`,
-    "Reality check: returns/coupons/storage can compress profit 10–25%. Keep a buffer.",
-    "If conversion drops, PPC costs inflate and profits collapse."
-  ];
+  const profitability = aiInsights?.profit_reality?.trim()
+    ? [aiInsights.profit_reality, `Assumed economics: price $${sellingPrice.toFixed(2)} | COGS $${cogs.toFixed(2)} | referral $${referralFee.toFixed(2)} | FBA $${fbaFee.toFixed(2)} | ads $${ppcCostPerUnit.toFixed(2)} (ACoS ${(assumedAcos * 100).toFixed(0)}%) ⇒ profit after ads $${profitAfterAds.toFixed(2)}.`]
+    : [
+        `Assumed economics: price $${sellingPrice.toFixed(2)} | COGS $${cogs.toFixed(2)} | referral $${referralFee.toFixed(2)} | FBA $${fbaFee.toFixed(2)} | ads $${ppcCostPerUnit.toFixed(2)} (ACoS ${(assumedAcos * 100).toFixed(0)}%) ⇒ profit after ads $${profitAfterAds.toFixed(2)}.`,
+        "Reality check: returns/coupons/storage can compress profit 10–25%. Keep a buffer.",
+        "If conversion drops, PPC costs inflate and profits collapse."
+      ];
 
   const advertising = [
     "Launch ACoS assumption: 40–60% for the first 30–60 days.",
@@ -330,25 +398,26 @@ export async function analyzeProduct(input: AnalyzeInput) {
   }).filter(Boolean);
   const what_would_make_go = aiInsights?.what_would_make_go;
 
-  // 30-Day Honeymoon Roadmap: targeted launch checklist (replaces generic action plan).
+  // 30-Day Honeymoon Roadmap: prefer OpenAI execution_plan/honeymoon_roadmap when present
   const highIntentKeywords = [
     keyword,
     alternative_keywords[0] ?? `${keyword} premium`,
     alternative_keywords[1] ?? `${keyword} best`,
   ].slice(0, 3);
-  const honeymoonRoadmap = [
+  const honeymoonRoadmapDefault = [
     "Step 1 (Day 1–7): Vine Enrollment — Register for Amazon Vine immediately to get your first 15–30 reviews (Social Proof).",
     `Step 2 (Day 8–20): Aggressive Exact Match — Run PPC on these 3 high-intent keywords: ${highIntentKeywords.join(", ")} to build rank fast.`,
     "Step 3 (Day 21–30): Conversion Boost — Apply a 15–20% 'Green Coupon' to offset your lack of reviews and steal clicks from incumbents.",
   ];
-  // Competitive Moat + PPC Cannibalization warnings, then Honeymoon Roadmap.
+  const honeymoonRoadmap = (aiInsights?.honeymoon_roadmap?.length ? aiInsights.honeymoon_roadmap : null) ?? honeymoonRoadmapDefault;
   const highBarrierStep = "High Barrier to Entry detected. Do not launch without a minimum $15,000 launch budget for PPC and Vine reviews.";
   const ppcCannibalizationStep = "PPC Cannibalization Risk: Your ad costs will likely exceed 60% of your revenue during launch. You MUST have a backend funnel or high LTV (Lifetime Value) to survive this.";
-  const execution_plan = [
-    ...(avgReviews > 10000 ? [highBarrierStep] : []),
-    ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
-    ...honeymoonRoadmap,
-  ];
+  const execution_plan = (aiInsights?.execution_plan?.length ? aiInsights.execution_plan : null)
+    ?? [
+        ...(avgReviews > 10000 ? [highBarrierStep] : []),
+        ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
+        ...honeymoonRoadmap,
+      ];
 
   const estimatedCpcRange =
     avgReviews >= 2000 ? { min: 1.5, max: 3 } : avgReviews >= 500 ? { min: 0.8, max: 2 } : { min: 0.3, max: 1 };
@@ -388,15 +457,16 @@ export async function analyzeProduct(input: AnalyzeInput) {
       ? "PASS — Unit economics meet Aggregator viability. Verdict: GO."
       : `FAIL — Net margin below ${marginThresholdPct}%. Product is not viable at current price/cost/ACoS. Verdict: NO-GO. Increase price, reduce COGS, or lower assumed ACoS to reach at least ${marginThresholdPct}% net margin.`);
 
-  // Market Reality Check: price vs top 5, user differentiation (primary soft factor)
+  // Market Reality Check: prefer OpenAI entry_reality when present; else price/differentiation
   const priceGapPct =
     hasRealMarketData && avgPrice > 0 && sellingPrice > avgPrice
       ? Math.round(((sellingPrice - avgPrice) / avgPrice) * 100)
       : 0;
   const marketRealityCheck =
-    hasRealMarketData && (priceGapPct > 0 || differentiationInput)
-      ? `Market Reality Check: ${priceGapPct > 0 ? `Your price is ${priceGapPct}% higher than the top 5 sellers (avg $${avgPrice.toFixed(2)}). ` : ""}${differentiationInput ? `Your differentiation ("${differentiationInput.slice(0, 80)}${differentiationInput.length > 80 ? "…" : ""}") must justify this gap to maintain a ${marginThresholdPct}% net margin.` : "Your positioning must justify the price to maintain viability."}`
-      : undefined;
+    aiInsights?.entry_reality?.trim()
+      ?? (hasRealMarketData && (priceGapPct > 0 || differentiationInput)
+        ? `Market Reality Check: ${priceGapPct > 0 ? `Your price is ${priceGapPct}% higher than the top 5 sellers (avg $${avgPrice.toFixed(2)}). ` : ""}${differentiationInput ? `Your differentiation ("${differentiationInput.slice(0, 80)}${differentiationInput.length > 80 ? "…" : ""}") must justify this gap to maintain a ${marginThresholdPct}% net margin.` : "Your positioning must justify the price to maintain viability."}`
+        : undefined);
 
   // Price Gap Analysis (underpricing): if significantly below market avg, suggest a test price for 20% margin.
   const underpricingPct =
@@ -447,16 +517,18 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const ppcRealityAudit =
     `PPC Reality Audit: In this niche, the average CPC is approximately $${baseCpcFinal.toFixed(2)}. At a 10% conversion rate, your launch ad cost per unit will be $${launchAdCostPerUnit.toFixed(2)}. This requires a daily budget of at least $100 to gain any traction.`;
   strategicIntelligenceParts.push(ppcRealityAudit);
-  // Launch Capital: Consultant Insight (standalone for UI prominence).
   const launchCapitalConsultantInsight =
     `To hit page 1 in this niche, you need roughly $${launchCapitalRequired.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} for your first 30 days. Don't start with less.`;
   strategicIntelligenceParts.push(`Launch Capital Required: $${launchCapitalRequired.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}. ${launchCapitalConsultantInsight}`);
+  if (aiInsights?.early_strategy_guidance?.trim()) {
+    strategicIntelligenceParts.push(aiInsights.early_strategy_guidance);
+  }
   const strategicIntelligence = strategicIntelligenceParts.join(" ");
 
-  // Professional Truth: 1-sentence insider tip — niche-specific, feels like insider intel (e.g. Frequently Returned badge, durability).
+  // Expert insight: prefer OpenAI expert_insight when present; else fallback consultant tip
   const nicheHint = keyword.replace(/\s+/g, " ").slice(0, 30);
   const painHint = painPoints.length > 0 ? painPoints[0] : "quality and fit";
-  const consultantSecret =
+  const consultantSecretFallback =
     isHighComplexity
       ? `In ${nicheHint}, high-complexity items get hit with returns; the 12% buffer is table stakes—and in this niche, Amazon's "Frequently Returned" badge is a killer, so focus 100% on ${painHint} to avoid it.`
       : complexity === "medium"
@@ -466,6 +538,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
           : passesMarginRule
             ? `Your differentiation gives you room to defend margin; in ${nicheHint} the real lever is keeping "${differentiationInput.slice(0, 40)}${differentiationInput.length > 40 ? "…" : ""}" front and center—buyers in this niche punish generic claims.`
             : `In ${nicheHint}, strong differentiation helps conversion; improve unit economics to clear the bar. Niche tip: focus 100% on ${painHint} in your main image and first bullet—it's where this category gets returned.`;
+  const consultantSecret = (aiInsights?.expert_insight?.trim() || consultantSecretFallback);
+  const whatMostSellersMiss = aiInsights?.what_most_sellers_miss?.trim();
+  const opportunitySingle = aiInsights?.opportunity?.trim();
+  const marketDominationAnalysis = aiInsights?.market_domination_analysis?.trim();
 
   const sectionHelp: Record<string, string> = {
     financialStressTest: "Aggregator 15% rule: net margin = (Selling Price − All Costs) / Selling Price. Must be ≥ 15% for GO.",
@@ -519,6 +595,9 @@ export async function analyzeProduct(input: AnalyzeInput) {
     operational_risk_buffer: operationalRiskBufferDollars,
     ppc_competition_floor: acosFloor,
     consultant_secret: consultantSecret,
+    what_most_sellers_miss: whatMostSellersMiss ?? undefined,
+    market_domination_analysis: marketDominationAnalysis ?? undefined,
+    opportunity: opportunitySingle ?? undefined,
     launch_capital_required: launchCapitalRequired,
     launch_capital_breakdown: launchCapitalBreakdown,
     launch_capital_consultant_insight: launchCapitalConsultantInsight,
@@ -577,6 +656,9 @@ export async function analyzeProduct(input: AnalyzeInput) {
     launchAdCostPerUnit: launchAdCostPerUnit,
     differentiationScore: differentiationScore,
     differentiationGapTip: gapTip,
+    whatMostSellersMiss: whatMostSellersMiss ?? undefined,
+    marketDominationAnalysis: marketDominationAnalysis ?? undefined,
+    opportunity: opportunitySingle ?? undefined,
     honeymoonRoadmap: honeymoonRoadmap,
     alternativeKeywords: alternative_keywords,
     alternativeKeywordsWithCost: alternative_keywords_with_cost,

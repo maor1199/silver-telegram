@@ -6,9 +6,28 @@ function getOpenAIClient(): OpenAI | null {
   return new OpenAI({ apiKey: key });
 }
 
+/** Market snapshot passed to OpenAI for context */
+export type MarketSnapshotInput = {
+  avg_price: number;
+  avg_reviews: number;
+  brand_distribution: string;
+  ad_presence: string;
+};
+
+/** Product-vs-market comparison for the analyst */
+export type ProductVsMarketInput = {
+  price_position: string;
+  review_barrier: string;
+  advertising_environment: string;
+  differentiation_strength: string;
+  product_risk: string;
+};
+
 export type AIInsightsInput = {
   keyword: string;
   sellingPrice: number;
+  unitCost?: number;
+  shippingCost?: number;
   profitAfterAds: number;
   verdict: "GO" | "NO_GO";
   avgPrice: number;
@@ -19,6 +38,22 @@ export type AIInsightsInput = {
   newSellersInTop20?: number;
   topTitles: string[];
   topPrices: number[];
+  /** User's product differentiation / competitive advantage */
+  differentiation?: string;
+  /** Product complexity level */
+  complexity?: string;
+  /** Structured market snapshot */
+  market_snapshot?: MarketSnapshotInput;
+  /** Product vs market comparison */
+  product_vs_market?: ProductVsMarketInput;
+  /** Landed cost (COGS + shipping + buffers) */
+  landed_cost?: number;
+  /** Estimated margin % */
+  estimated_margin?: number;
+  /** Estimated ROI % */
+  estimated_roi?: number;
+  /** Top competitors for context (title, price, reviews, brand, sponsored) */
+  topCompetitors?: { position: number; title: string; price: number; ratingsTotal: number; brand?: string; sponsored?: boolean }[];
 };
 
 export type AIInsights = {
@@ -30,45 +65,122 @@ export type AIInsights = {
   what_would_make_go?: string[];
   decision_conversation?: string[];
   execution_plan?: string[];
+  /** New structured insights — fill analysis cards */
+  expert_insight?: string;
+  what_most_sellers_miss?: string;
+  competition_reality?: string[];
+  opportunity?: string;
+  profit_reality?: string;
+  entry_reality?: string;
+  why_this_decision?: string[];
+  market_domination_analysis?: string;
+  early_strategy_guidance?: string;
+  honeymoon_roadmap?: string[];
 };
 
-const SYSTEM_PROMPT = `You are AMZ Mentor AI — a real Amazon FBA operator with 30+ years in the business. You've built and sold multiple Amazon brands (7–8 figure exits), launched hundreds of SKUs, and know what makes a GO vs NO-GO from the gut. You speak as the expert in the room: direct, no fluff, like a mentor who's been there. Your insights are the main value — they must feel personal and experience-based.
+const SYSTEM_PROMPT = `You are an experienced Amazon product strategist. You analyze real SERP and unit-economic data and answer specific analytical questions. Your role is to explain market reality and how it affects the USER'S product — not generic advice.
 
-Return JSON with these exact keys (arrays of strings):
+RULES:
+- Reference real market signals (prices, review counts, sponsored ratio, brand distribution) in every insight.
+- Relate every insight directly to the user's product (their price, differentiation, complexity).
+- Be concise: 1–3 sentences per insight. No long paragraphs.
+- Avoid generic statements. BAD: "This market is competitive." GOOD: "Top listings average over 8,000 reviews, creating a strong visibility barrier for new sellers."
+- Write like a senior operator who has launched in similar niches.
 
-- decision_conversation: 4–5 items. THIS IS CRITICAL. Write as the expert explaining why this is GO or NO-GO. Each line = one sharp insight from YOUR experience. Be the 30-year operator, not a generic analyst.
+Return JSON with these exact keys:
 
-- review_intelligence: 3 items — recurring pain points, hidden conversion killers, what buyers love (from competitor titles).
+OVERVIEW (Decision layer):
+- expert_insight (string): Real market reality and how it affects the user's product. Max 3 sentences.
+- what_most_sellers_miss (string): One hidden structural dynamic in the niche. One short paragraph.
+- why_this_decision (array of exactly 3 strings): Three observations explaining the verdict. Format each as "Observation → implication." Example: "Average reviews in top listings exceed 9,000 → new listings struggle to gain visibility."
+- what_would_make_go (array of 3 strings, ONLY when verdict is NO_GO): Three conditions that would change NO-GO into GO. Short and specific.
 
+DEEP DIVE (Market intelligence):
+- competition_reality (array of strings): How listings actually compete in this niche (reviews, pricing, positioning). 3–5 bullets.
+- opportunity (string): The single most realistic differentiation opportunity for the user's product. One short paragraph. Do NOT list multiple ideas.
+- profit_reality (string): Whether the user's projected profit is realistic given market conditions. Reference their margin and PPC assumptions. 2–3 sentences.
+- entry_reality (string): What makes entering this niche difficult or feasible. Explain the reasoning; avoid labels like "HIGH" or "LOW". 2–3 sentences.
+- market_domination_analysis (string): Whether the niche is controlled by one brand or many. One short paragraph.
+
+EXECUTION:
+- alternative_keywords (array): Maximum 3 keyword angles. Only the keyword text, e.g. "cat bed for large cats". No CPC, no numbers.
+- execution_plan (array): 30-day launch plan. Group into 3 phases: items for Week 1, then Week 2, then Week 3–4. Each item one short sentence. 4–6 items total.
+- early_strategy_guidance (string): One short strategic recommendation on how to approach this niche. 1–2 sentences.
+
+LEGACY (keep for compatibility):
+- decision_conversation: Same as why_this_decision (array of 3–5 strings).
+- review_intelligence: 3 items — pain points and what buyers love from competitor titles.
 - opportunities: 3 items — product/positioning gaps.
-
 - differentiation: 3 items — concrete ideas for this niche.
-
 - risks: 3 items — key risks.
 
-- alternative_keywords: 3–5 items — ONLY the keyword text (e.g. "cat bed for large cats"). No CPC, no "N/A", no numbers.
-
-- what_would_make_go: (ONLY when verdict is NO_GO) 3 items — specific actions to flip to GO.
-
-- execution_plan: Exactly 4 or 5 items. Each item = ONE clear step, one short sentence. Number them "Step 1:", "Step 2:", etc. Order: (1) Gating/category if relevant. (2) Audit top 10. (3) Lock one differentiator. (4) Listing + main image. (5) Launch PPC — long-tail only, cap until CVR proven. No long paragraphs.
-
-Base everything on the competitor titles and data provided. Be specific to this niche. Return valid JSON only, no markdown.`;
+Return valid JSON only. No markdown code fences.`;
 
 function buildUserPrompt(input: AIInsightsInput): string {
-  const lines = [
-    `Keyword: "${input.keyword}"`,
-    `Seller's price: $${input.sellingPrice} | Market avg: $${input.avgPrice.toFixed(2)}`,
-    `Profit after ads: $${input.profitAfterAds.toFixed(2)}`,
+  const lines: string[] = [
+    "=== USER PRODUCT ===",
+    `Keyword (market): "${input.keyword}"`,
+    `Target selling price: $${input.sellingPrice}`,
+    `Unit cost (COGS): $${input.unitCost ?? "?"} | Shipping to FBA: $${input.shippingCost ?? "?"}`,
+    `Differentiation: ${input.differentiation?.trim() || "(none provided)"}`,
+    `Complexity: ${input.complexity?.trim() || "not specified"}`,
+    "",
+    "=== UNIT ECONOMICS ===",
+    `Profit after ads: $${input.profitAfterAds.toFixed(2)}/unit`,
+    `Estimated margin: ${input.estimated_margin != null ? input.estimated_margin.toFixed(1) + "%" : "N/A"} | ROI: ${input.estimated_roi != null ? input.estimated_roi.toFixed(1) + "%" : "N/A"}`,
+    `Landed cost: $${input.landed_cost != null ? input.landed_cost.toFixed(2) : "N/A"}`,
+    "",
+    "=== VERDICT ===",
     `Verdict: ${input.verdict}`,
-    `Market: avg ${input.avgReviews} reviews, ${input.avgRating}★ rating, ${input.dominantBrand ? "dominant brands" : "no dominant brands"}. New sellers (≤100 reviews): ${input.newSellersInTop10 ?? 0} in top 10, ${input.newSellersInTop20 ?? 0} in top 20.`,
-    ``,
-    `Top competitor titles (analyze for pain points & positioning):`,
-    ...input.topTitles.slice(0, 10).map((t, i) => `${i + 1}. ${t}`),
-    ``,
-    `Top prices: ${input.topPrices.length ? input.topPrices.slice(0, 5).map((p) => "$" + p).join(", ") : "N/A"}`,
-    ``,
-    `Return JSON with: decision_conversation, review_intelligence, opportunities, differentiation, risks, alternative_keywords, execution_plan${input.verdict === "NO_GO" ? ", what_would_make_go" : ""}`,
+    "",
+    "=== MARKET (SERP) ===",
+    `Avg price: $${input.avgPrice.toFixed(2)} | Avg reviews: ${input.avgReviews.toLocaleString()} | Avg rating: ${input.avgRating}★`,
+    `Brand distribution: ${input.dominantBrand ? "one or few brands dominate" : "fragmented"}. New sellers in top 10: ${input.newSellersInTop10 ?? 0}, top 20: ${input.newSellersInTop20 ?? 0}.`,
   ];
+
+  if (input.market_snapshot) {
+    lines.push(
+      "",
+      "Market snapshot:",
+      `- Avg price: $${input.market_snapshot.avg_price.toFixed(2)}, avg reviews: ${input.market_snapshot.avg_reviews.toLocaleString()}`,
+      `- Brand distribution: ${input.market_snapshot.brand_distribution}`,
+      `- Ad presence: ${input.market_snapshot.ad_presence}`
+    );
+  }
+
+  if (input.product_vs_market) {
+    lines.push(
+      "",
+      "Product vs market:",
+      `- Price position: ${input.product_vs_market.price_position}`,
+      `- Review barrier: ${input.product_vs_market.review_barrier}`,
+      `- Advertising environment: ${input.product_vs_market.advertising_environment}`,
+      `- Differentiation strength: ${input.product_vs_market.differentiation_strength}`,
+      `- Product risk: ${input.product_vs_market.product_risk}`
+    );
+  }
+
+  lines.push(
+    "",
+    "Top competitor titles (use for pain points and positioning):",
+    ...(input.topTitles.slice(0, 15).map((t, i) => `${i + 1}. ${t}`) || []),
+    "",
+    "Top prices (first page):",
+    (input.topPrices.length ? input.topPrices.slice(0, 10).map((p) => "$" + p).join(", ") : "N/A")
+  );
+
+  if (input.topCompetitors?.length) {
+    lines.push(
+      "",
+      "Sample SERP (position, title, price, reviews, brand, sponsored):",
+      ...input.topCompetitors.slice(0, 10).map(
+        (c) =>
+          `#${c.position} $${c.price.toFixed(2)} | ${c.ratingsTotal} reviews | ${c.brand ?? "—"} ${c.sponsored ? "| sponsored" : ""} | ${(c.title || "").slice(0, 60)}…`
+      )
+    );
+  }
+
+  lines.push("", "Answer the analytical questions in the system prompt. Return JSON with all required keys.");
   return lines.join("\n");
 }
 
@@ -88,7 +200,7 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
         { role: "user", content: buildUserPrompt(input) },
       ],
       response_format: { type: "json_object" },
-      temperature: 0.7,
+      temperature: 0.5,
     });
 
     const raw = completion.choices[0]?.message?.content?.trim();
@@ -101,19 +213,32 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       if (typeof v === "string") return [v];
       return [];
     };
+    const toStr = (v: unknown): string | undefined => (v != null && typeof v === "string" ? v : undefined);
+
+    const whyDecision = toArray(parsed.why_this_decision).slice(0, 3);
+    const decisionConversation = toArray(parsed.decision_conversation);
+    const useWhy = whyDecision.length >= 1 ? whyDecision : decisionConversation.slice(0, 5);
 
     return {
-      decision_conversation: toArray(parsed.decision_conversation).slice(0, 5),
+      decision_conversation: useWhy,
       review_intelligence: toArray(parsed.review_intelligence).slice(0, 3),
       opportunities: toArray(parsed.opportunities).slice(0, 3),
       differentiation: toArray(parsed.differentiation).slice(0, 3),
       risks: toArray(parsed.risks).slice(0, 3),
       alternative_keywords: toArray(parsed.alternative_keywords).slice(0, 5),
       what_would_make_go:
-        input.verdict === "NO_GO"
-          ? toArray(parsed.what_would_make_go).slice(0, 3)
-          : undefined,
-      execution_plan: toArray(parsed.execution_plan).slice(0, 6),
+        input.verdict === "NO_GO" ? toArray(parsed.what_would_make_go).slice(0, 3) : undefined,
+      execution_plan: toArray(parsed.execution_plan).slice(0, 8),
+      expert_insight: toStr(parsed.expert_insight),
+      what_most_sellers_miss: toStr(parsed.what_most_sellers_miss),
+      competition_reality: toArray(parsed.competition_reality).slice(0, 6),
+      opportunity: toStr(parsed.opportunity),
+      profit_reality: toStr(parsed.profit_reality),
+      entry_reality: toStr(parsed.entry_reality),
+      why_this_decision: whyDecision.length >= 1 ? whyDecision : useWhy.slice(0, 3),
+      market_domination_analysis: toStr(parsed.market_domination_analysis),
+      early_strategy_guidance: toStr(parsed.early_strategy_guidance),
+      honeymoon_roadmap: toArray(parsed.honeymoon_roadmap).slice(0, 8),
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
