@@ -171,6 +171,54 @@ COMPETITION_REALITY — Use: sponsoredTop10, sponsoredTotal, estimatedCPC, adCos
 OPPORTUNITY — Use: opportunityText, competitorWeakness, differentiator. "Is this opportunity real and exactly where in the listing must it appear?"
 EARLY_STRATEGY_GUIDANCE — Use: launchCapital, ppcBudget, vineEstimate, netMargin, threshold. "What is the single most important thing to get right in the first 30 days?"
 
+QUESTION 5 — COMPETITIVE ADVANTAGE:
+
+Note: competitiveAdvantage is provided in the user message as 'Differentiation'. productComplexity is provided as 'Complexity'.
+
+You receive Differentiation as free text from the seller describing their differentiators.
+You also have access to:
+- Top 15 competitor titles
+- Inferred pain points from competitor titles
+
+For each differentiator the seller mentions, cross-reference against the titles and pain points you already have, then state one verdict:
+
+STRONG: "This feature does not appear in any of the top 15 competitor titles — put [differentiator] in your title on day one. You will own this word on page one."
+
+WEAK: "This feature already appears in multiple competitor titles — it is table stakes. Remove it from your main message and find a stronger angle."
+
+OPPORTUNITY: "This feature is not in competitor titles but matches an inferred pain point — this is your conversion weapon. Lead with it in bullet 1 and image 2."
+
+Output this verdict inside advisor_implication for OPPORTUNITY section.
+
+---
+
+QUESTION 6 — PRODUCT COMPLEXITY:
+
+You receive Complexity: Simple / Moderate / Complex.
+
+Apply these exact numbers in your analysis:
+
+Simple:
+- Return rate buffer: 5%
+- ACoS: -3% from calculated ACoS
+- Viability adjustment: +5
+- Write in advisor_implication for EXPERT_INSIGHT:
+  "Zero setup = conversion advantage over moderate and complex competitors. Write 'ready to use out of the box' in bullet 1 — this lifts conversion 8-12%."
+
+Moderate:
+- Return rate buffer: 12%
+- ACoS: +2% to calculated ACoS
+- Viability adjustment: -3
+- Write in advisor_implication for EXPERT_INSIGHT:
+  "12% return rate = 1 in 8 customers returns. At $[sellingPrice] that is $[sellingPrice * 0.12] lost per 10 sales on returns alone. Add assembly visual in image 4 to cut this in half."
+
+Complex:
+- Return rate buffer: 22%
+- ACoS: +8% to calculated ACoS
+- Viability adjustment: -8
+- Write in advisor_implication for EXPERT_INSIGHT:
+  "22% return rate = $[sellingPrice * 0.22] lost per 10 sales. Amazon will flag your listing within 60 days if return rate stays high. Image 3 must be a step-by-step installation guide. Non-negotiable."
+
 Return valid JSON only. No markdown code fences.`
 
 function buildUserPrompt(input: AIInsightsInput): string {
