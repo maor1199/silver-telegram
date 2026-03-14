@@ -203,7 +203,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const totalCost = cogs + referralFee + fbaFee
   const profitAfterAds = sellingPrice - totalCost - ppcCostPerUnit
 
-  const isHighComplexity = complexity === "high"
+  const isHighComplexity = complexity === "complex"
   const effectiveMarginThreshold =
     input.marginThreshold ??
     getMarginThreshold(

@@ -208,7 +208,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const profitAfterAds = sellingPrice - totalCost - ppcCostPerUnit;
 
   // Aggregator: Soft factors. High complexity → 20% margin requirement.
-  const isHighComplexity = complexity === "high";
+  const isHighComplexity = complexity === "complex";
   const effectiveMarginThreshold =
     input.marginThreshold ??
     getMarginThreshold(
