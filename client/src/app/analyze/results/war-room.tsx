@@ -490,6 +490,8 @@ export default function WarRoom() {
   const marketDominationAnalysis = safeStr(R?.marketDominationAnalysis ?? analysisData?.marketDominationAnalysis ?? R?.market_domination_analysis)
   const difficultyScoreDisplay = safeStr(R?.difficultyScoreDisplay ?? analysisData?.difficultyScoreDisplay ?? R?.difficulty_score_display)
   const difficultyLevel = safeStr(R?.difficultyLevel ?? analysisData?.difficultyLevel ?? R?.difficulty_level)
+  const earlyStrategyGuidance = safeStr(R?.earlyStrategyGuidance ?? analysisData?.earlyStrategyGuidance ?? R?.early_strategy_guidance)
+  const premiumRiskWarning = safeStr(R?.premiumRiskWarning ?? analysisData?.premiumRiskWarning ?? R?.premium_risk_warning)
   const opportunity = safeStr(R?.opportunity ?? analysisData?.opportunity)
   const reviewStructureSummary = safeStr(R?.review_structure_summary ?? analysisData?.review_structure_summary)
   const newSellerPresence = safeStr(R?.new_seller_presence ?? analysisData?.new_seller_presence)
@@ -604,19 +606,19 @@ export default function WarRoom() {
               <div className="mt-8 flex items-center justify-center gap-8 flex-wrap">
                 {score != null && !isNaN(score) && (
                   <div className="text-center">
-                    <p className="text-3xl font-black text-foreground">{score}<span className="text-base font-normal text-muted-foreground">/100</span></p>
+                    <p className="text-3xl font-black text-foreground">{Math.round(Number(score))}<span className="text-base font-normal text-muted-foreground">/100</span></p>
                     <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Viability Score</p>
                   </div>
                 )}
                 {confidence != null && !isNaN(confidence) && score !== confidence && (
                   <div className="text-center">
-                    <p className="text-3xl font-black text-foreground">{confidence}<span className="text-base font-normal text-muted-foreground">%</span></p>
+                    <p className="text-3xl font-black text-foreground">{Number(confidence).toFixed(1)}<span className="text-base font-normal text-muted-foreground">%</span></p>
                     <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Confidence</p>
                   </div>
                 )}
                 {profitAfterAds != null && !isNaN(profitAfterAds) && (
                   <div className="text-center">
-                    <p className={cn("text-3xl font-black", profitAfterAds >= 0 ? "text-emerald-600" : "text-red-600")}>
+                    <p className={cn("text-3xl font-black", profitAfterAds >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")}>
                       ${profitAfterAds.toFixed(2)}
                     </p>
                     <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Net Profit</p>
@@ -636,7 +638,7 @@ export default function WarRoom() {
                   return (
                     <>
                       <div className="text-center">
-                        <p className={cn("text-3xl font-black", roiValue >= 0 ? "text-emerald-600" : "text-red-600")}>
+                        <p className={cn("text-3xl font-black", roiValue >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")}>
                           {roiValue.toFixed(1)}%
                         </p>
                         <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">ROI</p>
@@ -720,10 +722,10 @@ export default function WarRoom() {
                 />
                 <div className="mt-3 flex flex-wrap gap-4">
                   {score != null && !isNaN(score) && (
-                    <span className="text-xs text-muted-foreground">Viability Score: <strong className="text-foreground">{score}/100</strong></span>
+                    <span className="text-xs text-muted-foreground">Viability Score: <strong className="text-foreground">{Math.round(Number(score))}/100</strong></span>
                   )}
                   {confidence != null && !isNaN(confidence) && (
-                    <span className="text-xs text-muted-foreground">Confidence: <strong className="text-foreground">{confidence}%</strong></span>
+                    <span className="text-xs text-muted-foreground">Confidence: <strong className="text-foreground">{Number(confidence).toFixed(1)}%</strong></span>
                   )}
                   {estimatedMargin && (
                     <span className="text-xs text-muted-foreground">Estimated Margin: <strong className="text-foreground">{estimatedMargin}</strong></span>
@@ -745,7 +747,7 @@ export default function WarRoom() {
                       {fWhy.slice(0, 3).map((reason, i) => (
                         <li key={i} className="flex items-start gap-3 text-sm text-foreground leading-relaxed">
                           <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                          {String(reason)}
+                          {String(reason).replace(/\bkeywords:\s*:\s*/gi, "keywords: ")}
                         </li>
                       ))}
                     </ul>
@@ -842,7 +844,7 @@ export default function WarRoom() {
                         <div className="grid gap-3 sm:grid-cols-2">
                           {avgPrice != null && <div><span className="text-xs text-muted-foreground">Avg price</span><p className="font-semibold text-foreground">${avgPrice.toFixed(2)}</p></div>}
                           {avgReviews != null && <div><span className="text-xs text-muted-foreground">Avg reviews</span><p className="font-semibold text-foreground">{avgReviews.toLocaleString()}</p></div>}
-                          {avgRating != null && <div><span className="text-xs text-muted-foreground">Avg rating</span><p className="font-semibold text-foreground">{avgRating}</p></div>}
+                          {avgRating != null && <div><span className="text-xs text-muted-foreground">Avg rating</span><p className="font-semibold text-foreground">{Number(avgRating).toFixed(1)}</p></div>}
                           <div><span className="text-xs text-muted-foreground">Brand distribution</span><p className="font-semibold text-foreground">{dominantBrand ? "Dominant brand(s) in top results" : "Fragmented / many brands"}</p></div>
                           {fAdReality.length > 0 && <div className="sm:col-span-2"><span className="text-xs text-muted-foreground">Ad presence</span><p className="text-sm text-foreground mt-1">{fAdReality[0]}</p></div>}
                         </div>
@@ -946,7 +948,7 @@ export default function WarRoom() {
                 </div>
               </section>
 
-              {/* Profit Reality — real profitability (margin + PPC assumptions) */}
+              {/* Profit Reality — 4 bullets: referral, FBA, COGS, PPC (same wording as before) */}
               <section>
                 <SectionHeader
                   icon={<DollarSign className="h-5 w-5 text-primary" />}
@@ -954,24 +956,46 @@ export default function WarRoom() {
                   sub="Real profitability based on margin and PPC assumptions"
                 />
                 <div className="rounded-2xl border border-border bg-card p-6">
-                  {profitExplanation ? (
-                    <p className="text-sm text-foreground leading-relaxed">{profitExplanation}</p>
-                  ) : fProfitReality[0] ? (
-                    <ul className="flex flex-col gap-2.5">
-                      {fProfitReality.slice(0, 4).map((item, i) => (
-                        <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
-                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : pb ? (
-                    <p className="text-sm text-foreground leading-relaxed">
-                      Net profit after ads: {fmt(pb.profitAfterAds)} per unit. ROI and margin depend on your COGS, FBA/referral fees, and assumed ACoS.
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground/60 italic">No profit analysis available.</p>
-                  )}
+                  {(() => {
+                    if (profitExplanation) {
+                      const parts = profitExplanation.split(/\s*\(\d\)\s+/).map(s => s.trim()).filter(Boolean)
+                      const bullets = parts[0]?.includes("subtract") || parts[0]?.includes("selling price") ? parts.slice(1, 5) : parts.slice(0, 4)
+                      const hasNumbered = profitExplanation.includes("(1)") && bullets.length >= 1
+                      if (hasNumbered && bullets.length >= 1) {
+                        return (
+                          <ul className="flex flex-col gap-2.5">
+                            {bullets.slice(0, 4).map((item, i) => (
+                              <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
+                                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        )
+                      }
+                      return <p className="text-sm text-foreground leading-relaxed">{profitExplanation}</p>
+                    }
+                    if (fProfitReality[0]) {
+                      return (
+                        <ul className="flex flex-col gap-2.5">
+                          {fProfitReality.slice(0, 4).map((item, i) => (
+                            <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
+                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      )
+                    }
+                    if (pb) {
+                      return (
+                        <p className="text-sm text-foreground leading-relaxed">
+                          Net profit after ads: {fmt(pb.profitAfterAds)} per unit. ROI and margin depend on your COGS, FBA/referral fees, and assumed ACoS.
+                        </p>
+                      )
+                    }
+                    return <p className="text-sm text-muted-foreground/60 italic">No profit analysis available.</p>
+                  })()}
                 </div>
               </section>
 
@@ -1062,7 +1086,7 @@ export default function WarRoom() {
                             {phase.items.map((step, si) => (
                               <li key={si} className="flex items-start gap-3 text-sm text-foreground leading-relaxed">
                                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-muted-foreground">{si + 1}</span>
-                                {String(step)}
+                                {String(step).replace(/\bkeywords:\s*:\s*/gi, "keywords: ")}
                               </li>
                             ))}
                           </ol>
@@ -1103,7 +1127,7 @@ export default function WarRoom() {
                 </section>
               )}
 
-              {/* Early Strategy Guidance — one short recommendation */}
+              {/* Early Strategy Guidance — one short recommendation (no price warning here) */}
               <section>
                 <SectionHeader
                   icon={<Zap className="h-5 w-5 text-primary" />}
@@ -1112,7 +1136,8 @@ export default function WarRoom() {
                 />
                 <div className="rounded-2xl border border-border bg-card p-6">
                   {(() => {
-                    const guidance = (typeof fStratIntel === "string" ? fStratIntel : (fStratIntel as string[])?.[0])
+                    const guidance = earlyStrategyGuidance
+                      || (typeof fStratIntel === "string" ? fStratIntel : (fStratIntel as string[])?.[0])
                       || consultantSecret
                       || fActionPlan[0]
                       || (fOpportunities[0] ? `Focus on: ${fOpportunities[0]}` : null)

@@ -152,7 +152,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   const premiumRiskWarning =
     hasRealMarketData && sellingPrice > avgPrice && avgPrice > 0
-      ? `Premium Risk: Your price ($${sellingPrice.toFixed(2)}) is ${(((sellingPrice - avgPrice) / avgPrice) * 100).toFixed(0)}% higher than the top-5 market average ($${avgPrice.toFixed(2)}). Differentiation must justify this gap to maintain viability.`
+      ? `Premium Risk: Your price ($${sellingPrice.toFixed(2)}) is ${(((sellingPrice - avgPrice) / avgPrice) * 100).toFixed(1)}% higher than the top-5 market average ($${avgPrice.toFixed(2)}). Differentiation must justify this gap to maintain viability.`
       : undefined
 
   let score = 50
@@ -221,7 +221,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
       : "Review barrier unknown without SERP data.",
     advertising_environment: hasRealMarketData
       ? advertisingPressure > 0.4
-        ? `HIGH: ${(advertisingPressure * 100).toFixed(0)}% of first-page results sponsored; expect strong PPC competition.`
+        ? `HIGH: ${(advertisingPressure * 100).toFixed(1)}% of first-page results sponsored; expect strong PPC competition.`
         : advertisingPressure >= 0.2
           ? `MEDIUM: meaningful ad presence; plan for CPC.`
           : `LOW: organic opportunity exists.`
@@ -287,17 +287,15 @@ export async function analyzeProduct(input: AnalyzeInput) {
     (verdict === "NO_GO"
       ? [
           "Profit after ads is too thin — PPC will eat it.",
-          `Market avg ${avgReviews} reviews; you'll burn a lot to get traction.`,
+          `Market avg ${avgReviews.toLocaleString()} reviews; you'll burn roughly $${launchCapitalRequired.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} to get traction.`,
           "Unless you have a real differentiator and budget, skip it.",
         ]
       : [
-          `$${profitAfterAds.toFixed(0)}/unit after ads — room to play.`,
+          `$${profitAfterAds.toFixed(2)}/unit after ads — room to play.`,
           `Competition: ${avgReviews < 1000 ? "workable" : "tough"}.`,
           "Worth testing. Nail one differentiator and control ACoS.",
         ])
-  const why_this_decision = premiumRiskWarning
-    ? [premiumRiskWarning, ...why_this_decision_raw].slice(0, 5)
-    : why_this_decision_raw.slice(0, 5)
+  const why_this_decision = why_this_decision_raw.slice(0, 5)
 
   const whyBullets: string[] = []
   if (hasRealMarketData && !aiInsights?.why_this_decision?.length) {
@@ -447,7 +445,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
   })()
 
   const profitabilityBase = [
-    `Assumed economics: price $${sellingPrice.toFixed(2)} | COGS $${cogs.toFixed(2)} | referral $${referralFee.toFixed(2)} | FBA $${fbaFee.toFixed(2)} | ads $${ppcCostPerUnit.toFixed(2)} (ACoS ${(assumedAcos * 100).toFixed(0)}%) ⇒ profit after ads $${profitAfterAds.toFixed(2)}.`,
+    `Assumed economics: price $${sellingPrice.toFixed(2)} | COGS $${cogs.toFixed(2)} | referral $${referralFee.toFixed(2)} | FBA $${fbaFee.toFixed(2)} | ads $${ppcCostPerUnit.toFixed(2)} (ACoS ${(assumedAcos * 100).toFixed(1)}%) ⇒ profit after ads $${profitAfterAds.toFixed(2)}.`,
     "Reality check: returns/coupons/storage can compress profit 10–25%. Keep a buffer.",
     "If conversion drops, PPC costs inflate and profits collapse.",
   ]
@@ -513,11 +511,14 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const honeymoonRoadmap = honeymoonFromAi ?? executionFromAi ?? honeymoonRoadmapDefault
   const highBarrierStep = "High Barrier to Entry detected. Do not launch without a minimum $15,000 launch budget for PPC and Vine reviews."
   const ppcCannibalizationStep = "PPC Cannibalization Risk: Your ad costs will likely exceed 60% of your revenue during launch. You MUST have a backend funnel or high LTV (Lifetime Value) to survive this."
-  const execution_plan = executionFromAi ?? [
+  const executionPlanRaw = executionFromAi ?? [
     ...(avgReviews > 10000 ? [highBarrierStep] : []),
     ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
     ...honeymoonRoadmap,
   ]
+  const execution_plan = executionPlanRaw.map((step: string) =>
+    String(step).replace(/\bkeywords:\s*:\s*/gi, "keywords: ")
+  )
 
   const estimatedCpcRange = avgReviews >= 2000 ? { min: 1.5, max: 3 } : avgReviews >= 500 ? { min: 0.8, max: 2 } : { min: 0.3, max: 1 }
   const minCpc = Number.isFinite(estimatedCpcRange.min) ? estimatedCpcRange.min : 0.5
@@ -590,21 +591,24 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const strategicIntelligenceParts: string[] =
     verdict === "GO"
       ? [
-          `At $${sellingPrice.toFixed(2)} and ${estimatedMarginPercent.toFixed(1)}% net margin after ads (ACoS floor ${(acosFloor * 100).toFixed(0)}%), "${keyword}" passes the ${marginThresholdPct}% stress test.`,
+          `At $${sellingPrice.toFixed(2)} and ${estimatedMarginPercent.toFixed(1)}% net margin after ads (ACoS floor ${(acosFloor * 100).toFixed(1)}%), "${keyword}" passes the ${marginThresholdPct}% stress test.`,
           opportunities.length > 0 ? opportunities[0] : "Differentiate on quality, bundle, or niche positioning to defend margin.",
           hasRealMarketData
             ? `Market: avg $${avgPrice.toFixed(2)}, ${avgReviews.toLocaleString()} reviews — ${dominantBrand ? "dominant players present; focus on long-tail and proof points." : "barrier is workable; nail one differentiator."}`
             : "Lock one clear differentiator and control ACoS in launch.",
         ]
       : [
-          `Net margin ${estimatedMarginPercent.toFixed(1)}% is below the ${marginThresholdPct}% threshold — real-time PPC (${(acosFloor * 100).toFixed(0)}% floor) and returns would erase profit.`,
+          `Net margin ${estimatedMarginPercent.toFixed(1)}% is below the ${marginThresholdPct}% threshold — real-time PPC (${(acosFloor * 100).toFixed(1)}% floor) and returns would erase profit.`,
           financialPivotNoGo ?? (what_would_make_go?.length ? what_would_make_go[0] : "Raise price, cut COGS, or target a lower-ACoS niche to reach viability."),
           `Re-run with updated numbers once unit economics clear ${marginThresholdPct}%.`,
         ]
   if (underpricingAdvice) strategicIntelligenceParts.push(underpricingAdvice)
   if (marketRealityCheck) strategicIntelligenceParts.push(marketRealityCheck)
-  if (aiInsights?.early_strategy_guidance?.trim()) {
-    strategicIntelligenceParts.push(aiInsights.early_strategy_guidance.trim())
+  const earlyGuidanceRaw = aiInsights?.early_strategy_guidance?.trim() ?? ""
+  const priceWarningPattern = /Your price .*?% higher than .*?\.?\s*/i
+  const early_strategy_guidance = earlyGuidanceRaw.replace(priceWarningPattern, "").trim() || earlyGuidanceRaw
+  if (early_strategy_guidance) {
+    strategicIntelligenceParts.push(early_strategy_guidance)
   }
   const ppcRealityAudit = `PPC Reality Audit: In this niche, the average CPC is approximately $${baseCpcFinal.toFixed(2)}. At a 10% conversion rate, your launch ad cost per unit will be $${launchAdCostPerUnit.toFixed(2)}. This requires a daily budget of at least $100 to gain any traction.`
   strategicIntelligenceParts.push(ppcRealityAudit)
@@ -708,6 +712,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     estimated_margin: `${estimatedMarginPercent.toFixed(1)}%`,
     financial_stress_test: financialStressTest,
     strategic_intelligence: strategicIntelligence,
+    early_strategy_guidance: early_strategy_guidance || undefined,
     score_breakdown: scoreBreakdown,
     has_real_market_data: hasRealMarketData,
     premium_risk_warning: premiumRiskWarning ?? undefined,
@@ -787,6 +792,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     estimatedMargin: report.estimated_margin,
     financialStressTest: financialStressTest,
     strategicIntelligence: strategicIntelligence,
+    earlyStrategyGuidance: early_strategy_guidance || undefined,
     premiumRiskWarning: premiumRiskWarning,
     marketRealityCheck: marketRealityCheck,
     marketReality: marketRealityCheck ?? undefined,

@@ -73,7 +73,7 @@ export function AnalysisProfitCards({ netProfit, profitAfterAds, profitBreakdown
           value={`$${profit.toFixed(2)}`}
           sub="per unit after ads"
           icon={<DollarSign className="h-4 w-4" />}
-          color={profit >= 0 ? "green" : "red"}
+          color={profit >= 0 ? "green" : undefined}
         />
       )}
       {roiValue != null && !isNaN(roiValue) && (
@@ -81,7 +81,7 @@ export function AnalysisProfitCards({ netProfit, profitAfterAds, profitBreakdown
           label="ROI"
           value={`${roiValue.toFixed(1)}%`}
           icon={<TrendingUp className="h-4 w-4" />}
-          color={roiValue >= 0 ? "green" : "red"}
+          color={roiValue >= 0 ? "green" : undefined}
         />
       )}
       {amazonFeesSum > 0 && (

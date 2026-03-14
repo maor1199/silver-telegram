@@ -79,5 +79,7 @@ export function normalizeAnalysisResponse(data: any): Record<string, unknown> {
     riskLevel: data.risk_level ?? data.riskLevel ?? "Medium",
     executionRoadmap: data.execution_roadmap ?? data.executionRoadmap ?? [],
     marketReality: data.marketReality ?? data.market_reality ?? report?.market_reality_check ?? report?.market_reality,
+    earlyStrategyGuidance: data.earlyStrategyGuidance ?? data.early_strategy_guidance ?? report?.early_strategy_guidance ?? report?.earlyStrategyGuidance,
+    premiumRiskWarning: data.premiumRiskWarning ?? data.premium_risk_warning ?? report?.premium_risk_warning ?? report?.premiumRiskWarning,
   } as Record<string, unknown>
 }
