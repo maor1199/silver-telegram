@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import { normalizeAnalysisResponse } from "@/lib/analysisApi"
 import { createClient, createClientWithToken } from "@/lib/supabase/server"
 import { analyzeProduct } from "@/lib/analyze/analyzeAgent"
+import { getMarginThreshold } from "@/lib/analyze/openaiService"
 import { getMarketData } from "@/lib/analyze/marketDataProvider"
 
 const FREE_TIER_ANALYSIS_LIMIT = 5
@@ -67,6 +68,12 @@ export async function POST(req: Request) {
       console.warn("[Analyze] Using stub market data — new fields will show placeholders. Check Vercel → Logs after running analysis to see why.")
     }
 
+    const marginThreshold = getMarginThreshold(
+      body.differentiation ?? "",
+      marketData?.topTitles ?? [],
+      marketData?.painPoints ?? []
+    )
+
     const result = await analyzeProduct({
       keyword: typeof keyword === "string" ? keyword : "cat cave",
       sellingPrice,
@@ -78,6 +85,7 @@ export async function POST(req: Request) {
       complexity: body.complexity,
       differentiation: body.differentiation,
       marketData,
+      marginThreshold,
     })
 
     const raw = (result && typeof result === "object" ? result : {}) as Record<string, unknown>
