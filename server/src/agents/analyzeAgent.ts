@@ -267,6 +267,11 @@ export async function analyzeProduct(input: AnalyzeInput) {
   score = Math.max(1, Math.min(99, Math.round(score)));
 
   // Verdict: Aggregator rule overrides score. Real-time PPC (ACoS floor) + margin threshold (15% or 20%).
+  console.log("marginThreshold received:", input.marginThreshold);
+  console.log("effectiveMarginThreshold:", effectiveMarginThreshold);
+  console.log("netMarginRatio:", netMarginRatio);
+  console.log("passesMarginRule:", passesMarginRule);
+
   let verdict: "GO" | "NO_GO" = score >= 55 ? "GO" : "NO_GO";
   if (!passesMarginRule) verdict = "NO_GO";
 
