@@ -491,6 +491,14 @@ export default function WarRoom() {
   const difficultyScoreDisplay = safeStr(R?.difficultyScoreDisplay ?? analysisData?.difficultyScoreDisplay ?? R?.difficulty_score_display)
   const difficultyLevel = safeStr(R?.difficultyLevel ?? analysisData?.difficultyLevel ?? R?.difficulty_level)
   const opportunity = safeStr(R?.opportunity ?? analysisData?.opportunity)
+  const reviewStructureSummary = safeStr(R?.review_structure_summary ?? analysisData?.review_structure_summary)
+  const newSellerPresence = safeStr(R?.new_seller_presence ?? analysisData?.new_seller_presence)
+  const keywordSaturationRatio = safeStr(R?.keyword_saturation_ratio ?? analysisData?.keyword_saturation_ratio)
+  const priceCompression = safeStr(R?.price_compression ?? analysisData?.price_compression)
+  const brandDistributionSummary = safeStr(R?.brand_distribution_summary ?? analysisData?.brand_distribution_summary)
+  const marketMaturitySignal = safeStr(R?.market_maturity_signal ?? analysisData?.market_maturity_signal)
+  const sponsoredTop10Count = R?.sponsored_top10_count ?? analysisData?.sponsored_top10_count
+  const sponsoredTotalCount = R?.sponsored_total_count ?? analysisData?.sponsored_total_count
 
   // ── Verdict styling ────────────────────────────────── 
   const verdictConfig = {
@@ -809,17 +817,18 @@ export default function WarRoom() {
           {activeTab === "deep-dive" && (
             <div className="mt-10 flex flex-col gap-8 animate-in fade-in duration-300">
 
-              {/* Market Signals — snapshot: avg price, avg reviews, brand distribution, ad presence */}
+              {/* Market Signals — full first page (30): avg price, reviews, review structure, new seller presence, keyword saturation, price compression, brand distribution, maturity, sponsored density */}
               <section>
                 <SectionHeader
                   icon={<BarChart3 className="h-5 w-5 text-primary" />}
                   title="Market Signals"
-                  sub="Average price, reviews, brand distribution, ad presence"
+                  sub="Full first page (up to 30 listings) — price, reviews, brand distribution, ad presence"
                 />
                 <div className="rounded-2xl border border-border bg-card p-6">
                   {(() => {
                     const snap = (R?.marketSnapshot ?? analysisData?.marketSnapshot ?? R?.liveMarketComparison ?? analysisData?.liveMarketComparison) as Record<string, unknown> | undefined
-                    if (!snap) {
+                    const hasNewSignals = reviewStructureSummary || newSellerPresence || keywordSaturationRatio || priceCompression || brandDistributionSummary || marketMaturitySignal || (sponsoredTop10Count != null) || (sponsoredTotalCount != null)
+                    if (!snap && !hasNewSignals) {
                       const str = typeof fMarketReality === "string" ? fMarketReality : (fMarketReality as string[])?.[0]
                       if (str) return <p className="text-sm text-foreground leading-relaxed">{str}</p>
                       return <p className="text-sm text-muted-foreground/60 italic">No market snapshot available.</p>
@@ -829,12 +838,33 @@ export default function WarRoom() {
                     const avgRating = snap?.avgRating != null ? Number(snap.avgRating) : null
                     const dominantBrand = snap?.dominantBrand === true
                     return (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {avgPrice != null && <div><span className="text-xs text-muted-foreground">Avg price</span><p className="font-semibold text-foreground">${avgPrice.toFixed(2)}</p></div>}
-                        {avgReviews != null && <div><span className="text-xs text-muted-foreground">Avg reviews</span><p className="font-semibold text-foreground">{avgReviews.toLocaleString()}</p></div>}
-                        {avgRating != null && <div><span className="text-xs text-muted-foreground">Avg rating</span><p className="font-semibold text-foreground">{avgRating}</p></div>}
-                        <div><span className="text-xs text-muted-foreground">Brand distribution</span><p className="font-semibold text-foreground">{dominantBrand ? "Dominant brand(s) in top results" : "Fragmented / many brands"}</p></div>
-                        {fAdReality.length > 0 && <div className="sm:col-span-2"><span className="text-xs text-muted-foreground">Ad presence</span><p className="text-sm text-foreground mt-1">{fAdReality[0]}</p></div>}
+                      <div className="flex flex-col gap-4">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {avgPrice != null && <div><span className="text-xs text-muted-foreground">Avg price</span><p className="font-semibold text-foreground">${avgPrice.toFixed(2)}</p></div>}
+                          {avgReviews != null && <div><span className="text-xs text-muted-foreground">Avg reviews</span><p className="font-semibold text-foreground">{avgReviews.toLocaleString()}</p></div>}
+                          {avgRating != null && <div><span className="text-xs text-muted-foreground">Avg rating</span><p className="font-semibold text-foreground">{avgRating}</p></div>}
+                          <div><span className="text-xs text-muted-foreground">Brand distribution</span><p className="font-semibold text-foreground">{dominantBrand ? "Dominant brand(s) in top results" : "Fragmented / many brands"}</p></div>
+                          {fAdReality.length > 0 && <div className="sm:col-span-2"><span className="text-xs text-muted-foreground">Ad presence</span><p className="text-sm text-foreground mt-1">{fAdReality[0]}</p></div>}
+                        </div>
+                        {hasNewSignals && (
+                          <div className="border-t border-border pt-4 flex flex-col gap-2">
+                            <span className="text-xs font-medium text-muted-foreground">First-page intelligence (top 30)</span>
+                            {reviewStructureSummary && <p className="text-sm text-foreground"><span className="text-muted-foreground">Review structure: </span>{reviewStructureSummary}</p>}
+                            {newSellerPresence && <p className="text-sm text-foreground"><span className="text-muted-foreground">New seller presence: </span>{newSellerPresence}</p>}
+                            {keywordSaturationRatio && <p className="text-sm text-foreground"><span className="text-muted-foreground">Keyword saturation: </span>{keywordSaturationRatio}</p>}
+                            {priceCompression && <p className="text-sm text-foreground"><span className="text-muted-foreground">Price compression: </span>{priceCompression}</p>}
+                            {brandDistributionSummary && <p className="text-sm text-foreground"><span className="text-muted-foreground">Brand distribution: </span>{brandDistributionSummary}</p>}
+                            {marketMaturitySignal && <p className="text-sm text-foreground"><span className="text-muted-foreground">Market maturity: </span>{marketMaturitySignal}</p>}
+                            {(sponsoredTop10Count != null || sponsoredTotalCount != null) && (
+                              <p className="text-sm text-foreground">
+                                <span className="text-muted-foreground">Sponsored: </span>
+                                {sponsoredTop10Count != null && `Top 10: ${sponsoredTop10Count}`}
+                                {sponsoredTop10Count != null && sponsoredTotalCount != null && " · "}
+                                {sponsoredTotalCount != null && `First page total: ${sponsoredTotalCount}`}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )
                   })()}

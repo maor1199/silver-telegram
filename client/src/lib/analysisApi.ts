@@ -71,11 +71,13 @@ export async function runAnalysis(
 // 2. Merge normalized camelCase fields into full backend response (so War Room gets verdict, report, etc.)
 export function normalizeAnalysisResponse(data: any): Record<string, unknown> {
   if (!data || typeof data !== "object") return typeof data === "object" ? { ...data } : {}
+  const report = (data.report && typeof data.report === "object" ? data.report : data) as Record<string, unknown>
   return {
     ...data,
     viabilityScore: data.viability_score ?? data.viabilityScore ?? 0,
     netProfit: data.net_profit ?? data.netProfit ?? 0,
     riskLevel: data.risk_level ?? data.riskLevel ?? "Medium",
     executionRoadmap: data.execution_roadmap ?? data.executionRoadmap ?? [],
+    marketReality: data.marketReality ?? data.market_reality ?? report?.market_reality_check ?? report?.market_reality,
   } as Record<string, unknown>
 }
