@@ -28,6 +28,15 @@ type AnalyzeInput = {
     pricing_structure?: { average_price: number; median_price: number; dominant_price_band: string; price_compression_vs_dispersion?: string };
     review_structure?: { average_reviews: number; median_reviews: number; review_distribution: string; distribution_summary: string };
     review_barrier?: "STRONG" | "MODERATE" | "LOW";
+    review_structure_summary?: string;
+    new_seller_presence?: "high" | "moderate" | "low";
+    keyword_saturation_ratio?: string;
+    price_compression?: string;
+    brand_distribution_summary?: string;
+    market_maturity_signal?: "emerging" | "growing" | "mature";
+    sponsored_top10_count?: number;
+    sponsored_total_count?: number;
+    advertising_environment?: "low" | "medium" | "high";
   } | null;
 };
 
@@ -282,6 +291,15 @@ export async function analyzeProduct(input: AnalyzeInput) {
       sponsored: "sponsored" in c ? (c as { sponsored?: boolean }).sponsored : undefined,
     })),
     painPoints: painPoints.length > 0 ? painPoints : undefined,
+    product_name: keyword,
+    review_structure_summary: market?.review_structure_summary,
+    new_seller_presence: market?.new_seller_presence,
+    keyword_saturation_ratio: market?.keyword_saturation_ratio,
+    price_compression: market?.price_compression,
+    brand_distribution_summary: market?.brand_distribution_summary,
+    market_maturity_signal: market?.market_maturity_signal,
+    sponsored_top10_count: market?.sponsored_top10_count,
+    sponsored_total_count: market?.sponsored_total_count,
   };
   const aiInsights = await getAIInsights(aiInput);
 

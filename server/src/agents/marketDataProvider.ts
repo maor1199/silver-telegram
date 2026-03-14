@@ -63,6 +63,12 @@ export type TopCompetitor = {
   sponsored?: boolean;
 };
 
+/** New seller presence on first page (listings under 200 reviews) */
+export type NewSellerPresence = "high" | "moderate" | "low";
+
+/** Market maturity from review tiers and brand repetition */
+export type MarketMaturitySignal = "emerging" | "growing" | "mature";
+
 export type MarketDataResult = {
   success: boolean;
   avgPrice: number;
@@ -84,8 +90,27 @@ export type MarketDataResult = {
   brand_distribution?: BrandDistribution;
   advertising_pressure?: number;
   market_snapshot?: MarketSnapshot;
-  /** strong (>5k), moderate (1k–5k), lower (<1k) */
   review_barrier?: ReviewBarrier;
+  /** Review tiers (from full first page, up to 30) */
+  listings_over_5000_reviews?: number;
+  listings_1000_to_5000_reviews?: number;
+  listings_100_to_1000_reviews?: number;
+  listings_under_100_reviews?: number;
+  review_structure_summary?: string;
+  /** Listings with under 200 reviews */
+  new_seller_count?: number;
+  new_seller_presence?: NewSellerPresence;
+  sponsored_top10_count?: number;
+  sponsored_total_count?: number;
+  /** low | medium | high (derived from sponsored share) */
+  advertising_environment?: "low" | "medium" | "high";
+  /** e.g. "7 listings price between $35–$39" */
+  price_compression?: string;
+  /** e.g. "18 of 30 listings use the main keyword in title." */
+  keyword_saturation_ratio?: string;
+  /** e.g. "9 distinct brands in top 10 — fragmented market." */
+  brand_distribution_summary?: string;
+  market_maturity_signal?: MarketMaturitySignal;
 };
 
 function parsePrice(value: unknown): number {
@@ -123,6 +148,38 @@ function dominantPriceBand(prices: number[]): string {
   const counts = bands.map((b) => prices.filter((p) => p >= b.min && p < b.max).length);
   const maxIdx = counts.indexOf(Math.max(...counts));
   return bands[maxIdx]!.label;
+}
+
+/** e.g. "7 listings price between $35–$39" */
+function priceCompressionSentence(prices: number[]): string {
+  if (prices.length === 0) return "N/A";
+  const step = 5;
+  let bestCount = 0;
+  let bestMin = 0;
+  let bestMax = 0;
+  const minP = Math.min(...prices);
+  const maxP = Math.max(...prices);
+  for (let bandStart = Math.floor(minP / step) * step; bandStart <= maxP; bandStart += step) {
+    const bandEnd = bandStart + step;
+    const count = prices.filter((p) => p >= bandStart && p < bandEnd).length;
+    if (count > bestCount) {
+      bestCount = count;
+      bestMin = bandStart;
+      bestMax = bandEnd;
+    }
+  }
+  if (bestCount === 0) return "N/A";
+  return `${bestCount} listings price between $${bestMin}–$${bestMax}`;
+}
+
+function countKeywordInTitles(titles: string[], keyword: string): number {
+  if (!keyword || !titles.length) return 0;
+  const kw = keyword.toLowerCase().trim();
+  const words = kw.split(/\s+/).filter(Boolean);
+  return titles.filter((title) => {
+    const t = title.toLowerCase();
+    return words.every((w) => t.includes(w));
+  }).length;
 }
 
 function extractBrandFromTitle(title: string): string {
@@ -293,6 +350,42 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
     const review_barrier: ReviewBarrier =
       avgReviews > 5000 ? "STRONG" : avgReviews >= 1000 ? "MODERATE" : "LOW";
     const priceCompression = priceCompressionVsDispersion(pricesForMedian);
+    const priceCompressionSentenceText = priceCompressionSentence(pricesForMedian);
+
+    const listingsOver5000 = reviewCounts.filter((c) => c >= 5000).length;
+    const listings1000To5000 = reviewCounts.filter((c) => c >= 1000 && c < 5000).length;
+    const listings100To1000 = reviewCounts.filter((c) => c >= 100 && c < 1000).length;
+    const listingsUnder100 = reviewCounts.filter((c) => c < 100).length;
+    const review_structure_summary = [
+      listingsOver5000 ? `${listingsOver5000} listings have 5k+ reviews` : null,
+      listings1000To5000 ? `${listings1000To5000} listings have 1k–5k reviews` : null,
+      listings100To1000 ? `${listings100To1000} listings have 100–1k reviews` : null,
+      listingsUnder100 ? `${listingsUnder100} listings under 100 reviews` : null,
+    ]
+      .filter(Boolean)
+      .join(", ") || "N/A";
+    const new_seller_count = reviewCounts.filter((c) => c < 200).length;
+    const new_seller_presence: NewSellerPresence =
+      new_seller_count >= 5 ? "high" : new_seller_count >= 2 ? "moderate" : "low";
+    const top10 = listings.slice(0, 10);
+    const sponsored_top10_count = top10.filter((l) => l.sponsored).length;
+    const sponsored_total_count = sponsoredCount;
+    const advertising_environment_lower: "low" | "medium" | "high" =
+      advertisingPressure > 0.4 ? "high" : advertisingPressure >= 0.2 ? "medium" : "low";
+    const brandsTop10 = new Set(top10.map((l) => (l.brand || "Unknown").toLowerCase()));
+    const distinctBrandsTop10 = brandsTop10.size;
+    const brand_distribution_summary = dominantBrand
+      ? `${distinctBrandsTop10} distinct brands in top 10; one brand dominates — concentrated.`
+      : `${distinctBrandsTop10} distinct brands in top 10, ${distinctBrands} in top 30 — fragmented market.`;
+    const keywordInTitleCount = countKeywordInTitles(topTitles, keyword);
+    const keyword_saturation_ratio =
+      n > 0 ? `${keywordInTitleCount} of ${n} listings use the main keyword in title.` : "N/A";
+    const market_maturity_signal: MarketMaturitySignal =
+      listingsOver5000 >= 5 && dominantBrand
+        ? "mature"
+        : new_seller_count >= 4 && distinctBrands >= 8
+          ? "emerging"
+          : "growing";
 
     const painPoints = extractPainPointsFromTitles(topTitles);
 
@@ -304,8 +397,8 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
       dominantBrand,
       topTitles,
       topPrices,
-      newSellersInTop10: 0,
-      newSellersInTop20: 0,
+      newSellersInTop10: top10.filter((l) => l.review_count < 200).length,
+      newSellersInTop20: listings.slice(0, 20).filter((l) => l.review_count < 200).length,
       topCompetitors,
       painPoints,
       competitorsWithOver1000Reviews,
@@ -332,10 +425,24 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
         avg_price: avgPrice,
         avg_reviews: avgReviews,
         brand_distribution: brandDistDesc,
-        ad_presence: advertisingEnvironment.toLowerCase(),
+        ad_presence: advertising_environment_lower,
         advertising_environment: advertisingEnvironment,
       },
       review_barrier,
+      listings_over_5000_reviews: listingsOver5000,
+      listings_1000_to_5000_reviews: listings1000To5000,
+      listings_100_to_1000_reviews: listings100To1000,
+      listings_under_100_reviews: listingsUnder100,
+      review_structure_summary,
+      new_seller_count,
+      new_seller_presence,
+      sponsored_top10_count,
+      sponsored_total_count,
+      advertising_environment: advertising_environment_lower,
+      price_compression: priceCompressionSentenceText,
+      keyword_saturation_ratio,
+      brand_distribution_summary,
+      market_maturity_signal,
     };
   } catch (err) {
     console.warn("[marketDataProvider] Rainforest fetch failed:", err instanceof Error ? err.message : err);
