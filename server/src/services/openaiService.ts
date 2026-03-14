@@ -281,6 +281,14 @@ export function getMarginThreshold(
   return parseFloat(Math.max(0.1, Math.min(0.18, 0.15 + totalMarginImpact)).toFixed(2));
 }
 
+export function getValidatedDifferentiators(
+  differentiation: string,
+  topTitles: string[],
+  painPoints: string[]
+): { differentiator: string; appearsInTitles: number; appearsInPainPoints: boolean; verdict: "STRONG" | "WEAK" | "TABLE_STAKES"; marginImpact: number }[] {
+  return validateDifferentiators(differentiation, topTitles, painPoints);
+}
+
 const validateDifferentiators = (
   differentiation: string,
   topTitles: string[],

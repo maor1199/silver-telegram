@@ -526,6 +526,11 @@ export default function WarRoom() {
     estimatedAcosForMarket != null && Number.isFinite(Number(estimatedAcosForMarket))
       ? Math.round(Number(estimatedAcosForMarket) * 100)
       : null
+  const validatedDifferentiatorsRaw =
+    R?.validatedDifferentiators ?? analysisData?.validatedDifferentiators ?? R?.validated_differentiators ?? analysisData?.validated_differentiators
+  const validatedDifferentiators = Array.isArray(validatedDifferentiatorsRaw) ? validatedDifferentiatorsRaw : []
+  const marginThresholdPct =
+    R?.marginThresholdPct ?? analysisData?.marginThresholdPct ?? R?.margin_threshold_pct ?? analysisData?.margin_threshold_pct
 
   // ── Verdict styling ────────────────────────────────── 
   const verdictConfig = {
@@ -790,6 +795,47 @@ export default function WarRoom() {
                     }}>
                       {advisorImplicationWhyThisDecision}
                     </p>
+                  )}
+                </div>
+              </section>
+
+              {/* Differentiation Verdict — validated differentiators vs competitor titles */}
+              <section>
+                <SectionHeader
+                  icon={<Lightbulb className="h-5 w-5 text-emerald-600" />}
+                  title="Differentiation Verdict"
+                  sub="Your differentiators validated against real competitor data"
+                />
+                <div className="rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-6">
+                  {validatedDifferentiators.length > 0 ? (
+                    <>
+                      <ul className="flex flex-col gap-3.5">
+                        {validatedDifferentiators.map((d: { differentiator?: string; appearsInTitles?: number; verdict?: string }, i: number) => {
+                          const name = d.differentiator ?? ""
+                          const n = d.appearsInTitles ?? 0
+                          const verdict = d.verdict ?? "TABLE_STAKES"
+                          const verdictText =
+                            verdict === "STRONG"
+                              ? "STRONG: Put this in your title and image 1."
+                              : verdict === "WEAK"
+                                ? "WEAK: Use in bullet 2, not your title."
+                                : "TABLE_STAKES: Remove from your main message."
+                          return (
+                            <li key={i} className="flex items-start gap-3 text-sm text-foreground leading-relaxed">
+                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                              {`${name} — found in ${n} of 15 competitor titles. ${verdictText}`}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                      {marginThresholdPct != null && Number.isFinite(Number(marginThresholdPct)) && (
+                        <p className="text-xs text-muted-foreground mt-4">
+                          Margin threshold adjusted to {Number(marginThresholdPct)}% based on your differentiators.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground/60 italic">No differentiation data validated against competitors.</p>
                   )}
                 </div>
               </section>

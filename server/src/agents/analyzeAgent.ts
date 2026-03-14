@@ -1,4 +1,4 @@
-import { getAIInsights, getMarginThreshold } from "../services/openaiService";
+import { getAIInsights, getMarginThreshold, getValidatedDifferentiators } from "../services/openaiService";
 
 type AnalyzeInput = {
   keyword?: string;
@@ -218,6 +218,11 @@ export async function analyzeProduct(input: AnalyzeInput) {
     );
   const NET_MARGIN_THRESHOLD = isHighComplexity ? 0.2 : effectiveMarginThreshold;
   const marginThresholdPct = NET_MARGIN_THRESHOLD * 100;
+  const validatedDifferentiators = getValidatedDifferentiators(
+    input.differentiation ?? "",
+    market?.topTitles ?? [],
+    market?.painPoints ?? []
+  );
   const netMarginRatio = sellingPrice > 0 ? profitAfterAds / sellingPrice : 0;
   const passesMarginRule = netMarginRatio >= NET_MARGIN_THRESHOLD;
   const estimatedMarginPercent = sellingPrice > 0 ? (netMarginRatio * 100) : 0;
@@ -762,6 +767,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     marketDensity: report.market_density,
     acosFloorUsed: report.acos_floor_used,
     estimatedAcosForMarket: dynamicAcosForMarket,
+    validatedDifferentiators: validatedDifferentiators,
     marginThresholdPct: report.margin_threshold_pct,
     operationalRiskBuffer: operationalRiskBufferDollars,
     ppcCompetitionFloor: acosFloor,
