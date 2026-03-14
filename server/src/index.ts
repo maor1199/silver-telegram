@@ -232,8 +232,9 @@ app.post("/api/analyze", async (req, res) => {
 
     return res.json(result);
   } catch (err: any) {
-    console.error("❌ Analyze error:", err?.message || err);
-    return res.status(500).json({ ok: false, error: "Analysis failed" });
+    const msg = err?.message ?? String(err);
+    console.error("❌ Analyze error:", msg);
+    return res.status(500).json({ ok: false, error: msg ? `Analysis failed: ${msg}` : "Analysis failed" });
   }
 });
 

@@ -137,6 +137,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   const isHighComplexity = complexity === "high"
   const NET_MARGIN_THRESHOLD = isHighComplexity ? 0.2 : 0.15
+  const marginThresholdPct = NET_MARGIN_THRESHOLD * 100
   const netMarginRatio = sellingPrice > 0 ? profitAfterAds / sellingPrice : 0
   const passesMarginRule = netMarginRatio >= NET_MARGIN_THRESHOLD
   const estimatedMarginPercent = sellingPrice > 0 ? netMarginRatio * 100 : 0
@@ -450,7 +451,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
     "(4) PPC cost per unit — we estimate it as ACoS × selling price (ACoS = ad spend as % of sales; launch is often 40–60%, optimized 25–35%). " +
     "What remains is profit after ads. Returns, coupons, and storage can reduce this by 10–25% in practice."
 
-  const marginThresholdPct = NET_MARGIN_THRESHOLD * 100
   const financialStressTest =
     `Net margin: ${estimatedMarginPercent.toFixed(1)}%. Threshold: ${marginThresholdPct}%${isHighComplexity ? " (high-complexity product)." : "."} ` +
     (passesMarginRule
