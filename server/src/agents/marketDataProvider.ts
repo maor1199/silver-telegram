@@ -24,6 +24,8 @@ export type PricingStructure = {
   average_price: number;
   median_price: number;
   dominant_price_band: string;
+  /** compressed | moderate spread | dispersed */
+  price_compression_vs_dispersion: string;
 };
 
 export type ReviewStructure = {
@@ -44,11 +46,12 @@ export type MarketSnapshot = {
   avg_reviews: number;
   brand_distribution: string;
   ad_presence: string;
-  advertising_environment: "low" | "medium" | "high";
+  /** LOW <20% | MEDIUM 20–40% | HIGH >40% sponsored */
+  advertising_environment: "LOW" | "MEDIUM" | "HIGH";
 };
 
-/** Review barrier: strong (>5k), moderate (1k–5k), lower (<1k) */
-export type ReviewBarrier = "strong" | "moderate" | "lower";
+/** Review barrier: STRONG (>5k), MODERATE (1k–5k), LOW (<1k) */
+export type ReviewBarrier = "STRONG" | "MODERATE" | "LOW";
 
 export type TopCompetitor = {
   position: number;
@@ -96,6 +99,15 @@ function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 !== 0 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+}
+
+function priceCompressionVsDispersion(prices: number[]): string {
+  if (prices.length < 2) return "N/A";
+  const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+  const variance = prices.reduce((s, p) => s + (p - avg) ** 2, 0) / prices.length;
+  const stdDev = Math.sqrt(variance);
+  const cv = avg > 0 ? (stdDev / avg) * 100 : 0;
+  return cv < 15 ? "compressed (prices clustered)" : cv > 35 ? "dispersed (wide range)" : "moderate spread";
 }
 
 function dominantPriceBand(prices: number[]): string {
@@ -273,14 +285,14 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
       reviewCounts.length > 0
         ? `${reviewCounts.filter((c) => c >= 5000).length} with 5k+ reviews, ${reviewCounts.filter((c) => c >= 1000 && c < 5000).length} with 1k–5k, ${reviewCounts.filter((c) => c < 1000).length} under 1k`
         : "N/A";
-    const adPresenceDesc =
-      advertisingPressure >= 0.6 ? "high" : advertisingPressure >= 0.3 ? "medium" : "low";
-    const advertisingEnvironment = adPresenceDesc as "low" | "medium" | "high";
+    const advertisingEnvironment: "LOW" | "MEDIUM" | "HIGH" =
+      advertisingPressure > 0.4 ? "HIGH" : advertisingPressure >= 0.2 ? "MEDIUM" : "LOW";
     const brandDistDesc = dominantBrand
       ? `one brand dominates (${dominantBrandName ?? "unknown"})`
       : `${distinctBrands} distinct brands, fragmented`;
     const review_barrier: ReviewBarrier =
-      avgReviews > 5000 ? "strong" : avgReviews >= 1000 ? "moderate" : "lower";
+      avgReviews > 5000 ? "STRONG" : avgReviews >= 1000 ? "MODERATE" : "LOW";
+    const priceCompression = priceCompressionVsDispersion(pricesForMedian);
 
     const painPoints = extractPainPointsFromTitles(topTitles);
 
@@ -302,6 +314,7 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
         average_price: avgPrice,
         median_price: medianPrice,
         dominant_price_band: dominantBand,
+        price_compression_vs_dispersion: priceCompression,
       },
       review_structure: {
         average_reviews: avgReviews,
@@ -319,7 +332,7 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
         avg_price: avgPrice,
         avg_reviews: avgReviews,
         brand_distribution: brandDistDesc,
-        ad_presence: adPresenceDesc,
+        ad_presence: advertisingEnvironment.toLowerCase(),
         advertising_environment: advertisingEnvironment,
       },
       review_barrier,

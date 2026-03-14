@@ -12,7 +12,8 @@ export type MarketSnapshotInput = {
   avg_reviews: number;
   brand_distribution: string;
   ad_presence: string;
-  advertising_environment?: "low" | "medium" | "high";
+  /** LOW <20% | MEDIUM 20–40% | HIGH >40% sponsored */
+  advertising_environment?: "LOW" | "MEDIUM" | "HIGH";
 };
 
 /** Pricing structure from SERP (top 30) */
@@ -20,6 +21,7 @@ export type PricingStructureInput = {
   average_price: number;
   median_price: number;
   dominant_price_band: string;
+  price_compression_vs_dispersion?: string;
 };
 
 /** Review structure from SERP (top 30) */
@@ -68,14 +70,16 @@ export type AIInsightsInput = {
   estimated_margin?: number;
   /** Estimated ROI % */
   estimated_roi?: number;
-  /** Top competitors for context (title, price, reviews, brand, sponsored) */
-  topCompetitors?: { position: number; title: string; price: number; ratingsTotal: number; brand?: string; sponsored?: boolean }[];
+  /** Top competitors for context (title, price, reviews, rating, brand, sponsored) */
+  topCompetitors?: { position: number; title: string; price: number; ratingsTotal: number; rating?: number; brand?: string; sponsored?: boolean }[];
   /** Pricing structure (avg, median, dominant band) from top 30 */
   pricing_structure?: PricingStructureInput;
   /** Review structure (avg, median, distribution) from top 30 */
   review_structure?: ReviewStructureInput;
-  /** strong | moderate | lower — review barrier for this SERP */
-  review_barrier?: "strong" | "moderate" | "lower";
+  /** STRONG >5k | MODERATE 1k–5k | LOW <1k */
+  review_barrier?: "STRONG" | "MODERATE" | "LOW";
+  /** Inferred pain points from competitor titles (for review intelligence & differentiation gap) */
+  painPoints?: string[];
 };
 
 export type AIInsights = {
@@ -100,48 +104,48 @@ export type AIInsights = {
   honeymoon_roadmap?: string[];
 };
 
-const SYSTEM_PROMPT = `You are a senior Amazon product strategist with 30 years of experience launching products, running PPC campaigns, and analyzing marketplace competition. You analyze the real first-page market (top 30 listings) and the user's product inputs to produce strategic, data-grounded insights.
+const SYSTEM_PROMPT = `You are SellerMentor's core intelligence engine: a senior Amazon operator with 30 years of experience launching and scaling products. Your role is to analyze the FULL FIRST PAGE of Amazon search results (top 30 listings) and the user's product inputs to produce deep, accurate strategic insights. The result must feel like expert consulting, not a generic AI report.
 
-DATA YOU RECEIVE:
-- User inputs: main keyword, selling price, unit cost, shipping cost, differentiation description, product complexity.
-- Top 30 listings from Amazon first page for that keyword (organic + sponsored): titles, brands, prices, ratings, review counts, sponsored flag.
-- Computed market structures: pricing (avg, median, dominant price band), review structure (avg, median, distribution), brand distribution, advertising pressure (sponsored ratio), review barrier (strong/moderate/lower), product-vs-market (price position, differentiation strength, product risk).
+CORE INTELLIGENCE PRINCIPLES
+Reason using real market structure signals only. Every insight must consider and can reference:
+- Price band structure (average, median, dominant band, compression vs dispersion)
+- Review barrier (LOW <1k | MODERATE 1k–5k | STRONG >5k)
+- Brand distribution (distinct brands, dominant brand ≥40%)
+- Sponsored ad density (LOW <20% | MEDIUM 20–40% | HIGH >40%)
+- User differentiation and product complexity
+- Unit economics (margin, COGS, shipping, PPC assumptions)
 
-QUALITY RULES — insights MUST:
-- Reference real market data from the 30 listings (e.g. "Top listings average 18k reviews", "Dominant band $30–50", "40% sponsored").
-- Reference review barriers and price bands explicitly.
-- Connect every point directly to the user's product (their price, differentiation, complexity, margin).
-- Be concise but strategic; Amazon-specific. No generic advice.
+GOOD: "Top listings average 9,600 reviews, creating a strong review moat. New entrants must acquire reviews quickly to compete in PPC auctions."
+BAD: "Competition is strong in this niche." Generic insights are not allowed.
 
-GOOD example: "Top listings average 18k reviews — a strong social proof moat that requires aggressive Vine enrollment and PPC support."
-BAD example: "Competition is strong so marketing is important."
+MARKET STRUCTURE — Interpret the top 30 and use:
+1) Pricing: average, median, dominant band, price compression vs dispersion.
+2) Reviews: average, median, distribution summary, review barrier (LOW/MODERATE/STRONG).
+3) Brand: distinct brands, dominant brand detection (≥40%), fragmentation vs concentration.
+4) Advertising pressure: from sponsored share (LOW/MEDIUM/HIGH as above).
+
+COMPETITOR SNAPSHOT — Use the top 5 listings to understand price positioning, brand presence, review strength, and rating quality. Reference competitor patterns in your reasoning (e.g. "Most leading listings price between $55–$70 with over 10k reviews.").
+
+REVIEW INTELLIGENCE — Infer customer pain points from competitor titles and any provided painPoints. Identify patterns: durability, fit, installation, material quality. Explain how solving these creates differentiation.
+
+DIFFERENTIATION GAP — Compare user differentiation vs competitor positioning. Detect ONE realistic opportunity (e.g. reinforced durability, use-case targeting, premium material proof, warranty). Tie it to market signals.
+
+COMPETITION REALITY — Determine difficulty using review barrier, ad density, brand dominance, price concentration. Explain WHY entry is difficult or feasible.
+
+PROFIT REALITY — Explain using selling price, FBA fees, COGS, shipping, PPC. Address real risks: high PPC pressure, margin compression, return risk, coupon dependency.
+
+ENTRY STRATEGY — Think like a launch strategist. Connect review barrier, PPC environment, price position, margin. Examples: Vine reviews, long-tail exact match first, price slightly under dominant band, coupons to offset review gap. No generic "improve marketing" advice.
+
+DECISION LOGIC — Support GO/NO-GO with market evidence. Explain why the decision was reached, the biggest barriers, and what would change the decision.
+
+OUTPUT STYLE — Clear, strategic, data-driven, short but powerful. Each insight must reference real market signals when possible.
 
 Return JSON with these exact keys:
 
-OVERVIEW (Decision layer):
-- expert_insight (string): Real market reality and how it affects the user's product. Max 3 sentences. Cite top-30 data.
-- what_most_sellers_miss (string): One hidden structural dynamic in the niche. One short paragraph.
-- why_this_decision (array of exactly 3 strings): Exactly 3 bullets. Format each as "Observation → implication." Example: "Average reviews in top listings exceed 9,000 → new listings struggle to gain visibility."
-- what_would_make_go (array of 3 strings, ONLY when verdict is NO_GO): Three conditions that would change NO-GO into GO. Short and specific.
-
-DEEP DIVE (Market intelligence):
-- competition_reality (array of strings): How listings actually compete (reviews, pricing, positioning). 3–5 bullets. Reference the 30 listings.
-- opportunity (string): The single most realistic differentiation opportunity for the user's product. One short paragraph. One opportunity only.
-- profit_reality (string): Whether the user's projected profit is realistic given market conditions. Reference margin and PPC. 2–3 sentences.
-- entry_reality (string): What makes entering this niche difficult or feasible. 2–3 sentences.
-- market_domination_analysis (string): Whether the niche is controlled by one brand or many. One short paragraph.
-
-EXECUTION:
-- alternative_keywords (array): Maximum 3 keyword phrases. Format: keyword only, or "keyword (est. CPC $X–$Y)" if you can infer from market.
-- execution_plan (array): 30-day launch plan. Group into Week 1, Week 2, Week 3–4. Each item one short sentence. 4–6 items total.
-- early_strategy_guidance (string): One short strategic recommendation. 1–2 sentences.
-
-LEGACY (keep for compatibility):
-- decision_conversation: Same as why_this_decision.
-- review_intelligence: 3 items — pain points and what buyers love from competitor titles.
-- opportunities: 3 items — product/positioning gaps.
-- differentiation: 3 items — concrete ideas for this niche.
-- risks: 3 items — key risks.
+OVERVIEW: expert_insight (string), what_most_sellers_miss (string), why_this_decision (array of exactly 3 strings, "Observation → implication"), what_would_make_go (array of 3 strings, ONLY when verdict is NO_GO).
+DEEP DIVE: competition_reality (array, 3–5 bullets), opportunity (string, ONE realistic opportunity), profit_reality (string), entry_reality (string), market_domination_analysis (string).
+EXECUTION: alternative_keywords (array, max 3), execution_plan (array, 30-day plan: Week 1 / Week 2 / Week 3–4), early_strategy_guidance (string).
+LEGACY: decision_conversation, review_intelligence (3 items: pain points + what buyers love), opportunities (3), differentiation (3), risks (3).
 
 Return valid JSON only. No markdown code fences.`;
 
@@ -171,7 +175,8 @@ function buildUserPrompt(input: AIInsightsInput): string {
     lines.push(
       "",
       "Pricing structure (from top 30):",
-      `- Average price: $${input.pricing_structure.average_price.toFixed(2)}, median: $${input.pricing_structure.median_price.toFixed(2)}, dominant band: ${input.pricing_structure.dominant_price_band}`
+      `- Average: $${input.pricing_structure.average_price.toFixed(2)}, median: $${input.pricing_structure.median_price.toFixed(2)}, dominant band: ${input.pricing_structure.dominant_price_band}`,
+      ...(input.pricing_structure.price_compression_vs_dispersion ? [`- Price structure: ${input.pricing_structure.price_compression_vs_dispersion}`] : [])
     );
   }
   if (input.review_structure) {
@@ -183,7 +188,7 @@ function buildUserPrompt(input: AIInsightsInput): string {
     );
   }
   if (input.review_barrier) {
-    lines.push("", `Review barrier (for this SERP): ${input.review_barrier} (strong = >5k avg, moderate = 1k–5k, lower = <1k).`);
+    lines.push("", `Review barrier: ${input.review_barrier} (LOW <1k | MODERATE 1k–5k | STRONG >5k).`);
   }
   if (input.market_snapshot) {
     lines.push(
@@ -191,8 +196,11 @@ function buildUserPrompt(input: AIInsightsInput): string {
       "Market snapshot:",
       `- Avg price: $${input.market_snapshot.avg_price.toFixed(2)}, avg reviews: ${input.market_snapshot.avg_reviews.toLocaleString()}`,
       `- Brand distribution: ${input.market_snapshot.brand_distribution}`,
-      `- Advertising environment: ${input.market_snapshot.advertising_environment ?? input.market_snapshot.ad_presence}`
+      `- Advertising pressure: ${input.market_snapshot.advertising_environment ?? input.market_snapshot.ad_presence} (LOW <20% | MEDIUM 20–40% | HIGH >40% sponsored)`
     );
+  }
+  if (input.painPoints?.length) {
+    lines.push("", "Inferred pain points from competitor titles (use for review intelligence and differentiation gap):", input.painPoints.join(", "));
   }
 
   if (input.product_vs_market) {
@@ -217,17 +225,24 @@ function buildUserPrompt(input: AIInsightsInput): string {
   );
 
   if (input.topCompetitors?.length) {
+    const top5 = input.topCompetitors.slice(0, 5);
     lines.push(
       "",
-      "Top 30 SERP sample (position, price, reviews, brand, sponsored, title):",
+      "COMPETITOR SNAPSHOT — Top 5 (use for price positioning, brand presence, review strength, rating quality):",
+      ...top5.map(
+        (c) =>
+          `#${c.position} $${c.price.toFixed(2)} | ${c.ratingsTotal} reviews | ${c.rating != null ? c.rating + "★" : "—"} | ${c.brand ?? "—"} | ${c.sponsored ? "sponsored" : "organic"} | ${(c.title || "").slice(0, 50)}…`
+      ),
+      "",
+      "Full SERP sample (top 20):",
       ...input.topCompetitors.slice(0, 20).map(
         (c) =>
-          `#${c.position} $${c.price.toFixed(2)} | ${c.ratingsTotal} reviews | ${c.brand ?? "—"} ${c.sponsored ? "sponsored" : "organic"} | ${(c.title || "").slice(0, 55)}…`
+          `#${c.position} $${c.price.toFixed(2)} | ${c.ratingsTotal} reviews | ${c.brand ?? "—"} ${c.sponsored ? "sponsored" : "organic"} | ${(c.title || "").slice(0, 50)}…`
       )
     );
   }
 
-  lines.push("", "Analyze the user's product against this first-page market. Return JSON with all required keys. Reference the top 30 listings, price bands, and review barrier in your insights.");
+  lines.push("", "Analyze the user's product against this first-page market. Use real market structure signals in every insight. Return JSON with all required keys.");
   return lines.join("\n");
 }
 

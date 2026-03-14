@@ -23,11 +23,11 @@ type AnalyzeInput = {
     topCompetitors?: { position: number; title: string; price: number; ratingsTotal: number; rating?: number; brand?: string; sponsored?: boolean }[];
     painPoints?: string[];
     competitorsWithOver1000Reviews?: number;
-    market_snapshot?: { avg_price: number; avg_reviews: number; brand_distribution: string; ad_presence: string; advertising_environment?: "low" | "medium" | "high" };
+    market_snapshot?: { avg_price: number; avg_reviews: number; brand_distribution: string; ad_presence: string; advertising_environment?: "LOW" | "MEDIUM" | "HIGH" };
     advertising_pressure?: number;
-    pricing_structure?: { average_price: number; median_price: number; dominant_price_band: string };
+    pricing_structure?: { average_price: number; median_price: number; dominant_price_band: string; price_compression_vs_dispersion?: string };
     review_structure?: { average_reviews: number; median_reviews: number; review_distribution: string; distribution_summary: string };
-    review_barrier?: "strong" | "moderate" | "lower";
+    review_barrier?: "STRONG" | "MODERATE" | "LOW";
   } | null;
 };
 
@@ -214,18 +214,18 @@ export async function analyzeProduct(input: AnalyzeInput) {
           : `below market — User price is below the dominant band; margin pressure or perceived quality risk.`
       : "No SERP data; price position vs market unknown.",
     review_barrier: hasRealMarketData
-      ? avgReviews >= 5000
-        ? `Strong: top listings average ${avgReviews.toLocaleString()}+ reviews; new listings struggle for visibility.`
+      ? avgReviews > 5000
+        ? `STRONG: top listings average ${avgReviews.toLocaleString()}+ reviews; new listings struggle for visibility.`
         : avgReviews >= 1000
-          ? `Moderate: ${avgReviews.toLocaleString()} avg reviews; achievable with budget and time.`
-          : `Lower barrier: ${avgReviews.toLocaleString()} avg reviews; entry more feasible.`
+          ? `MODERATE: ${avgReviews.toLocaleString()} avg reviews; achievable with budget and time.`
+          : `LOW: ${avgReviews.toLocaleString()} avg reviews; entry more feasible.`
       : "Review barrier unknown without SERP data.",
     advertising_environment: hasRealMarketData
-      ? advertisingPressure >= 0.5
-        ? `High PPC competition: ${(advertisingPressure * 100).toFixed(0)}% of first-page results are sponsored.`
-        : advertisingPressure >= 0.25
-          ? `Moderate ad presence; expect meaningful CPC.`
-          : `Lower sponsored share; organic opportunity exists.`
+      ? advertisingPressure > 0.4
+        ? `HIGH: ${(advertisingPressure * 100).toFixed(0)}% of first-page results sponsored; expect strong PPC competition.`
+        : advertisingPressure >= 0.2
+          ? `MEDIUM: meaningful ad presence; plan for CPC.`
+          : `LOW: organic opportunity exists.`
       : "Ad pressure unknown without SERP data.",
     differentiation_strength: differentiationInput.length >= 50 && mentionsPainPoint
       ? "Strong: user described differentiation that aligns with market pain points."
@@ -277,9 +277,11 @@ export async function analyzeProduct(input: AnalyzeInput) {
       title: c.title,
       price: c.price,
       ratingsTotal: c.ratingsTotal,
+      rating: "rating" in c ? (c as { rating?: number }).rating : undefined,
       brand: "brand" in c ? (c as { brand?: string }).brand : undefined,
       sponsored: "sponsored" in c ? (c as { sponsored?: boolean }).sponsored : undefined,
     })),
+    painPoints: painPoints.length > 0 ? painPoints : undefined,
   };
   const aiInsights = await getAIInsights(aiInput);
 
