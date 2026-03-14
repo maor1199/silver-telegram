@@ -23,8 +23,11 @@ type AnalyzeInput = {
     topCompetitors?: { position: number; title: string; price: number; ratingsTotal: number; rating?: number; brand?: string; sponsored?: boolean }[];
     painPoints?: string[];
     competitorsWithOver1000Reviews?: number;
-    market_snapshot?: { avg_price: number; avg_reviews: number; brand_distribution: string; ad_presence: string };
+    market_snapshot?: { avg_price: number; avg_reviews: number; brand_distribution: string; ad_presence: string; advertising_environment?: "low" | "medium" | "high" };
     advertising_pressure?: number;
+    pricing_structure?: { average_price: number; median_price: number; dominant_price_band: string };
+    review_structure?: { average_reviews: number; median_reviews: number; review_distribution: string; distribution_summary: string };
+    review_barrier?: "strong" | "moderate" | "lower";
   } | null;
 };
 
@@ -205,10 +208,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const productVsMarket = {
     price_position: hasRealMarketData
       ? pricePositionInside
-        ? `User price $${sellingPrice.toFixed(2)} is inside the dominant price band ($${priceBandLow.toFixed(0)}–$${priceBandHigh.toFixed(0)}).`
+        ? `within dominant band — User price $${sellingPrice.toFixed(2)} is inside the dominant price band ($${priceBandLow.toFixed(0)}–$${priceBandHigh.toFixed(0)}).`
         : sellingPrice > priceBandHigh
-          ? `User price is above the dominant band; differentiation must justify premium.`
-          : `User price is below the dominant band; margin pressure or perceived quality risk.`
+          ? `premium above market — User price is above the dominant band; differentiation must justify premium.`
+          : `below market — User price is below the dominant band; margin pressure or perceived quality risk.`
       : "No SERP data; price position vs market unknown.",
     review_barrier: hasRealMarketData
       ? avgReviews >= 5000
@@ -259,8 +262,12 @@ export async function analyzeProduct(input: AnalyzeInput) {
           avg_reviews: market.market_snapshot.avg_reviews,
           brand_distribution: market.market_snapshot.brand_distribution,
           ad_presence: market.market_snapshot.ad_presence,
+          advertising_environment: market.market_snapshot.advertising_environment,
         }
       : undefined,
+    pricing_structure: market?.pricing_structure,
+    review_structure: market?.review_structure,
+    review_barrier: market?.review_barrier,
     product_vs_market: productVsMarket,
     landed_cost: cogs,
     estimated_margin: estimatedMarginPercent,
@@ -410,10 +417,12 @@ export async function analyzeProduct(input: AnalyzeInput) {
     `Step 2 (Day 8–20): Aggressive Exact Match — Run PPC on these 3 high-intent keywords: ${highIntentKeywords.join(", ")} to build rank fast.`,
     "Step 3 (Day 21–30): Conversion Boost — Apply a 15–20% 'Green Coupon' to offset your lack of reviews and steal clicks from incumbents.",
   ];
-  const honeymoonRoadmap = (aiInsights?.honeymoon_roadmap?.length ? aiInsights.honeymoon_roadmap : null) ?? honeymoonRoadmapDefault;
+  const executionFromAi = aiInsights?.execution_plan?.length ? aiInsights.execution_plan : null;
+  const honeymoonFromAi = aiInsights?.honeymoon_roadmap?.length ? aiInsights.honeymoon_roadmap : null;
+  const honeymoonRoadmap = honeymoonFromAi ?? executionFromAi ?? honeymoonRoadmapDefault;
   const highBarrierStep = "High Barrier to Entry detected. Do not launch without a minimum $15,000 launch budget for PPC and Vine reviews.";
   const ppcCannibalizationStep = "PPC Cannibalization Risk: Your ad costs will likely exceed 60% of your revenue during launch. You MUST have a backend funnel or high LTV (Lifetime Value) to survive this.";
-  const execution_plan = (aiInsights?.execution_plan?.length ? aiInsights.execution_plan : null)
+  const execution_plan = executionFromAi
     ?? [
         ...(avgReviews > 10000 ? [highBarrierStep] : []),
         ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),

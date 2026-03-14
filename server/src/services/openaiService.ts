@@ -12,6 +12,22 @@ export type MarketSnapshotInput = {
   avg_reviews: number;
   brand_distribution: string;
   ad_presence: string;
+  advertising_environment?: "low" | "medium" | "high";
+};
+
+/** Pricing structure from SERP (top 30) */
+export type PricingStructureInput = {
+  average_price: number;
+  median_price: number;
+  dominant_price_band: string;
+};
+
+/** Review structure from SERP (top 30) */
+export type ReviewStructureInput = {
+  average_reviews: number;
+  median_reviews: number;
+  review_distribution: string;
+  distribution_summary: string;
 };
 
 /** Product-vs-market comparison for the analyst */
@@ -54,6 +70,12 @@ export type AIInsightsInput = {
   estimated_roi?: number;
   /** Top competitors for context (title, price, reviews, brand, sponsored) */
   topCompetitors?: { position: number; title: string; price: number; ratingsTotal: number; brand?: string; sponsored?: boolean }[];
+  /** Pricing structure (avg, median, dominant band) from top 30 */
+  pricing_structure?: PricingStructureInput;
+  /** Review structure (avg, median, distribution) from top 30 */
+  review_structure?: ReviewStructureInput;
+  /** strong | moderate | lower — review barrier for this SERP */
+  review_barrier?: "strong" | "moderate" | "lower";
 };
 
 export type AIInsights = {
@@ -78,37 +100,44 @@ export type AIInsights = {
   honeymoon_roadmap?: string[];
 };
 
-const SYSTEM_PROMPT = `You are an experienced Amazon product strategist. You analyze real SERP and unit-economic data and answer specific analytical questions. Your role is to explain market reality and how it affects the USER'S product — not generic advice.
+const SYSTEM_PROMPT = `You are a senior Amazon product strategist with 30 years of experience launching products, running PPC campaigns, and analyzing marketplace competition. You analyze the real first-page market (top 30 listings) and the user's product inputs to produce strategic, data-grounded insights.
 
-RULES:
-- Reference real market signals (prices, review counts, sponsored ratio, brand distribution) in every insight.
-- Relate every insight directly to the user's product (their price, differentiation, complexity).
-- Be concise: 1–3 sentences per insight. No long paragraphs.
-- Avoid generic statements. BAD: "This market is competitive." GOOD: "Top listings average over 8,000 reviews, creating a strong visibility barrier for new sellers."
-- Write like a senior operator who has launched in similar niches.
+DATA YOU RECEIVE:
+- User inputs: main keyword, selling price, unit cost, shipping cost, differentiation description, product complexity.
+- Top 30 listings from Amazon first page for that keyword (organic + sponsored): titles, brands, prices, ratings, review counts, sponsored flag.
+- Computed market structures: pricing (avg, median, dominant price band), review structure (avg, median, distribution), brand distribution, advertising pressure (sponsored ratio), review barrier (strong/moderate/lower), product-vs-market (price position, differentiation strength, product risk).
+
+QUALITY RULES — insights MUST:
+- Reference real market data from the 30 listings (e.g. "Top listings average 18k reviews", "Dominant band $30–50", "40% sponsored").
+- Reference review barriers and price bands explicitly.
+- Connect every point directly to the user's product (their price, differentiation, complexity, margin).
+- Be concise but strategic; Amazon-specific. No generic advice.
+
+GOOD example: "Top listings average 18k reviews — a strong social proof moat that requires aggressive Vine enrollment and PPC support."
+BAD example: "Competition is strong so marketing is important."
 
 Return JSON with these exact keys:
 
 OVERVIEW (Decision layer):
-- expert_insight (string): Real market reality and how it affects the user's product. Max 3 sentences.
+- expert_insight (string): Real market reality and how it affects the user's product. Max 3 sentences. Cite top-30 data.
 - what_most_sellers_miss (string): One hidden structural dynamic in the niche. One short paragraph.
-- why_this_decision (array of exactly 3 strings): Three observations explaining the verdict. Format each as "Observation → implication." Example: "Average reviews in top listings exceed 9,000 → new listings struggle to gain visibility."
+- why_this_decision (array of exactly 3 strings): Exactly 3 bullets. Format each as "Observation → implication." Example: "Average reviews in top listings exceed 9,000 → new listings struggle to gain visibility."
 - what_would_make_go (array of 3 strings, ONLY when verdict is NO_GO): Three conditions that would change NO-GO into GO. Short and specific.
 
 DEEP DIVE (Market intelligence):
-- competition_reality (array of strings): How listings actually compete in this niche (reviews, pricing, positioning). 3–5 bullets.
-- opportunity (string): The single most realistic differentiation opportunity for the user's product. One short paragraph. Do NOT list multiple ideas.
-- profit_reality (string): Whether the user's projected profit is realistic given market conditions. Reference their margin and PPC assumptions. 2–3 sentences.
-- entry_reality (string): What makes entering this niche difficult or feasible. Explain the reasoning; avoid labels like "HIGH" or "LOW". 2–3 sentences.
+- competition_reality (array of strings): How listings actually compete (reviews, pricing, positioning). 3–5 bullets. Reference the 30 listings.
+- opportunity (string): The single most realistic differentiation opportunity for the user's product. One short paragraph. One opportunity only.
+- profit_reality (string): Whether the user's projected profit is realistic given market conditions. Reference margin and PPC. 2–3 sentences.
+- entry_reality (string): What makes entering this niche difficult or feasible. 2–3 sentences.
 - market_domination_analysis (string): Whether the niche is controlled by one brand or many. One short paragraph.
 
 EXECUTION:
-- alternative_keywords (array): Maximum 3 keyword angles. Only the keyword text, e.g. "cat bed for large cats". No CPC, no numbers.
-- execution_plan (array): 30-day launch plan. Group into 3 phases: items for Week 1, then Week 2, then Week 3–4. Each item one short sentence. 4–6 items total.
-- early_strategy_guidance (string): One short strategic recommendation on how to approach this niche. 1–2 sentences.
+- alternative_keywords (array): Maximum 3 keyword phrases. Format: keyword only, or "keyword (est. CPC $X–$Y)" if you can infer from market.
+- execution_plan (array): 30-day launch plan. Group into Week 1, Week 2, Week 3–4. Each item one short sentence. 4–6 items total.
+- early_strategy_guidance (string): One short strategic recommendation. 1–2 sentences.
 
 LEGACY (keep for compatibility):
-- decision_conversation: Same as why_this_decision (array of 3–5 strings).
+- decision_conversation: Same as why_this_decision.
 - review_intelligence: 3 items — pain points and what buyers love from competitor titles.
 - opportunities: 3 items — product/positioning gaps.
 - differentiation: 3 items — concrete ideas for this niche.
@@ -118,7 +147,7 @@ Return valid JSON only. No markdown code fences.`;
 
 function buildUserPrompt(input: AIInsightsInput): string {
   const lines: string[] = [
-    "=== USER PRODUCT ===",
+    "=== USER PRODUCT (analyze this) ===",
     `Keyword (market): "${input.keyword}"`,
     `Target selling price: $${input.sellingPrice}`,
     `Unit cost (COGS): $${input.unitCost ?? "?"} | Shipping to FBA: $${input.shippingCost ?? "?"}`,
@@ -133,18 +162,36 @@ function buildUserPrompt(input: AIInsightsInput): string {
     "=== VERDICT ===",
     `Verdict: ${input.verdict}`,
     "",
-    "=== MARKET (SERP) ===",
+    "=== MARKET — TOP 30 LISTINGS (first page, organic + sponsored) ===",
     `Avg price: $${input.avgPrice.toFixed(2)} | Avg reviews: ${input.avgReviews.toLocaleString()} | Avg rating: ${input.avgRating}★`,
     `Brand distribution: ${input.dominantBrand ? "one or few brands dominate" : "fragmented"}. New sellers in top 10: ${input.newSellersInTop10 ?? 0}, top 20: ${input.newSellersInTop20 ?? 0}.`,
   ];
 
+  if (input.pricing_structure) {
+    lines.push(
+      "",
+      "Pricing structure (from top 30):",
+      `- Average price: $${input.pricing_structure.average_price.toFixed(2)}, median: $${input.pricing_structure.median_price.toFixed(2)}, dominant band: ${input.pricing_structure.dominant_price_band}`
+    );
+  }
+  if (input.review_structure) {
+    lines.push(
+      "",
+      "Review structure (from top 30):",
+      `- Average reviews: ${input.review_structure.average_reviews.toLocaleString()}, median: ${input.review_structure.median_reviews.toLocaleString()}`,
+      `- Distribution: ${input.review_structure.review_distribution}. Summary: ${input.review_structure.distribution_summary}`
+    );
+  }
+  if (input.review_barrier) {
+    lines.push("", `Review barrier (for this SERP): ${input.review_barrier} (strong = >5k avg, moderate = 1k–5k, lower = <1k).`);
+  }
   if (input.market_snapshot) {
     lines.push(
       "",
       "Market snapshot:",
       `- Avg price: $${input.market_snapshot.avg_price.toFixed(2)}, avg reviews: ${input.market_snapshot.avg_reviews.toLocaleString()}`,
       `- Brand distribution: ${input.market_snapshot.brand_distribution}`,
-      `- Ad presence: ${input.market_snapshot.ad_presence}`
+      `- Advertising environment: ${input.market_snapshot.advertising_environment ?? input.market_snapshot.ad_presence}`
     );
   }
 
@@ -172,15 +219,15 @@ function buildUserPrompt(input: AIInsightsInput): string {
   if (input.topCompetitors?.length) {
     lines.push(
       "",
-      "Sample SERP (position, title, price, reviews, brand, sponsored):",
-      ...input.topCompetitors.slice(0, 10).map(
+      "Top 30 SERP sample (position, price, reviews, brand, sponsored, title):",
+      ...input.topCompetitors.slice(0, 20).map(
         (c) =>
-          `#${c.position} $${c.price.toFixed(2)} | ${c.ratingsTotal} reviews | ${c.brand ?? "—"} ${c.sponsored ? "| sponsored" : ""} | ${(c.title || "").slice(0, 60)}…`
+          `#${c.position} $${c.price.toFixed(2)} | ${c.ratingsTotal} reviews | ${c.brand ?? "—"} ${c.sponsored ? "sponsored" : "organic"} | ${(c.title || "").slice(0, 55)}…`
       )
     );
   }
 
-  lines.push("", "Answer the analytical questions in the system prompt. Return JSON with all required keys.");
+  lines.push("", "Analyze the user's product against this first-page market. Return JSON with all required keys. Reference the top 30 listings, price bands, and review barrier in your insights.");
   return lines.join("\n");
 }
 
@@ -225,7 +272,7 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       opportunities: toArray(parsed.opportunities).slice(0, 3),
       differentiation: toArray(parsed.differentiation).slice(0, 3),
       risks: toArray(parsed.risks).slice(0, 3),
-      alternative_keywords: toArray(parsed.alternative_keywords).slice(0, 5),
+      alternative_keywords: toArray(parsed.alternative_keywords).slice(0, 3),
       what_would_make_go:
         input.verdict === "NO_GO" ? toArray(parsed.what_would_make_go).slice(0, 3) : undefined,
       execution_plan: toArray(parsed.execution_plan).slice(0, 8),

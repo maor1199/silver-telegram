@@ -28,7 +28,9 @@ export type PricingStructure = {
 
 export type ReviewStructure = {
   average_reviews: number;
+  median_reviews: number;
   review_distribution: string;
+  distribution_summary: string;
 };
 
 export type BrandDistribution = {
@@ -42,7 +44,11 @@ export type MarketSnapshot = {
   avg_reviews: number;
   brand_distribution: string;
   ad_presence: string;
+  advertising_environment: "low" | "medium" | "high";
 };
+
+/** Review barrier: strong (>5k), moderate (1k–5k), lower (<1k) */
+export type ReviewBarrier = "strong" | "moderate" | "lower";
 
 export type TopCompetitor = {
   position: number;
@@ -75,6 +81,8 @@ export type MarketDataResult = {
   brand_distribution?: BrandDistribution;
   advertising_pressure?: number;
   market_snapshot?: MarketSnapshot;
+  /** strong (>5k), moderate (1k–5k), lower (<1k) */
+  review_barrier?: ReviewBarrier;
 };
 
 function parsePrice(value: unknown): number {
@@ -159,6 +167,7 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
         amazon_domain: domain,
         search_term: keyword,
         number_of_results: SERP_SIZE,
+        page: 1,
       },
       timeout: 20000,
       validateStatus: (s) => s === 200,
@@ -251,6 +260,7 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
       ? Object.entries(brandCounts).find(([, c]) => c === maxBrandCount)?.[0]
       : undefined;
 
+    const medianReviews = median(reviewCounts);
     const reviewDistDesc =
       avgReviews >= 10000
         ? "very high (10k+ avg)"
@@ -259,11 +269,18 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
           : avgReviews >= 500
             ? "medium (500–3k)"
             : "lower (<500)";
+    const distributionSummary =
+      reviewCounts.length > 0
+        ? `${reviewCounts.filter((c) => c >= 5000).length} with 5k+ reviews, ${reviewCounts.filter((c) => c >= 1000 && c < 5000).length} with 1k–5k, ${reviewCounts.filter((c) => c < 1000).length} under 1k`
+        : "N/A";
     const adPresenceDesc =
       advertisingPressure >= 0.6 ? "high" : advertisingPressure >= 0.3 ? "medium" : "low";
+    const advertisingEnvironment = adPresenceDesc as "low" | "medium" | "high";
     const brandDistDesc = dominantBrand
       ? `one brand dominates (${dominantBrandName ?? "unknown"})`
       : `${distinctBrands} distinct brands, fragmented`;
+    const review_barrier: ReviewBarrier =
+      avgReviews > 5000 ? "strong" : avgReviews >= 1000 ? "moderate" : "lower";
 
     const painPoints = extractPainPointsFromTitles(topTitles);
 
@@ -288,7 +305,9 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
       },
       review_structure: {
         average_reviews: avgReviews,
+        median_reviews: medianReviews,
         review_distribution: reviewDistDesc,
+        distribution_summary: distributionSummary,
       },
       brand_distribution: {
         distinct_brands: distinctBrands,
@@ -301,7 +320,9 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
         avg_reviews: avgReviews,
         brand_distribution: brandDistDesc,
         ad_presence: adPresenceDesc,
+        advertising_environment: advertisingEnvironment,
       },
+      review_barrier,
     };
   } catch (err) {
     console.warn("[marketDataProvider] Rainforest fetch failed:", err instanceof Error ? err.message : err);
