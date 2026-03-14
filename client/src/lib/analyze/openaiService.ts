@@ -138,20 +138,29 @@ JSON response schema (include these keys; advisor_implication fields are strings
 why_this_decision, advisor_implication_why_this_decision "", expert_insight, advisor_implication_expert_insight "", what_most_sellers_miss, advisor_implication_what_most_sellers_miss "", advisor_implication_market_signals "", entry_reality, advisor_implication_entry_reality "", market_domination_analysis, advisor_implication_market_domination_analysis "", competition_reality, advisor_implication_competition_reality "", opportunity, advisor_implication_opportunity "", early_strategy_guidance, advisor_implication_early_strategy_guidance "".
 
 ADVISOR IMPLICATION (required for every section below):
-For every section, advisor_implication must NOT be an observation. It must:
-1. Use the specific numbers already in the analysis — never speak in generals.
-2. Tell the seller exactly what will happen to their money or rank if they ignore this.
-3. End with one concrete action — not a suggestion, a directive.
+For every advisor_implication, think like a senior Amazon consultant writing to a friend who is about to invest $10,000. Be direct, use the actual numbers, no hedging.
 
-Apply this standard to every advisor_implication field: advisor_implication_why_this_decision, advisor_implication_expert_insight, advisor_implication_what_most_sellers_miss, advisor_implication_market_signals, advisor_implication_entry_reality, advisor_implication_market_domination_analysis, advisor_implication_competition_reality, advisor_implication_opportunity, advisor_implication_early_strategy_guidance.
+For each section, use the specific numbers you have access to and answer the question below.
 
-Examples (match this level of specificity and directive):
+WHY_THIS_DECISION — Use: netMargin, avgReviews, launchCapital, ppcPerUnit. Question: "Is this fixable or not, and what does it cost them if they ignore it?"
 
-WHAT MOST SELLERS MISS — Instead of: "Most beginners underestimate this." Write: "[Brand X] has held top 3 for 18+ months with 1,400+ reviews. You are not disrupting them — you are finding the 5 weak listings and targeting their exact keywords on day one."
+EXPERT_INSIGHT — Use: avgPrice, sellingPrice, sponsoredTop10, keywordSaturation. Question: "What is the single most important dynamic in this market right now?"
 
-OPPORTUNITY — Instead of: "Offer size clarity and reduce returns." Write: "Size confusion drives returns in this category. Put a size comparison graphic in image 2. This alone can lift conversion 8-12% and cut your return rate — which directly protects your margin when PPC is already tight."
+WHAT_MOST_SELLERS_MISS — Use: newSellerCount, avgReviews, topReviews. Question: "What pattern do beginners miss that changes the entire strategy?"
 
-ENTRY REALITY — Instead of: "Your differentiation must justify this gap." Write: "You are priced 20% above avg — that gap must be visible in your main image in under 3 seconds on mobile. If a customer cannot see why you cost more before they click, you lose the click."
+MARKET_SIGNALS — Use: keywordSaturation, priceCompression, sponsoredTotal, newSellerPresence. Question: "What does the first page data tell us about how to win here?"
+
+ENTRY_REALITY — Use: listingsUnder100, avgPrice, sellingPrice, priceGapPercent. Question: "How hard is entry really, and what is the actual path in?"
+
+MARKET_DOMINATION — Use: distinctBrands, topBrands, brandConcentration. Question: "Is this market winnable and what does winning actually require?"
+
+COMPETITION_REALITY — Use: sponsoredTop10, sponsoredTotal, estimatedCPC, adCostPerUnit. Question: "What will PPC actually cost here and what does that mean for survival?"
+
+OPPORTUNITY — Use: opportunityText, competitorWeakness, differentiator. Question: "Is this opportunity real and exactly where in the listing must it appear?"
+
+EARLY_STRATEGY_GUIDANCE — Use: launchCapital, ppcBudget, vineEstimate, netMargin, threshold. Question: "What is the single most important thing to get right in the first 30 days?"
+
+Each advisor_implication must: (1) Use the specific numbers above — never speak in generals. (2) Tell the seller exactly what will happen to their money or rank if they ignore this. (3) End with one concrete action — a directive, not a suggestion.
 
 Return valid JSON only. No markdown code fences.`
 
