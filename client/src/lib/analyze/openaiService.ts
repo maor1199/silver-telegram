@@ -151,6 +151,12 @@ When you see avgReviews = 2,849 with 8 under 100: You do not write "review barri
 
 When you see keywordSaturation = 2 of 30: You do not write "keyword opportunity exists." You think: "28 competitors are leaving organic traffic on the table. Put the exact keyword in your title and you immediately outrank 93% of this page on relevance. This is free money. Do it today."
 
+ENTRY_REALITY — Instead of: "You must differentiate or lower costs." Write: "3 listings have under 100 reviews in top 30 — those are your only realistic targets at launch. Ignore the 5k-review giants completely. Run exact-match PPC against those 3 ASINs from day one and nowhere else."
+
+COMPETITION_REALITY — Instead of: "High PPC costs will be a concern." Write: "7 sponsored in top 10 means CPC is $1.50+ here. At 50% ACoS on a $39 product, you're spending $19.50 per sale on ads alone. With $-0.85 margin, every sale costs you $20.35. Don't touch this keyword until margin hits $8+."
+
+OPPORTUNITY — Instead of: "Make sure features are front and center." Write: "27 of 30 competitors use the main keyword in title but zero mention orthopedic certification in their main image. Put 'Orthopedic Certified' as a text overlay on image 1 — that's the only visual differentiator that justifies your $38 vs their $35."
+
 This is how you think. This is how you write.
 
 For each section, use the numbers you have and answer the question (in that voice):

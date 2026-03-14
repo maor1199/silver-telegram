@@ -520,6 +520,12 @@ export default function WarRoom() {
   const marketMaturitySignal = safeStr(R?.market_maturity_signal ?? analysisData?.market_maturity_signal)
   const sponsoredTop10Count = R?.sponsored_top10_count ?? analysisData?.sponsored_top10_count
   const sponsoredTotalCount = R?.sponsored_total_count ?? analysisData?.sponsored_total_count
+  const estimatedAcosForMarket =
+    R?.estimatedAcosForMarket ?? analysisData?.estimatedAcosForMarket ?? R?.estimated_acos_for_market ?? analysisData?.estimated_acos_for_market
+  const estimatedAcosPercent =
+    estimatedAcosForMarket != null && Number.isFinite(Number(estimatedAcosForMarket))
+      ? Math.round(Number(estimatedAcosForMarket) * 100)
+      : null
 
   // ── Verdict styling ────────────────────────────────── 
   const verdictConfig = {
@@ -902,6 +908,13 @@ export default function WarRoom() {
                           {avgRating != null && <div><span className="text-xs text-muted-foreground">Avg rating</span><p className="font-semibold text-foreground">{Number(avgRating).toFixed(1)}</p></div>}
                           <div><span className="text-xs text-muted-foreground">Brand distribution</span><p className="font-semibold text-foreground">{dominantBrand ? "Dominant brand(s) in top results" : "Fragmented / many brands"}</p></div>
                           {fAdReality.length > 0 && <div className="sm:col-span-2"><span className="text-xs text-muted-foreground">Ad presence</span><p className="text-sm text-foreground mt-1">{fAdReality[0]}</p></div>}
+                          {estimatedAcosPercent != null && (
+                            <div className="sm:col-span-2">
+                              <span className="text-xs text-muted-foreground">Estimated ACoS for this market</span>
+                              <p className="text-sm text-foreground mt-1">Estimated ACoS for this market: {estimatedAcosPercent}%</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">(Based on competition level, review barrier, and keyword opportunity)</p>
+                            </div>
+                          )}
                         </div>
                         {hasNewSignals && (
                           <div className="border-t border-border pt-4 flex flex-col gap-2">

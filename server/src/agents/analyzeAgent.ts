@@ -49,6 +49,35 @@ function asString(v: any, fallback = "") {
   return typeof v === "string" ? v : fallback;
 }
 
+/** Dynamic ACoS from market data (competition, review barrier, keyword opportunity, price compression). */
+function calculateDynamicACoS(marketData: {
+  sponsoredTop10?: number;
+  avgReviews?: number;
+  newSellerPresence?: string;
+  keywordSaturation?: number;
+  priceCompression?: string;
+}) {
+  const sponsoredTop10 = marketData.sponsoredTop10 ?? 0;
+  const avgReviews = marketData.avgReviews ?? 1800;
+  const newSellerPresence = marketData.newSellerPresence;
+  const keywordSaturation = marketData.keywordSaturation ?? 30;
+  const priceCompression = marketData.priceCompression;
+
+  let acos = 0.45;
+  if (sponsoredTop10 >= 7) acos += 0.1;
+  else if (sponsoredTop10 >= 4) acos += 0.05;
+  if (avgReviews >= 5000) acos += 0.1;
+  else if (avgReviews >= 2000) acos += 0.05;
+  else if (avgReviews <= 500) acos -= 0.1;
+  if (newSellerPresence === "high") acos -= 0.1;
+  else if (newSellerPresence === "moderate") acos -= 0.05;
+  if (keywordSaturation === 0) acos -= 0.08;
+  else if (keywordSaturation <= 3) acos -= 0.04;
+  if (priceCompression === "high") acos += 0.05;
+  acos = Math.max(0.2, Math.min(0.65, acos));
+  return parseFloat(acos.toFixed(2));
+}
+
 function ensureArray(v: any, fallback: string[]) {
   if (Array.isArray(v)) return v.map(String);
   if (typeof v === "string" && v.trim()) return [v.trim()];
@@ -134,11 +163,39 @@ export async function analyzeProduct(input: AnalyzeInput) {
     total: launchCapitalRequired,
   };
 
+  // Dynamic ACoS from market data (for launch and for display in Market Signals).
+  const keywordSaturationCount = (() => {
+    const s = market?.keyword_saturation_ratio;
+    if (!s || typeof s !== "string") return undefined;
+    const m = s.match(/^(\d+)\s*of\s*\d+/);
+    return m ? parseInt(m[1], 10) : undefined;
+  })();
+  const priceCompressionHigh = (() => {
+    const s = market?.price_compression;
+    if (!s || typeof s !== "string" || s === "N/A") return false;
+    const m = s.match(/^(\d+)\s+listings/);
+    return m ? parseInt(m[1], 10) >= 10 : false;
+  })()
+    ? "high"
+    : undefined;
+  const marketDataForAcos = market
+    ? {
+        sponsoredTop10: market?.sponsored_top10_count ?? 0,
+        avgReviews: market?.avgReviews ?? 1800,
+        newSellerPresence: market?.new_seller_presence,
+        keywordSaturation: keywordSaturationCount ?? 30,
+        priceCompression: priceCompressionHigh,
+      }
+    : undefined;
+  const dynamicAcosForMarket =
+    marketDataForAcos != null ? calculateDynamicACoS(marketDataForAcos) : undefined;
+
   const stage = input.stage === "launch" || input.stage === "optimized" ? input.stage : "optimized";
+  const launchAcosValue = dynamicAcosForMarket != null ? dynamicAcosForMarket : 0.5;
   const assumedAcosRaw = Number.isFinite(Number(input.assumedAcos))
     ? asNumber(input.assumedAcos, 0.35)
     : stage === "launch"
-      ? 0.5
+      ? launchAcosValue
       : 0.35;
   // Use the higher of: user/stage ACoS, percentage floor, or dollar-based launch ACoS.
   const assumedAcos = Math.max(assumedAcosRaw, acosFloor, effectiveLaunchAcos);
@@ -300,6 +357,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     market_maturity_signal: market?.market_maturity_signal,
     sponsored_top10_count: market?.sponsored_top10_count,
     sponsored_total_count: market?.sponsored_total_count,
+    estimated_acos_for_market: dynamicAcosForMarket,
   };
   const aiInsights = await getAIInsights(aiInput);
 
@@ -690,6 +748,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     liveMarketComparison: liveMarketComparison,
     marketDensity: report.market_density,
     acosFloorUsed: report.acos_floor_used,
+    estimatedAcosForMarket: dynamicAcosForMarket,
     marginThresholdPct: report.margin_threshold_pct,
     operationalRiskBuffer: operationalRiskBufferDollars,
     ppcCompetitionFloor: acosFloor,
