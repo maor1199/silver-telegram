@@ -81,5 +81,14 @@ export function normalizeAnalysisResponse(data: any): Record<string, unknown> {
     marketReality: data.marketReality ?? data.market_reality ?? report?.market_reality_check ?? report?.market_reality,
     earlyStrategyGuidance: data.earlyStrategyGuidance ?? data.early_strategy_guidance ?? report?.early_strategy_guidance ?? report?.earlyStrategyGuidance,
     premiumRiskWarning: data.premiumRiskWarning ?? data.premium_risk_warning ?? report?.premium_risk_warning ?? report?.premiumRiskWarning,
+    advisorImplicationWhyThisDecision: data.advisorImplicationWhyThisDecision ?? report?.advisor_implication_why_this_decision ?? report?.advisorImplicationWhyThisDecision,
+    advisorImplicationExpertInsight: data.advisorImplicationExpertInsight ?? report?.advisor_implication_expert_insight ?? report?.advisorImplicationExpertInsight,
+    advisorImplicationWhatMostSellersMiss: data.advisorImplicationWhatMostSellersMiss ?? report?.advisor_implication_what_most_sellers_miss ?? report?.advisorImplicationWhatMostSellersMiss,
+    advisorImplicationMarketSignals: data.advisorImplicationMarketSignals ?? report?.advisor_implication_market_signals ?? report?.advisorImplicationMarketSignals,
+    advisorImplicationEntryReality: data.advisorImplicationEntryReality ?? report?.advisor_implication_entry_reality ?? report?.advisorImplicationEntryReality,
+    advisorImplicationMarketDominationAnalysis: data.advisorImplicationMarketDominationAnalysis ?? report?.advisor_implication_market_domination_analysis ?? report?.advisorImplicationMarketDominationAnalysis,
+    advisorImplicationCompetitionReality: data.advisorImplicationCompetitionReality ?? report?.advisor_implication_competition_reality ?? report?.advisorImplicationCompetitionReality,
+    advisorImplicationOpportunity: data.advisorImplicationOpportunity ?? report?.advisor_implication_opportunity ?? report?.advisorImplicationOpportunity,
+    advisorImplicationEarlyStrategyGuidance: data.advisorImplicationEarlyStrategyGuidance ?? report?.advisor_implication_early_strategy_guidance ?? report?.advisorImplicationEarlyStrategyGuidance,
   } as Record<string, unknown>
 }

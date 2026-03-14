@@ -113,6 +113,16 @@ export type AIInsights = {
   market_domination_analysis?: string;
   early_strategy_guidance?: string;
   honeymoon_roadmap?: string[];
+  /** Advisor implication per section: what this data means in money/time/risk and what to do (max 2 sentences, definitive, to "you") */
+  advisor_implication_why_this_decision?: string;
+  advisor_implication_expert_insight?: string;
+  advisor_implication_what_most_sellers_miss?: string;
+  advisor_implication_market_signals?: string;
+  advisor_implication_entry_reality?: string;
+  advisor_implication_market_domination_analysis?: string;
+  advisor_implication_competition_reality?: string;
+  advisor_implication_opportunity?: string;
+  advisor_implication_early_strategy_guidance?: string;
 };
 
 const SYSTEM_PROMPT = `You are a senior Amazon product strategist with 30 years of experience analyzing the FULL first page of Amazon search results (up to 30 listings). You base every insight on the provided market data — not generic advice. The analysis must clearly communicate that the system evaluates the FULL first page (up to 30 listings), not just the top 10. Reference both top-10 dynamics and overall first-page structure where relevant.
@@ -147,6 +157,18 @@ OVERVIEW: expert_insight (string), what_most_sellers_miss (string), why_this_dec
 DEEP DIVE: competition_reality (array, min 2), opportunity (string, one), profit_reality (string), entry_reality (string or array 2–3 bullets), market_domination_analysis (string).
 EXECUTION: alternative_keywords (array, max 3), execution_plan (array, 30-day: Week 1 / Week 2 / Week 3–4), early_strategy_guidance (string).
 LEGACY: decision_conversation, review_intelligence (3), opportunities (3), differentiation (3), risks (3).
+
+ADVISOR IMPLICATION (required for every section below):
+You are a senior Amazon FBA consultant with 10+ years launching private label products. You have seen 1,000 products fail and 100 succeed. For every data point in the analysis, you must return an additional field called advisor_implication for that section.
+Rules for advisor_implication: Maximum 2 sentences. First sentence: what this data means in plain money/time/risk terms for THIS specific seller. Second sentence: exactly what to do or not do because of it. Never use "could", "might", "possibly" — be definitive. Never repeat the observation — only the implication. Speak directly to the seller as "you".
+Return one string per section: advisor_implication_why_this_decision, advisor_implication_expert_insight, advisor_implication_what_most_sellers_miss, advisor_implication_market_signals, advisor_implication_entry_reality, advisor_implication_market_domination_analysis, advisor_implication_competition_reality, advisor_implication_opportunity, advisor_implication_early_strategy_guidance.
+WHY THIS DECISION: Real-world consequence of this specific number for someone investing their own money.
+MARKET SIGNALS: What first-page data tells about how hard it is to get a click and make a sale.
+COMPETITION REALITY: How long and expensive the road to visibility will be.
+ENTRY REALITY: Is the seller's differentiation enough to justify the price gap?
+OPPORTUNITY: Is this opportunity realistic for a new seller with limited budget?
+MARKET DOMINATION: Does fragmentation help a new seller or just mean more noise?
+EARLY STRATEGY GUIDANCE: Single most important thing this seller must get right in the first 30 days.
 
 Return valid JSON only. No markdown code fences.`;
 
@@ -335,6 +357,15 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       market_domination_analysis: toStr(parsed.market_domination_analysis),
       early_strategy_guidance: toStr(parsed.early_strategy_guidance),
       honeymoon_roadmap: toArray(parsed.honeymoon_roadmap).slice(0, 8),
+      advisor_implication_why_this_decision: toStr(parsed.advisor_implication_why_this_decision),
+      advisor_implication_expert_insight: toStr(parsed.advisor_implication_expert_insight),
+      advisor_implication_what_most_sellers_miss: toStr(parsed.advisor_implication_what_most_sellers_miss),
+      advisor_implication_market_signals: toStr(parsed.advisor_implication_market_signals),
+      advisor_implication_entry_reality: toStr(parsed.advisor_implication_entry_reality),
+      advisor_implication_market_domination_analysis: toStr(parsed.advisor_implication_market_domination_analysis),
+      advisor_implication_competition_reality: toStr(parsed.advisor_implication_competition_reality),
+      advisor_implication_opportunity: toStr(parsed.advisor_implication_opportunity),
+      advisor_implication_early_strategy_guidance: toStr(parsed.advisor_implication_early_strategy_guidance),
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

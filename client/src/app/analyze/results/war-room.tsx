@@ -277,6 +277,16 @@ function safeStr(val: unknown, fallback = ""): string {
   return String(val)
 }
 
+/* Advisor implication line: distinct style, no label */
+function AdvisorImplication({ text }: { text?: string | null }) {
+  if (!text || !String(text).trim()) return null
+  return (
+    <p className="text-[13px] text-muted-foreground border-l-2 border-orange-500 pl-2 mt-1">
+      {String(text).trim()}
+    </p>
+  )
+}
+
 function matchSection(sections: ReportSection[], keywords: string[]): string[] {
   for (const section of sections) {
     const lower = section.title.toLowerCase()
@@ -493,6 +503,15 @@ export default function WarRoom() {
   const earlyStrategyGuidance = safeStr(R?.earlyStrategyGuidance ?? analysisData?.earlyStrategyGuidance ?? R?.early_strategy_guidance)
   const premiumRiskWarning = safeStr(R?.premiumRiskWarning ?? analysisData?.premiumRiskWarning ?? R?.premium_risk_warning)
   const opportunity = safeStr(R?.opportunity ?? analysisData?.opportunity)
+  const advisorImplicationWhyThisDecision = safeStr(R?.advisorImplicationWhyThisDecision ?? analysisData?.advisorImplicationWhyThisDecision ?? R?.advisor_implication_why_this_decision)
+  const advisorImplicationExpertInsight = safeStr(R?.advisorImplicationExpertInsight ?? analysisData?.advisorImplicationExpertInsight ?? R?.advisor_implication_expert_insight)
+  const advisorImplicationWhatMostSellersMiss = safeStr(R?.advisorImplicationWhatMostSellersMiss ?? analysisData?.advisorImplicationWhatMostSellersMiss ?? R?.advisor_implication_what_most_sellers_miss)
+  const advisorImplicationMarketSignals = safeStr(R?.advisorImplicationMarketSignals ?? analysisData?.advisorImplicationMarketSignals ?? R?.advisor_implication_market_signals)
+  const advisorImplicationEntryReality = safeStr(R?.advisorImplicationEntryReality ?? analysisData?.advisorImplicationEntryReality ?? R?.advisor_implication_entry_reality)
+  const advisorImplicationMarketDominationAnalysis = safeStr(R?.advisorImplicationMarketDominationAnalysis ?? analysisData?.advisorImplicationMarketDominationAnalysis ?? R?.advisor_implication_market_domination_analysis)
+  const advisorImplicationCompetitionReality = safeStr(R?.advisorImplicationCompetitionReality ?? analysisData?.advisorImplicationCompetitionReality ?? R?.advisor_implication_competition_reality)
+  const advisorImplicationOpportunity = safeStr(R?.advisorImplicationOpportunity ?? analysisData?.advisorImplicationOpportunity ?? R?.advisor_implication_opportunity)
+  const advisorImplicationEarlyStrategyGuidance = safeStr(R?.advisorImplicationEarlyStrategyGuidance ?? analysisData?.advisorImplicationEarlyStrategyGuidance ?? R?.advisor_implication_early_strategy_guidance)
   const reviewStructureSummary = safeStr(R?.review_structure_summary ?? analysisData?.review_structure_summary)
   const newSellerPresence = safeStr(R?.new_seller_presence ?? analysisData?.new_seller_presence)
   const keywordSaturationRatio = safeStr(R?.keyword_saturation_ratio ?? analysisData?.keyword_saturation_ratio)
@@ -754,6 +773,7 @@ export default function WarRoom() {
                   ) : (
                     <p className="text-sm text-muted-foreground/60 italic">No explicit reasoning provided for this verdict.</p>
                   )}
+                  <AdvisorImplication text={advisorImplicationWhyThisDecision} />
                 </div>
               </section>
 
@@ -770,6 +790,7 @@ export default function WarRoom() {
                     <p className="text-sm font-medium text-foreground leading-relaxed">
                       {consultantSecret || (typeof fStratIntel === "string" ? fStratIntel : (fStratIntel as string[])?.[0])}
                     </p>
+                    <AdvisorImplication text={advisorImplicationExpertInsight} />
                   </div>
                 </section>
               )}
@@ -784,6 +805,7 @@ export default function WarRoom() {
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <p className="text-sm text-foreground leading-relaxed">{whatMostSellersMiss}</p>
+                    <AdvisorImplication text={advisorImplicationWhatMostSellersMiss} />
                   </div>
                 </section>
               )}
@@ -870,6 +892,7 @@ export default function WarRoom() {
                       </div>
                     )
                   })()}
+                  <AdvisorImplication text={advisorImplicationMarketSignals} />
                 </div>
               </section>
 
@@ -891,6 +914,7 @@ export default function WarRoom() {
                     }
                     return <p className="text-sm text-muted-foreground/60 italic">No entry analysis available.</p>
                   })()}
+                  <AdvisorImplication text={advisorImplicationEntryReality} />
                 </div>
               </section>
 
@@ -926,6 +950,7 @@ export default function WarRoom() {
                         </li>
                       ))}
                     </ul>
+                    <AdvisorImplication text={advisorImplicationCompetitionReality} />
                   </div>
                 </section>
               )}
@@ -1147,6 +1172,7 @@ export default function WarRoom() {
                     }
                     return <p className="text-sm text-muted-foreground/60 italic">No early strategy guidance available.</p>
                   })()}
+                  <AdvisorImplication text={advisorImplicationEarlyStrategyGuidance} />
                 </div>
               </section>
             </div>

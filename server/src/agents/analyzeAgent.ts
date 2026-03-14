@@ -663,6 +663,15 @@ export async function analyzeProduct(input: AnalyzeInput) {
     opportunities: ensureArray(opportunities, []),
     differentiation: ensureArray(differentiation, []),
     execution_plan: ensureArray(execution_plan, []),
+    advisor_implication_why_this_decision: aiInsights?.advisor_implication_why_this_decision ?? undefined,
+    advisor_implication_expert_insight: aiInsights?.advisor_implication_expert_insight ?? undefined,
+    advisor_implication_what_most_sellers_miss: aiInsights?.advisor_implication_what_most_sellers_miss ?? undefined,
+    advisor_implication_market_signals: aiInsights?.advisor_implication_market_signals ?? undefined,
+    advisor_implication_entry_reality: aiInsights?.advisor_implication_entry_reality ?? undefined,
+    advisor_implication_market_domination_analysis: aiInsights?.advisor_implication_market_domination_analysis ?? undefined,
+    advisor_implication_competition_reality: aiInsights?.advisor_implication_competition_reality ?? undefined,
+    advisor_implication_opportunity: aiInsights?.advisor_implication_opportunity ?? undefined,
+    advisor_implication_early_strategy_guidance: aiInsights?.advisor_implication_early_strategy_guidance ?? undefined,
   };
 
   return {
@@ -716,5 +725,14 @@ export async function analyzeProduct(input: AnalyzeInput) {
     opportunities: report.opportunities,
     executionPlan: report.execution_plan,
     report,
+    advisorImplicationWhyThisDecision: report.advisor_implication_why_this_decision,
+    advisorImplicationExpertInsight: report.advisor_implication_expert_insight,
+    advisorImplicationWhatMostSellersMiss: report.advisor_implication_what_most_sellers_miss,
+    advisorImplicationMarketSignals: report.advisor_implication_market_signals,
+    advisorImplicationEntryReality: report.advisor_implication_entry_reality,
+    advisorImplicationMarketDominationAnalysis: report.advisor_implication_market_domination_analysis,
+    advisorImplicationCompetitionReality: report.advisor_implication_competition_reality,
+    advisorImplicationOpportunity: report.advisor_implication_opportunity,
+    advisorImplicationEarlyStrategyGuidance: report.advisor_implication_early_strategy_guidance,
   };
 }
