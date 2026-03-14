@@ -773,7 +773,18 @@ export default function WarRoom() {
                   ) : (
                     <p className="text-sm text-muted-foreground/60 italic">No explicit reasoning provided for this verdict.</p>
                   )}
-                  <AdvisorImplication text={advisorImplicationWhyThisDecision} />
+                  {advisorImplicationWhyThisDecision && (
+                    <p style={{
+                      fontSize: '13px',
+                      color: 'var(--color-text-secondary)',
+                      borderLeft: '2px solid #f97316',
+                      paddingLeft: '10px',
+                      marginTop: '8px',
+                      lineHeight: '1.5'
+                    }}>
+                      {advisorImplicationWhyThisDecision}
+                    </p>
+                  )}
                 </div>
               </section>
 
@@ -790,7 +801,18 @@ export default function WarRoom() {
                     <p className="text-sm font-medium text-foreground leading-relaxed">
                       {consultantSecret || (typeof fStratIntel === "string" ? fStratIntel : (fStratIntel as string[])?.[0])}
                     </p>
-                    <AdvisorImplication text={advisorImplicationExpertInsight} />
+                    {advisorImplicationExpertInsight && (
+                      <p style={{
+                        fontSize: '13px',
+                        color: 'var(--color-text-secondary)',
+                        borderLeft: '2px solid #f97316',
+                        paddingLeft: '10px',
+                        marginTop: '8px',
+                        lineHeight: '1.5'
+                      }}>
+                        {advisorImplicationExpertInsight}
+                      </p>
+                    )}
                   </div>
                 </section>
               )}
@@ -805,7 +827,18 @@ export default function WarRoom() {
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <p className="text-sm text-foreground leading-relaxed">{whatMostSellersMiss}</p>
-                    <AdvisorImplication text={advisorImplicationWhatMostSellersMiss} />
+                    {advisorImplicationWhatMostSellersMiss && (
+                      <p style={{
+                        fontSize: '13px',
+                        color: 'var(--color-text-secondary)',
+                        borderLeft: '2px solid #f97316',
+                        paddingLeft: '10px',
+                        marginTop: '8px',
+                        lineHeight: '1.5'
+                      }}>
+                        {advisorImplicationWhatMostSellersMiss}
+                      </p>
+                    )}
                   </div>
                 </section>
               )}
@@ -892,7 +925,18 @@ export default function WarRoom() {
                       </div>
                     )
                   })()}
-                  <AdvisorImplication text={advisorImplicationMarketSignals} />
+                  {advisorImplicationMarketSignals && (
+                    <p style={{
+                      fontSize: '13px',
+                      color: 'var(--color-text-secondary)',
+                      borderLeft: '2px solid #f97316',
+                      paddingLeft: '10px',
+                      marginTop: '8px',
+                      lineHeight: '1.5'
+                    }}>
+                      {advisorImplicationMarketSignals}
+                    </p>
+                  )}
                 </div>
               </section>
 
@@ -914,7 +958,18 @@ export default function WarRoom() {
                     }
                     return <p className="text-sm text-muted-foreground/60 italic">No entry analysis available.</p>
                   })()}
-                  <AdvisorImplication text={advisorImplicationEntryReality} />
+                  {advisorImplicationEntryReality && (
+                    <p style={{
+                      fontSize: '13px',
+                      color: 'var(--color-text-secondary)',
+                      borderLeft: '2px solid #f97316',
+                      paddingLeft: '10px',
+                      marginTop: '8px',
+                      lineHeight: '1.5'
+                    }}>
+                      {advisorImplicationEntryReality}
+                    </p>
+                  )}
                 </div>
               </section>
 
@@ -928,6 +983,18 @@ export default function WarRoom() {
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <p className="text-sm text-foreground leading-relaxed">{marketDominationAnalysis}</p>
+                    {advisorImplicationMarketDominationAnalysis && (
+                      <p style={{
+                        fontSize: '13px',
+                        color: 'var(--color-text-secondary)',
+                        borderLeft: '2px solid #f97316',
+                        paddingLeft: '10px',
+                        marginTop: '8px',
+                        lineHeight: '1.5'
+                      }}>
+                        {advisorImplicationMarketDominationAnalysis}
+                      </p>
+                    )}
                   </div>
                 </section>
               )}
@@ -950,7 +1017,18 @@ export default function WarRoom() {
                         </li>
                       ))}
                     </ul>
-                    <AdvisorImplication text={advisorImplicationCompetitionReality} />
+                    {advisorImplicationCompetitionReality && (
+                      <p style={{
+                        fontSize: '13px',
+                        color: 'var(--color-text-secondary)',
+                        borderLeft: '2px solid #f97316',
+                        paddingLeft: '10px',
+                        marginTop: '8px',
+                        lineHeight: '1.5'
+                      }}>
+                        {advisorImplicationCompetitionReality}
+                      </p>
+                    )}
                   </div>
                 </section>
               )}
@@ -969,6 +1047,18 @@ export default function WarRoom() {
                     <p className="text-sm text-foreground leading-relaxed">{fDiffIdeas[0]}</p>
                   ) : (
                     <p className="text-sm text-muted-foreground/60 italic">No opportunity identified.</p>
+                  )}
+                  {advisorImplicationOpportunity && (
+                    <p style={{
+                      fontSize: '13px',
+                      color: 'var(--color-text-secondary)',
+                      borderLeft: '2px solid #f97316',
+                      paddingLeft: '10px',
+                      marginTop: '8px',
+                      lineHeight: '1.5'
+                    }}>
+                      {advisorImplicationOpportunity}
+                    </p>
                   )}
                 </div>
               </section>
@@ -1172,7 +1262,18 @@ export default function WarRoom() {
                     }
                     return <p className="text-sm text-muted-foreground/60 italic">No early strategy guidance available.</p>
                   })()}
-                  <AdvisorImplication text={advisorImplicationEarlyStrategyGuidance} />
+                  {advisorImplicationEarlyStrategyGuidance && (
+                    <p style={{
+                      fontSize: '13px',
+                      color: 'var(--color-text-secondary)',
+                      borderLeft: '2px solid #f97316',
+                      paddingLeft: '10px',
+                      marginTop: '8px',
+                      lineHeight: '1.5'
+                    }}>
+                      {advisorImplicationEarlyStrategyGuidance}
+                    </p>
+                  )}
                 </div>
               </section>
             </div>

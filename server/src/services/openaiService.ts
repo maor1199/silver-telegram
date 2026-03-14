@@ -125,6 +125,27 @@ export type AIInsights = {
   advisor_implication_early_strategy_guidance?: string;
 };
 
+/** Response structure schema: each section has content key and advisor_implication (string). */
+const RESPONSE_JSON_SCHEMA = {
+  why_this_decision: [] as string[],
+  advisor_implication_why_this_decision: "",
+  expert_insight: "",
+  advisor_implication_expert_insight: "",
+  what_most_sellers_miss: "",
+  advisor_implication_what_most_sellers_miss: "",
+  advisor_implication_market_signals: "",
+  entry_reality: "",
+  advisor_implication_entry_reality: "",
+  market_domination_analysis: "",
+  advisor_implication_market_domination_analysis: "",
+  competition_reality: [] as string[],
+  advisor_implication_competition_reality: "",
+  opportunity: "",
+  advisor_implication_opportunity: "",
+  early_strategy_guidance: "",
+  advisor_implication_early_strategy_guidance: "",
+} as const;
+
 const SYSTEM_PROMPT = `You are a senior Amazon product strategist with 30 years of experience analyzing the FULL first page of Amazon search results (up to 30 listings). You base every insight on the provided market data — not generic advice. The analysis must clearly communicate that the system evaluates the FULL first page (up to 30 listings), not just the top 10. Reference both top-10 dynamics and overall first-page structure where relevant.
 
 CORE RULES
@@ -151,12 +172,15 @@ PROFIT REALITY: Explain briefly how margin, Amazon fees, and PPC pressure impact
 
 EXECUTION PLAN: 30-day roadmap only. Structure: Week 1, Week 2, Week 3–4.
 
-Return JSON with these exact keys:
+Return JSON with these exact keys (include advisor_implication for each section below):
 
 OVERVIEW: expert_insight (string), what_most_sellers_miss (string), why_this_decision (array of exactly 3 strings, Observation → implication), what_would_make_go (array of 3 strings, ONLY when verdict is NO_GO).
 DEEP DIVE: competition_reality (array, min 2), opportunity (string, one), profit_reality (string), entry_reality (string or array 2–3 bullets), market_domination_analysis (string).
 EXECUTION: alternative_keywords (array, max 3), execution_plan (array, 30-day: Week 1 / Week 2 / Week 3–4), early_strategy_guidance (string).
 LEGACY: decision_conversation, review_intelligence (3), opportunities (3), differentiation (3), risks (3).
+
+JSON response schema (include these keys; advisor_implication fields are strings, use "" if omitted):
+why_this_decision, advisor_implication_why_this_decision "", expert_insight, advisor_implication_expert_insight "", what_most_sellers_miss, advisor_implication_what_most_sellers_miss "", advisor_implication_market_signals "", entry_reality, advisor_implication_entry_reality "", market_domination_analysis, advisor_implication_market_domination_analysis "", competition_reality, advisor_implication_competition_reality "", opportunity, advisor_implication_opportunity "", early_strategy_guidance, advisor_implication_early_strategy_guidance "".
 
 ADVISOR IMPLICATION (required for every section below):
 For every section, advisor_implication must NOT be an observation. It must:
