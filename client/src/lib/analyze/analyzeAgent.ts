@@ -1,4 +1,4 @@
-import { getAIInsights } from "./openaiService"
+import { getAIInsights, getMarginThreshold } from "./openaiService"
 
 type AnalyzeInput = {
   keyword?: string
@@ -10,6 +10,7 @@ type AnalyzeInput = {
   stage?: "launch" | "optimized"
   complexity?: string
   differentiation?: string
+  marginThreshold?: number
   marketData?: {
     success?: boolean
     avgPrice?: number
@@ -203,7 +204,14 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const profitAfterAds = sellingPrice - totalCost - ppcCostPerUnit
 
   const isHighComplexity = complexity === "high"
-  const NET_MARGIN_THRESHOLD = isHighComplexity ? 0.2 : 0.15
+  const effectiveMarginThreshold =
+    input.marginThreshold ??
+    getMarginThreshold(
+      input.differentiation ?? "",
+      market?.topTitles ?? [],
+      market?.painPoints ?? []
+    )
+  const NET_MARGIN_THRESHOLD = isHighComplexity ? 0.2 : effectiveMarginThreshold
   const marginThresholdPct = NET_MARGIN_THRESHOLD * 100
   const netMarginRatio = sellingPrice > 0 ? profitAfterAds / sellingPrice : 0
   const passesMarginRule = netMarginRatio >= NET_MARGIN_THRESHOLD

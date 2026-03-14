@@ -218,22 +218,27 @@ EARLY_STRATEGY_GUIDANCE — Use: launchCapital, ppcBudget, vineEstimate, netMarg
 
 QUESTION 5 — COMPETITIVE ADVANTAGE:
 
-Note: competitiveAdvantage is provided in the user message as 'Differentiation'. productComplexity is provided as 'Complexity'.
+You receive validatedDifferentiators — a list already cross-referenced against actual competitor titles and pain points.
 
-You receive Differentiation as free text from the seller describing their differentiators.
-You also have access to:
-- Top 15 competitor titles
-- Inferred pain points from competitor titles
+Each item has:
+- differentiator: the feature name
+- verdict: STRONG / WEAK / TABLE_STAKES
+- appearsInTitles: number out of 15
+- appearsInPainPoints: true / false
 
-For each differentiator the seller mentions, cross-reference against the titles and pain points you already have, then state one verdict:
+For each differentiator write one line inside advisor_implication for OPPORTUNITY:
 
-STRONG: "This feature does not appear in any of the top 15 competitor titles — put [differentiator] in your title on day one. You will own this word on page one."
+STRONG (appearsInTitles <= 3, inPainPoints true):
+"[X] appears in only [N] of 15 competitor titles and matches what customers search for — put it in your title and image 1 today."
 
-WEAK: "This feature already appears in multiple competitor titles — it is table stakes. Remove it from your main message and find a stronger angle."
+WEAK (appearsInTitles <= 5, inPainPoints false):
+"[X] is not common but customers are not actively searching for it — use it in bullet 2, not your title."
 
-OPPORTUNITY: "This feature is not in competitor titles but matches an inferred pain point — this is your conversion weapon. Lead with it in bullet 1 and image 2."
+TABLE_STAKES (appearsInTitles > 5):
+"[X] appears in [N] of 15 competitor titles — this is expected, not a differentiator. Remove it from your main message."
 
-Output this verdict inside advisor_implication for OPPORTUNITY section.
+Also add one line at the end:
+"Margin threshold for this product has been adjusted to [marginThreshold]% based on your validated differentiators."
 
 ---
 
@@ -266,13 +271,69 @@ Complex:
 
 Return valid JSON only. No markdown code fences.`;
 
+export function getMarginThreshold(
+  differentiation: string,
+  topTitles: string[],
+  painPoints: string[]
+): number {
+  const validatedDiffs = validateDifferentiators(differentiation, topTitles, painPoints);
+  const totalMarginImpact = validatedDiffs.reduce((sum, d) => sum + d.marginImpact, 0);
+  return parseFloat(Math.max(0.1, Math.min(0.18, 0.15 + totalMarginImpact)).toFixed(2));
+}
+
+const validateDifferentiators = (
+  differentiation: string,
+  topTitles: string[],
+  painPoints: string[]
+) => {
+  if (!differentiation || !topTitles?.length) return [];
+  const userDiffs = differentiation
+    .split(",")
+    .map((d) => d.trim().toLowerCase())
+    .filter((d) => d.length > 2);
+  return userDiffs.map((diff) => {
+    const inTitles = topTitles.filter((t) => t.toLowerCase().includes(diff)).length;
+    const inPainPoints = painPoints?.some((p) => p.toLowerCase().includes(diff)) ?? false;
+    let verdict: "STRONG" | "WEAK" | "TABLE_STAKES";
+    let marginImpact: number;
+    if (inPainPoints && inTitles <= 3) {
+      verdict = "STRONG";
+      marginImpact = -0.03;
+    } else if (inTitles <= 5 && !inPainPoints) {
+      verdict = "WEAK";
+      marginImpact = 0;
+    } else {
+      verdict = "TABLE_STAKES";
+      marginImpact = 0.01;
+    }
+    return {
+      differentiator: diff,
+      appearsInTitles: inTitles,
+      appearsInPainPoints: inPainPoints,
+      verdict,
+      marginImpact,
+    };
+  });
+};
+
 function buildUserPrompt(input: AIInsightsInput): string {
+  const validatedDiffs = validateDifferentiators(
+    input.differentiation ?? "",
+    input.topTitles ?? [],
+    input.painPoints ?? []
+  );
+  const totalMarginImpact = validatedDiffs.reduce((sum, d) => sum + d.marginImpact, 0);
+  const marginThreshold = parseFloat(
+    Math.max(0.1, Math.min(0.18, 0.15 + totalMarginImpact)).toFixed(2)
+  );
   const lines: string[] = [
     "=== USER PRODUCT (analyze this) ===",
     `Product / keyword (market): ${input.product_name ? `"${input.product_name}"` : `"${input.keyword}"`}`,
     `Keyword (search): "${input.keyword}"`,
     `Selling price: $${input.sellingPrice} | Unit cost: $${input.unitCost ?? "?"} | Shipping: $${input.shippingCost ?? "?"}`,
     `Differentiation: ${input.differentiation?.trim() || "(none provided)"}`,
+    `Validated differentiators: ${JSON.stringify(validatedDiffs)}`,
+    `Margin threshold for this analysis: ${marginThreshold * 100}%`,
     `Complexity: ${input.complexity?.trim() || "not specified"}`,
     "",
     "=== UNIT ECONOMICS ===",
