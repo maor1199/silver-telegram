@@ -1,4 +1,4 @@
-import { getAIInsights, getMarginThreshold, getValidatedDifferentiators } from "./openaiService"
+import { getAIInsights, getConsultantInsights, getMarginThreshold, getValidatedDifferentiators, type ConsultantInsights } from "./openaiService"
 
 type AnalyzeInput = {
   keyword?: string
@@ -869,6 +869,37 @@ export async function analyzeProduct(input: AnalyzeInput) {
     advisor_implication_early_strategy_guidance: aiInsights?.advisor_implication_early_strategy_guidance ?? undefined,
   }
 
+  const consultantData: Record<string, unknown> = {
+    verdict,
+    profitAfterAds,
+    estimatedMarginPercent,
+    avgPrice,
+    avgReviews,
+    avgRating: market?.avgRating,
+    dominantBrand,
+    newSellersInTop10,
+    newSellersInTop20,
+    marginThresholdPct,
+    launchCapitalRequired,
+    differentiation: input.differentiation,
+    topTitles: market?.topTitles ?? [],
+    painPoints: painPoints ?? [],
+    sponsored_top10_count: market?.sponsored_top10_count,
+    keyword_saturation_ratio: market?.keyword_saturation_ratio,
+    price_compression: market?.price_compression,
+    new_seller_presence: market?.new_seller_presence,
+    sellingPrice,
+    unitCost: input.unitCost,
+  }
+  let consultantInsights: ConsultantInsights | null = null
+  try {
+    consultantInsights = await getConsultantInsights(consultantData)
+  } catch {
+    consultantInsights = null
+  }
+  const emptyConsultant = { why_this_decision_insight: "", expert_insight: "", opportunity_insight: "", competition_insight: "", what_most_sellers_miss_insight: "" }
+  const co = consultantInsights ?? emptyConsultant
+
   return {
     ok: true,
     clientConfig: { showDebugPanel: false },
@@ -943,5 +974,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
     advisorImplicationCompetitionReality: report.advisor_implication_competition_reality,
     advisorImplicationOpportunity: report.advisor_implication_opportunity,
     advisorImplicationEarlyStrategyGuidance: report.advisor_implication_early_strategy_guidance,
+    why_this_decision_insight: co.why_this_decision_insight,
+    expert_insight: co.expert_insight,
+    opportunity_insight: co.opportunity_insight,
+    competition_insight: co.competition_insight,
+    what_most_sellers_miss_insight: co.what_most_sellers_miss_insight,
   }
 }

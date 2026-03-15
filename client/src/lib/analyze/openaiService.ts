@@ -499,3 +499,48 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
     return null
   }
 }
+
+const CONSULTANT_SYSTEM_PROMPT = `You are a senior Amazon FBA consultant.
+Use these exact numbers to write direct insights.
+Never hedge. Speak directly to the seller.
+Return valid JSON only with these 5 fields: why_this_decision_insight, expert_insight, opportunity_insight, competition_insight, what_most_sellers_miss_insight.`
+
+export type ConsultantInsights = {
+  why_this_decision_insight: string
+  expert_insight: string
+  opportunity_insight: string
+  competition_insight: string
+  what_most_sellers_miss_insight: string
+}
+
+export async function getConsultantInsights(data: Record<string, unknown>): Promise<ConsultantInsights | null> {
+  const openai = getOpenAIClient()
+  if (!openai) return null
+  try {
+    const model = process.env.OPENAI_MODEL || "gpt-4o-mini"
+    const userMessage = JSON.stringify(data)
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        { role: "system", content: CONSULTANT_SYSTEM_PROMPT },
+        { role: "user", content: userMessage },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.5,
+      max_tokens: 1500,
+    })
+    const raw = completion.choices[0]?.message?.content?.trim()
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const str = (v: unknown) => (v != null && typeof v === "string" ? v : "")
+    return {
+      why_this_decision_insight: str(parsed.why_this_decision_insight),
+      expert_insight: str(parsed.expert_insight),
+      opportunity_insight: str(parsed.opportunity_insight),
+      competition_insight: str(parsed.competition_insight),
+      what_most_sellers_miss_insight: str(parsed.what_most_sellers_miss_insight),
+    }
+  } catch {
+    return null
+  }
+}
