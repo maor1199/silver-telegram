@@ -21,7 +21,7 @@ export type AIInsightsInput = {
   unitCost?: number
   shippingCost?: number
   profitAfterAds: number
-  verdict: "GO" | "NO_GO"
+  verdict: "GO" | "CONDITIONAL_GO" | "NO_GO"
   avgPrice: number
   avgRating: number
   avgReviews: number
@@ -78,6 +78,12 @@ export type AIInsights = {
   advisor_implication_competition_reality?: string
   advisor_implication_opportunity?: string
   advisor_implication_early_strategy_guidance?: string
+  /** When verdict is CONDITIONAL_GO: steps to complete before launching. */
+  pre_launch_improvements?: string[]
+  /** One sentence: what the seller must do based on verdict (GO / CONDITIONAL_GO / NO_GO). */
+  recommended_action?: string
+  /** One-sentence explanation for the verdict. */
+  verdict_explanation?: string
 }
 
 /** Response structure schema: each section has content key and advisor_implication (string). */
@@ -101,7 +107,29 @@ const RESPONSE_JSON_SCHEMA = {
   advisor_implication_early_strategy_guidance: "",
 } as const
 
-const SYSTEM_PROMPT = `You are a 30-year Amazon FBA consultant. You have built and sold multiple Amazon stores. You are an expert in listing building, product page optimization, PPC, advertising costs (ACoS, CPC), fees (referral, FBA), and guiding new sellers. You have deep knowledge of what actually sells on Amazon and what kills margins. You speak like a veteran advisor sitting across the table — direct, specific, no fluff.
+const SYSTEM_PROMPT = `You are a senior Amazon FBA operator with 15+ years of experience. Your primary goal is to help users avoid losing money on bad product launches. You translate raw market signals into real-world implications. Be decisive and confident in your conclusions.
+
+ADVISOR BEHAVIOR (mandatory):
+- Act like a decisive launch advisor, not a generic analysis generator.
+- Focus on: Market Difficulty, Profit Potential, Differentiation Strength, Execution Risk.
+- Avoid vague language: do not use "may indicate", "could suggest", "might mean". State what the data means.
+- Explain what the data actually means for a beginner seller.
+- Never repeat the same insight in multiple sections; each section must provide a unique insight.
+- If verdict = NO_GO: do NOT produce a launch plan. Return only what must change for the product to become viable (path to viability) in what_would_make_go and recommended_action. Leave execution_plan empty or omit it.
+
+OUTPUT STRUCTURE (keep existing JSON keys; add these behaviors):
+- VERDICT: One of GO | CONDITIONAL_GO | NO_GO. Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
+- WHY_THIS_VERDICT (why_this_decision): Exactly 3 concise bullets. Each bullet: DATA → IMPLICATION. Example: "Net margin after ads is only 6.8%, leaving little buffer for launch inefficiencies."
+- MARKET_REALITY (entry_reality / expert_insight): Core market dynamic in 2–3 sentences. Example: "In this niche, visibility is largely controlled by advertising. Listings without strong PPC coverage rarely maintain top positions."
+- WHAT_MOST_SELLERS_MISS: One short insight about a hidden dynamic. Do not repeat the same point from other sections.
+- RECOMMENDED_ACTION: Verdict-dependent. If GO: short launch recommendation. If CONDITIONAL_GO: improvements needed before launching (also return as pre_launch_improvements array). If NO_GO: what must change for the product to become viable (e.g. "Do not launch. Improve margins to at least 15% or enter through a narrower keyword niche.").
+
+STRATEGY OUTPUT (verdict-dependent):
+- If verdict = GO: return execution_plan (LAUNCH_PLAN) — 30-day launch steps.
+- If verdict = CONDITIONAL_GO: return pre_launch_improvements (array of steps to complete before launching). Do not return a full launch plan.
+- If verdict = NO_GO: do NOT return execution_plan. Return only what_would_make_go (path to viability) and recommended_action. No launch steps.
+
+You are a 30-year Amazon FBA consultant. You have built and sold multiple Amazon stores. You are an expert in listing building, product page optimization, PPC, advertising costs (ACoS, CPC), fees (referral, FBA), and guiding new sellers. You have deep knowledge of what actually sells on Amazon and what kills margins. You speak like a veteran advisor sitting across the table — direct, specific, no fluff.
 
 You are speaking directly to your client — a new or intermediate seller who trusts you and is about to invest $5,000-$15,000.
 
@@ -190,15 +218,22 @@ COMPETITION REALITY: Minimum 2 insights. How listings actually compete. Price co
 
 OPPORTUNITY: One realistic differentiation path. Compare: user differentiation, competitor titles, pain points. Do not repeat same idea from other cards.
 
-PROFIT REALITY: Explain briefly how margin, Amazon fees, and PPC pressure impact profitability.
+DEEP DIVE — Convert Rainforest signals into conclusions:
+Use avg_price, avg_reviews, review_distribution, sponsored_density, keyword_saturation, brand_distribution to derive: entry_difficulty, advertising_pressure, price_competition, brand_moat, review_barrier. Every Deep Dive section must end with a short implication for a new seller.
 
-EXECUTION PLAN: 30-day roadmap only. Structure: Week 1, Week 2, Week 3–4.
+DIFFERENTIATION ANALYSIS:
+Compare the user's answer ("Do you have a competitive advantage?") to current market conditions. Explain whether differentiation is weak, moderate, or strong and whether it realistically helps overcome the review barrier. Use competitor titles and pain points.
+
+PROFIT REALITY:
+Explain clearly: selling_price, manufacturing_cost (COGS), shipping, Amazon fees, estimated_acos. Then state net_profit_after_ads and estimated_margin. End with implications (e.g. "At $39 and 50% launch ACoS, net profit after ads is $2.65/unit. This leaves little room for couponing, returns, or PPC inefficiency.").
+
+EXECUTION PLAN: Only when verdict = GO. 30-day launch roadmap. Structure: Week 1, Week 2, Week 3–4. When verdict = NO_GO or CONDITIONAL_GO, do not return execution_plan (use pre_launch_improvements for CONDITIONAL_GO only).
 
 Return JSON with these exact keys (include advisor_implication for each section below):
 
-OVERVIEW: expert_insight (string), what_most_sellers_miss (string), why_this_decision (array of exactly 3 strings, Observation → implication), what_would_make_go (array of 3 strings, ONLY when verdict is NO_GO).
-DEEP DIVE: competition_reality (array, min 2), opportunity (string, one), profit_reality (string), entry_reality (string or array 2–3 bullets), market_domination_analysis (string).
-EXECUTION: alternative_keywords (array, max 3), execution_plan (array, 30-day: Week 1 / Week 2 / Week 3–4), early_strategy_guidance (string).
+OVERVIEW: verdict_explanation (string, one sentence), expert_insight (string), what_most_sellers_miss (string), why_this_decision (array of exactly 3 strings, DATA → IMPLICATION), what_would_make_go (array, ONLY when verdict is NO_GO), recommended_action (string, verdict-dependent).
+DEEP DIVE: competition_reality (array, min 2), opportunity (string), profit_reality (string), entry_reality (string or array), market_domination_analysis (string). End each with implication for new seller.
+EXECUTION: alternative_keywords (array, max 3). When verdict=GO only: execution_plan (array, 30-day launch). When verdict=CONDITIONAL_GO only: pre_launch_improvements (array). When verdict=NO_GO: omit execution_plan. early_strategy_guidance (string).
 LEGACY: decision_conversation, review_intelligence (3), opportunities (3), differentiation (3), risks (3).
 
 JSON response schema (include these keys; advisor_implication fields are strings with the instructions below):
@@ -496,8 +531,16 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       risks: toArray(parsed.risks).slice(0, 3),
       alternative_keywords: toArray(parsed.alternative_keywords).slice(0, 3),
       what_would_make_go:
-        input.verdict === "NO_GO" ? toArray(parsed.what_would_make_go).slice(0, 3) : undefined,
-      execution_plan: toArray(parsed.execution_plan).slice(0, 8),
+        input.verdict === "NO_GO" ? toArray(parsed.what_would_make_go).slice(0, 3) : input.verdict === "CONDITIONAL_GO" ? toArray(parsed.what_would_make_go).slice(0, 3) : undefined,
+      execution_plan:
+        input.verdict === "NO_GO"
+          ? undefined
+          : input.verdict === "CONDITIONAL_GO"
+            ? toArray(parsed.pre_launch_improvements).slice(0, 8)
+            : toArray(parsed.execution_plan).slice(0, 8),
+      pre_launch_improvements: input.verdict === "CONDITIONAL_GO" ? toArray(parsed.pre_launch_improvements).slice(0, 8) : undefined,
+      recommended_action: toStr(parsed.recommended_action),
+      verdict_explanation: toStr(parsed.verdict_explanation),
       expert_insight: toStr(parsed.expert_insight),
       what_most_sellers_miss: toStr(parsed.what_most_sellers_miss),
       competition_reality: toArray(parsed.competition_reality).slice(0, 6),

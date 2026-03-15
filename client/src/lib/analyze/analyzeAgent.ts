@@ -270,8 +270,8 @@ export async function analyzeProduct(input: AnalyzeInput) {
   console.log("netMarginRatio:", netMarginRatio)
   console.log("passesMarginRule:", passesMarginRule)
 
-  let verdict: "GO" | "NO_GO" = score >= 55 ? "GO" : "NO_GO"
-  if (!passesMarginRule) verdict = "NO_GO"
+  let verdict: "GO" | "CONDITIONAL_GO" | "NO_GO" =
+    !passesMarginRule ? "NO_GO" : score >= 55 ? "GO" : "CONDITIONAL_GO"
 
   const confidence = Math.max(35, Math.min(92, Math.round(55 + (score - 50) * 0.7)))
 
@@ -412,7 +412,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     }
   }
   const why_this_decision_final =
-    why_this_decision.length > 0 ? why_this_decision : whyBullets.length > 0 ? whyBullets.slice(0, 5) : [verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : "Economics and market signals support a cautious GO; differentiate and control ACoS."]
+    why_this_decision.length > 0 ? why_this_decision : whyBullets.length > 0 ? whyBullets.slice(0, 5) : [verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : verdict === "CONDITIONAL_GO" ? "Borderline viability; improve margin or differentiation before launch." : "Economics and market signals support a cautious GO; differentiate and control ACoS."]
 
   const review_intelligence = aiInsights?.review_intelligence?.length
     ? aiInsights.review_intelligence
@@ -584,15 +584,21 @@ export async function analyzeProduct(input: AnalyzeInput) {
     "Step 3 (Day 21–30): Conversion Boost — Apply a 15–20% 'Green Coupon' to offset your lack of reviews and steal clicks from incumbents.",
   ]
   const executionFromAi = aiInsights?.execution_plan?.length ? aiInsights.execution_plan : null
+  const preLaunchFromAi = aiInsights?.pre_launch_improvements?.length ? aiInsights.pre_launch_improvements : null
   const honeymoonFromAi = aiInsights?.honeymoon_roadmap?.length ? aiInsights.honeymoon_roadmap : null
   const honeymoonRoadmap = honeymoonFromAi ?? executionFromAi ?? honeymoonRoadmapDefault
   const highBarrierStep = "High Barrier to Entry detected. Do not launch without a minimum $15,000 launch budget for PPC and Vine reviews."
   const ppcCannibalizationStep = "PPC Cannibalization Risk: Your ad costs will likely exceed 60% of your revenue during launch. You MUST have a backend funnel or high LTV (Lifetime Value) to survive this."
-  const executionPlanRaw = executionFromAi ?? [
-    ...(avgReviews > 10000 ? [highBarrierStep] : []),
-    ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
-    ...honeymoonRoadmap,
-  ]
+  const executionPlanRaw =
+    verdict === "NO_GO"
+      ? (what_would_make_go?.length ? what_would_make_go : ["Do not launch. Improve margins or choose a narrower keyword niche before re-running analysis."])
+      : verdict === "CONDITIONAL_GO"
+        ? (preLaunchFromAi?.length ? preLaunchFromAi : what_would_make_go?.length ? what_would_make_go : ["Complete margin and differentiation improvements before launching. Re-run analysis when ready."])
+        : (executionFromAi ?? [
+            ...(avgReviews > 10000 ? [highBarrierStep] : []),
+            ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
+            ...honeymoonRoadmap,
+          ])
   const execution_plan = executionPlanRaw.map((step: string) =>
     String(step).replace(/\bkeywords:\s*:\s*/gi, "keywords: ")
   )
@@ -840,7 +846,9 @@ export async function analyzeProduct(input: AnalyzeInput) {
     estimated_acos_for_market: dynamicAcosForMarket,
     alternative_keywords,
     alternative_keywords_with_cost,
-    what_would_make_go: verdict === "NO_GO" ? what_would_make_go : undefined,
+    what_would_make_go: verdict === "NO_GO" ? what_would_make_go : verdict === "CONDITIONAL_GO" ? what_would_make_go : undefined,
+    verdict_explanation: aiInsights?.verdict_explanation ?? undefined,
+    recommended_action: aiInsights?.recommended_action ?? undefined,
     profit_breakdown: profitBreakdown,
     profit_explanation: profitExplanation,
     net_profit: Math.round(profitAfterAds * 100) / 100,
@@ -938,7 +946,9 @@ export async function analyzeProduct(input: AnalyzeInput) {
     honeymoonRoadmap: honeymoonRoadmap,
     alternativeKeywords: report.alternative_keywords,
     alternativeKeywordsWithCost: report.alternative_keywords_with_cost,
-    whatWouldMakeGo: verdict === "NO_GO" ? what_would_make_go : undefined,
+    whatWouldMakeGo: verdict === "NO_GO" ? what_would_make_go : verdict === "CONDITIONAL_GO" ? what_would_make_go : undefined,
+    verdictExplanation: aiInsights?.verdict_explanation ?? undefined,
+    recommendedAction: aiInsights?.recommended_action ?? undefined,
     profitAfterAds: profitAfterAds,
     profitBreakdown: profitBreakdown,
     profitExplanation: profitExplanation,
