@@ -769,41 +769,22 @@ export default function WarRoom() {
                 </div>
               </section>
 
-              {/* Why This Decision — exactly three bullets (Observation → implication) */}
-              <section>
-                <SectionHeader
-                  icon={<Shield className="h-5 w-5 text-primary" />}
-                  title="Why This Decision"
-                  sub="Observation → implication"
-                  helpText={help("whyThisDecision")}
-                />
-                <div className="rounded-2xl border border-border bg-card p-6">
-                  {(fWhy && fWhy.length > 0) ? (
-                    <ul className="flex flex-col gap-3.5">
-                      {fWhy.slice(0, 3).map((reason, i) => (
-                        <li key={i} className="flex items-start gap-3 text-sm text-foreground leading-relaxed">
-                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                          {String(reason).replace(/\bkeywords:\s*:\s*/gi, "keywords: ")}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-muted-foreground/60 italic">No explicit reasoning provided for this verdict.</p>
-                  )}
-                  {advisorImplicationWhyThisDecision && (
-                    <p style={{
-                      fontSize: '13px',
-                      color: 'var(--color-text-secondary)',
-                      borderLeft: '2px solid #f97316',
-                      paddingLeft: '10px',
-                      marginTop: '8px',
-                      lineHeight: '1.5'
-                    }}>
+              {/* Why This Decision — advisor implication only */}
+              {advisorImplicationWhyThisDecision && (
+                <section>
+                  <SectionHeader
+                    icon={<Shield className="h-5 w-5 text-primary" />}
+                    title="Why This Decision"
+                    sub="Observation → implication"
+                    helpText={help("whyThisDecision")}
+                  />
+                  <div className="rounded-2xl border border-border bg-card p-6">
+                    <p className="text-sm font-medium text-foreground leading-relaxed" style={{ lineHeight: '1.5' }}>
                       {advisorImplicationWhyThisDecision}
                     </p>
-                  )}
-                </div>
-              </section>
+                  </div>
+                </section>
+              )}
 
               {/* Differentiation Verdict — only when at least one non-PENDING verdict */}
               {validatedDifferentiators.length > 0 &&
@@ -851,8 +832,8 @@ export default function WarRoom() {
                 </section>
               )}
 
-              {/* Expert Insight — short, max 3 sentences */}
-              {(consultantSecret || (typeof fStratIntel === "string" ? fStratIntel : (fStratIntel as string[])?.[0])) && (
+              {/* Expert Insight — new expert insight only */}
+              {advisorImplicationExpertInsight && (
                 <section>
                   <SectionHeader
                     icon={<Brain className="h-5 w-5 text-amber-600" />}
@@ -861,21 +842,9 @@ export default function WarRoom() {
                     badge="Expert"
                   />
                   <div className="rounded-2xl border-2 border-amber-300/60 dark:border-amber-700/40 bg-amber-50/50 dark:bg-amber-950/20 p-6 shadow-sm">
-                    <p className="text-sm font-medium text-foreground leading-relaxed">
-                      {consultantSecret || (typeof fStratIntel === "string" ? fStratIntel : (fStratIntel as string[])?.[0])}
+                    <p className="text-sm font-medium text-foreground leading-relaxed" style={{ lineHeight: '1.5' }}>
+                      {advisorImplicationExpertInsight}
                     </p>
-                    {advisorImplicationExpertInsight && (
-                      <p style={{
-                        fontSize: '13px',
-                        color: 'var(--color-text-secondary)',
-                        borderLeft: '2px solid #f97316',
-                        paddingLeft: '10px',
-                        marginTop: '8px',
-                        lineHeight: '1.5'
-                      }}>
-                        {advisorImplicationExpertInsight}
-                      </p>
-                    )}
                   </div>
                 </section>
               )}
