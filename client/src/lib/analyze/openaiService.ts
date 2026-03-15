@@ -173,27 +173,31 @@ EARLY_STRATEGY_GUIDANCE — Use: launchCapital, ppcBudget, vineEstimate, netMarg
 
 QUESTION 5 — COMPETITIVE ADVANTAGE:
 
-You receive validatedDifferentiators — a list already cross-referenced against actual competitor titles and pain points.
+You receive Differentiation — free text from the seller listing their competitive advantages.
 
-Each item has:
-- differentiator: the feature name
-- verdict: STRONG / WEAK / TABLE_STAKES
-- appearsInTitles: number out of 15
-- appearsInPainPoints: true / false
+You also have the top 15 competitor titles and inferred pain points from the market.
 
-For each differentiator write one line inside advisor_implication for OPPORTUNITY:
+For each differentiator the seller mentions, analyze it against the market data and write one line inside advisor_implication for OPPORTUNITY.
 
-STRONG (appearsInTitles <= 3, inPainPoints true):
-"[X] appears in only [N] of 15 competitor titles and matches what customers search for — put it in your title and image 1 today."
+For each differentiator ask yourself:
+- Does this feature appear in competitor titles?
+- Does it address a pain point in this market?
+- Where exactly must it appear in the listing?
 
-WEAK (appearsInTitles <= 5, inPainPoints false):
-"[X] is not common but customers are not actively searching for it — use it in bullet 2, not your title."
+Write one direct sentence per differentiator:
+"[Feature] — [what market data shows] — [exact location: title / image 1 / bullet 1 / bullet 2]."
 
-TABLE_STAKES (appearsInTitles > 5):
-"[X] appears in [N] of 15 competitor titles — this is expected, not a differentiator. Remove it from your main message."
+Rules:
+- Use actual numbers from the market data
+- Never say "consider" or "might"
+- Say exactly what to do and where
+- If a feature is common in competitor titles: "Already common — remove from main message"
+- If a feature addresses a pain point: "Pain point match — lead with this in title"
+- If a feature is unique to the market: "Not found in competitor titles — own this word, put it in your title today"
 
-Also add one line at the end:
-"Margin threshold for this product has been adjusted to [marginThreshold]% based on your validated differentiators."
+Output the full differentiator analysis as the advisor_implication for OPPORTUNITY — one sentence per differentiator, each on a new line.
+Do not add a new JSON field.
+Use only the existing advisor_implication field for the OPPORTUNITY section.
 
 ---
 
@@ -240,43 +244,27 @@ export function getValidatedDifferentiators(
   differentiation: string,
   topTitles: string[],
   painPoints: string[]
-): { differentiator: string; appearsInTitles: number; appearsInPainPoints: boolean; verdict: "STRONG" | "WEAK" | "TABLE_STAKES"; marginImpact: number }[] {
+): { differentiator: string; appearsInTitles: number; appearsInPainPoints: boolean; verdict: "STRONG" | "WEAK" | "TABLE_STAKES" | "PENDING"; marginImpact: number }[] {
   return validateDifferentiators(differentiation, topTitles, painPoints)
 }
 
 const validateDifferentiators = (
   differentiation: string,
-  topTitles: string[],
-  painPoints: string[]
+  _topTitles: string[],
+  _painPoints: string[]
 ) => {
-  if (!differentiation || !topTitles?.length) return []
-  const userDiffs = differentiation
+  if (!differentiation) return []
+  return differentiation
     .split(",")
-    .map((d) => d.trim().toLowerCase())
+    .map((d) => d.trim())
     .filter((d) => d.length > 2)
-  return userDiffs.map((diff) => {
-    const inTitles = topTitles.filter((t) => t.toLowerCase().includes(diff)).length
-    const inPainPoints = painPoints?.some((p) => p.toLowerCase().includes(diff)) ?? false
-    let verdict: "STRONG" | "WEAK" | "TABLE_STAKES"
-    let marginImpact: number
-    if (inPainPoints && inTitles <= 3) {
-      verdict = "STRONG"
-      marginImpact = -0.03
-    } else if (inTitles <= 5 && !inPainPoints) {
-      verdict = "WEAK"
-      marginImpact = 0
-    } else {
-      verdict = "TABLE_STAKES"
-      marginImpact = 0.01
-    }
-    return {
-      differentiator: diff,
-      appearsInTitles: inTitles,
-      appearsInPainPoints: inPainPoints,
-      verdict,
-      marginImpact,
-    }
-  })
+    .map((d) => ({
+      differentiator: d,
+      appearsInTitles: 0,
+      appearsInPainPoints: false,
+      verdict: "PENDING" as const,
+      marginImpact: 0,
+    }))
 }
 
 function buildUserPrompt(input: AIInsightsInput): string {
