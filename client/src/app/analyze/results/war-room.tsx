@@ -723,13 +723,19 @@ export default function WarRoom() {
           {activeTab === "overview" && (
             <div className="mt-10 flex flex-col gap-8 animate-in fade-in duration-300">
 
-              {/* Primary Reason — one short sentence for the verdict */}
-              {(fWhy?.[0] || consultantSecret) && (
+              {/* Primary Reason — consultant conclusion, at least 1.5 lines */}
+              {(advisorImplicationWhyThisDecision || fWhy?.[0] || consultantSecret) && (
                 <section>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Primary Reason</h3>
-                  <p className="text-sm font-medium text-foreground leading-relaxed">
-                    {String(fWhy?.[0] ?? consultantSecret).split(/[.!?]/).slice(0, 2).join(". ").trim() || String(fWhy?.[0] ?? consultantSecret)}
-                    {!(String(fWhy?.[0] ?? consultantSecret).endsWith(".")) ? "." : ""}
+                  <p className="text-sm font-medium text-foreground leading-relaxed min-h-[2.5em]">
+                    {advisorImplicationWhyThisDecision
+                      ? advisorImplicationWhyThisDecision
+                      : (() => {
+                          const fallback = String(fWhy?.[0] ?? consultantSecret)
+                          const sentences = fallback.split(/(?<=[.!?])\s+/).filter(Boolean)
+                          const atLeastTwoLines = sentences.slice(0, 3).join(" ").trim()
+                          return atLeastTwoLines || fallback
+                        })()}
                   </p>
                 </section>
               )}
