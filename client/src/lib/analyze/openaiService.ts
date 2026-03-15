@@ -432,6 +432,7 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       ],
       response_format: { type: "json_object" },
       temperature: 0.5,
+      max_tokens: 4000,
     })
 
     const raw = completion.choices[0]?.message?.content?.trim()
