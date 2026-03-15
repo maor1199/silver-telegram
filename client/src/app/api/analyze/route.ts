@@ -88,7 +88,13 @@ export async function POST(req: Request) {
       marginThreshold,
     })
 
-    const raw = (result && typeof result === "object" ? result : {}) as Record<string, unknown>
+    // Log advisor_implication_why_this_decision from analyze result (before normalize)
+    const resultObj = (result && typeof result === "object" ? result : {}) as Record<string, unknown>
+    const advisorWhyFromResult = resultObj.advisorImplicationWhyThisDecision ?? resultObj.advisor_implication_why_this_decision ?? (resultObj.report as Record<string, unknown>)?.advisor_implication_why_this_decision
+    console.log("[Analyze API] advisor_implication_why_this_decision present:", advisorWhyFromResult != null)
+    console.log("[Analyze API] advisor_implication_why_this_decision value:", advisorWhyFromResult === undefined || advisorWhyFromResult === null ? String(advisorWhyFromResult) : String(advisorWhyFromResult).slice(0, 200))
+
+    const raw = resultObj
     const normalized = normalizeAnalysisResponse(raw)
     const analysisData = normalized ?? raw
 

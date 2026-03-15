@@ -439,6 +439,12 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
 
     const parsed = JSON.parse(raw) as Record<string, unknown>
 
+    // Log raw AI field for advisor_implication_why_this_decision (before any transformation)
+    const rawAdvisorWhy = parsed.advisor_implication_why_this_decision
+    console.log("[OpenAI] raw advisor_implication_why_this_decision present:", rawAdvisorWhy != null)
+    console.log("[OpenAI] raw advisor_implication_why_this_decision type:", typeof rawAdvisorWhy)
+    console.log("[OpenAI] raw advisor_implication_why_this_decision value:", rawAdvisorWhy === undefined ? "undefined" : rawAdvisorWhy === null ? "null" : String(rawAdvisorWhy).slice(0, 200))
+
     const toArray = (v: unknown): string[] => {
       if (Array.isArray(v)) return v.map((x) => String(x)).filter(Boolean)
       if (typeof v === "string") return [v]
