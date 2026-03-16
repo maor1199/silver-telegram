@@ -21,7 +21,7 @@ export type AIInsightsInput = {
   unitCost?: number
   shippingCost?: number
   profitAfterAds: number
-  verdict: "GO" | "CONDITIONAL_GO" | "NO_GO"
+  verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
   avgPrice: number
   avgRating: number
   avgReviews: number
@@ -531,14 +531,14 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       risks: toArray(parsed.risks).slice(0, 3),
       alternative_keywords: toArray(parsed.alternative_keywords).slice(0, 3),
       what_would_make_go:
-        input.verdict === "NO_GO" ? toArray(parsed.what_would_make_go).slice(0, 3) : input.verdict === "CONDITIONAL_GO" ? toArray(parsed.what_would_make_go).slice(0, 3) : undefined,
+        input.verdict === "NO_GO" ? toArray(parsed.what_would_make_go).slice(0, 3) : input.verdict === "IMPROVE_BEFORE_LAUNCH" ? toArray(parsed.what_would_make_go).slice(0, 3) : undefined,
       execution_plan:
         input.verdict === "NO_GO"
           ? undefined
-          : input.verdict === "CONDITIONAL_GO"
+          : input.verdict === "IMPROVE_BEFORE_LAUNCH"
             ? toArray(parsed.pre_launch_improvements).slice(0, 8)
             : toArray(parsed.execution_plan).slice(0, 8),
-      pre_launch_improvements: input.verdict === "CONDITIONAL_GO" ? toArray(parsed.pre_launch_improvements).slice(0, 8) : undefined,
+      pre_launch_improvements: input.verdict === "IMPROVE_BEFORE_LAUNCH" ? toArray(parsed.pre_launch_improvements).slice(0, 8) : undefined,
       recommended_action: toStr(parsed.recommended_action),
       verdict_explanation: toStr(parsed.verdict_explanation),
       expert_insight: toStr(parsed.expert_insight),

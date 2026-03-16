@@ -107,6 +107,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const dominantBrand = market?.dominantBrand ?? false
   const newSellersInTop10 = market?.newSellersInTop10 ?? 0
   const newSellersInTop20 = market?.newSellersInTop20 ?? 0
+  const sponsoredTop10Count = market?.sponsored_top10_count ?? 0
   const hasRealMarketData = Boolean(market?.success)
   const competitorsWithOver1000Reviews = market?.competitorsWithOver1000Reviews ?? 0
   const painPoints = Array.isArray(market?.painPoints) ? market.painPoints : []
@@ -227,51 +228,93 @@ export async function analyzeProduct(input: AnalyzeInput) {
       ? `Premium Risk: Your price ($${sellingPrice.toFixed(2)}) is ${(((sellingPrice - avgPrice) / avgPrice) * 100).toFixed(1)}% higher than the top-5 market average ($${avgPrice.toFixed(2)}). Differentiation must justify this gap to maintain viability.`
       : undefined
 
+  // ─── Decision engine: score and verdict ───
+  const netMarginRatioForGate = sellingPrice > 0 ? profitAfterAds / sellingPrice : 0
+  const profitGateFails = netMarginRatioForGate < 0.1
+  const extremeCompetition =
+    avgReviews > 2000 && sponsoredTop10Count >= 6 && newSellersInTop10 === 0
+
   let score = 50
   const scoreBreakdown: Record<string, string> = { base: "50" }
 
-  if (profitAfterAds >= 25) {
-    score += 20
-    scoreBreakdown.profitAfterAds = "+20"
-  } else if (profitAfterAds >= 15) {
-    score += 10
-    scoreBreakdown.profitAfterAds = "+10"
-  } else if (profitAfterAds >= 8) {
-    score += 2
-    scoreBreakdown.profitAfterAds = "+2"
+  // Competition score: reviews impact
+  if (avgReviews < 500) {
+    score += 8
+    scoreBreakdown.avgReviews = "+8"
+  } else if (avgReviews <= 2000) {
+    score += 3
+    scoreBreakdown.avgReviews = "+3"
   } else {
-    score -= 18
-    scoreBreakdown.profitAfterAds = "-18"
+    score -= 5
+    scoreBreakdown.avgReviews = "-5"
   }
 
-  if (hasRealMarketData) {
-    if (avgReviews < 500) {
-      score += 8
-      scoreBreakdown.avgReviews = "+8"
-    } else if (avgReviews < 2000) {
-      score += 3
-      scoreBreakdown.avgReviews = "+3"
-    } else {
-      score -= 5
-      scoreBreakdown.avgReviews = "-5"
-    }
-    if (!dominantBrand) {
-      score += 5
-      scoreBreakdown.dominantBrand = "+5"
-    } else {
-      scoreBreakdown.dominantBrand = "0"
-    }
+  // Sponsored ads pressure
+  if (sponsoredTop10Count <= 2) {
+    score += 6
+    scoreBreakdown.sponsoredTop10 = "+6"
+  } else if (sponsoredTop10Count <= 5) {
+    score += 2
+    scoreBreakdown.sponsoredTop10 = "+2"
+  } else {
+    score -= 6
+    scoreBreakdown.sponsoredTop10 = "-6"
+  }
+
+  // Brand dominance (no dominant → +5, dominant → -5)
+  if (!dominantBrand) {
+    score += 5
+    scoreBreakdown.dominantBrand = "+5"
+  } else {
+    score -= 5
+    scoreBreakdown.dominantBrand = "-5"
+  }
+
+  // Entry opportunity: newSellersInTop10
+  if (newSellersInTop10 >= 3) {
+    score += 8
+    scoreBreakdown.newSellersTop10 = "+8"
+  } else if (newSellersInTop10 >= 1) {
+    score += 4
+    scoreBreakdown.newSellersTop10 = "+4"
+  } else {
+    score -= 4
+    scoreBreakdown.newSellersTop10 = "-4"
+  }
+
+  // Entry opportunity: newSellersInTop20
+  if (newSellersInTop20 >= 4) {
+    score += 4
+    scoreBreakdown.newSellersTop20 = "+4"
+  } else if (newSellersInTop20 >= 2) {
+    score += 2
+    scoreBreakdown.newSellersTop20 = "+2"
+  } else {
+    score -= 2
+    scoreBreakdown.newSellersTop20 = "-2"
   }
 
   score = Math.max(1, Math.min(99, Math.round(score)))
+
+  // Final verdict: profit gate → extreme competition → score bands
+  let verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
+  if (profitGateFails) {
+    verdict = "NO_GO"
+  } else if (extremeCompetition) {
+    verdict = "NO_GO"
+  } else if (score >= 70) {
+    verdict = "GO"
+  } else if (score >= 45) {
+    verdict = "IMPROVE_BEFORE_LAUNCH"
+  } else {
+    verdict = "NO_GO"
+  }
 
   console.log("marginThreshold received:", input.marginThreshold)
   console.log("effectiveMarginThreshold:", effectiveMarginThreshold)
   console.log("netMarginRatio:", netMarginRatio)
   console.log("passesMarginRule:", passesMarginRule)
-
-  let verdict: "GO" | "CONDITIONAL_GO" | "NO_GO" =
-    !passesMarginRule ? "NO_GO" : score >= 55 ? "GO" : "CONDITIONAL_GO"
+  console.log("decisionEngine: score", score, "verdict", verdict)
 
   const confidence = Math.max(35, Math.min(92, Math.round(55 + (score - 50) * 0.7)))
 
@@ -412,7 +455,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     }
   }
   const why_this_decision_final =
-    why_this_decision.length > 0 ? why_this_decision : whyBullets.length > 0 ? whyBullets.slice(0, 5) : [verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : verdict === "CONDITIONAL_GO" ? "Borderline viability; improve margin or differentiation before launch." : "Economics and market signals support a cautious GO; differentiate and control ACoS."]
+    why_this_decision.length > 0 ? why_this_decision : whyBullets.length > 0 ? whyBullets.slice(0, 5) : [verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : verdict === "IMPROVE_BEFORE_LAUNCH" ? "Borderline viability; improve margin or differentiation before launch." : "Economics and market signals support a cautious GO; differentiate and control ACoS."]
 
   const review_intelligence = aiInsights?.review_intelligence?.length
     ? aiInsights.review_intelligence
@@ -592,7 +635,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const executionPlanRaw =
     verdict === "NO_GO"
       ? (what_would_make_go?.length ? what_would_make_go : ["Do not launch. Improve margins or choose a narrower keyword niche before re-running analysis."])
-      : verdict === "CONDITIONAL_GO"
+      : verdict === "IMPROVE_BEFORE_LAUNCH"
         ? (preLaunchFromAi?.length ? preLaunchFromAi : what_would_make_go?.length ? what_would_make_go : ["Complete margin and differentiation improvements before launching. Re-run analysis when ready."])
         : (executionFromAi ?? [
             ...(avgReviews > 10000 ? [highBarrierStep] : []),
@@ -846,7 +889,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     estimated_acos_for_market: dynamicAcosForMarket,
     alternative_keywords,
     alternative_keywords_with_cost,
-    what_would_make_go: verdict === "NO_GO" ? what_would_make_go : verdict === "CONDITIONAL_GO" ? what_would_make_go : undefined,
+    what_would_make_go: verdict === "NO_GO" ? what_would_make_go : verdict === "IMPROVE_BEFORE_LAUNCH" ? what_would_make_go : undefined,
     verdict_explanation: aiInsights?.verdict_explanation ?? undefined,
     recommended_action: aiInsights?.recommended_action ?? undefined,
     profit_breakdown: profitBreakdown,
@@ -946,7 +989,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     honeymoonRoadmap: honeymoonRoadmap,
     alternativeKeywords: report.alternative_keywords,
     alternativeKeywordsWithCost: report.alternative_keywords_with_cost,
-    whatWouldMakeGo: verdict === "NO_GO" ? what_would_make_go : verdict === "CONDITIONAL_GO" ? what_would_make_go : undefined,
+    whatWouldMakeGo: verdict === "NO_GO" ? what_would_make_go : verdict === "IMPROVE_BEFORE_LAUNCH" ? what_would_make_go : undefined,
     verdictExplanation: aiInsights?.verdict_explanation ?? undefined,
     recommendedAction: aiInsights?.recommended_action ?? undefined,
     profitAfterAds: profitAfterAds,
