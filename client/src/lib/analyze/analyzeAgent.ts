@@ -229,86 +229,81 @@ export async function analyzeProduct(input: AnalyzeInput) {
       ? `Premium Risk: Your price ($${sellingPrice.toFixed(2)}) is ${(((sellingPrice - avgPrice) / avgPrice) * 100).toFixed(1)}% higher than the top-5 market average ($${avgPrice.toFixed(2)}). Differentiation must justify this gap to maintain viability.`
       : undefined
 
-  // ─── Decision engine: score and verdict ───
+  // ─── Decision engine: 4‑Layer Verdict Model ───
+  // Layer 1 — Economic Floor (Kill Switch)
   const netMarginRatioForGate = sellingPrice > 0 ? profitAfterAds / sellingPrice : 0
-  const profitGateFails = netMarginRatioForGate < 0.1
-  const extremeCompetition =
-    avgReviews > 2000 && sponsoredTop10Count >= 6 && newSellersInTop10 === 0
+  const economicFloorFails = profitAfterAds < 6 || netMarginRatioForGate < 0.15
 
+  // Base score before market/differentiation layers
   let score = 50
   const scoreBreakdown: Record<string, string> = { base: "50" }
 
-  // Competition score: reviews impact
-  if (avgReviews < 500) {
-    score += 8
-    scoreBreakdown.avgReviews = "+8"
-  } else if (avgReviews <= 2000) {
-    score += 3
-    scoreBreakdown.avgReviews = "+3"
-  } else {
-    score -= 5
-    scoreBreakdown.avgReviews = "-5"
+  // Layer 2 — Market Fluidity (New Seller Scan, Top 20)
+  const newSellers20 = Number.isFinite(newSellersInTop20) ? (newSellersInTop20 as number) : 0
+  if (newSellers20 < 2) {
+    score -= 30
+    scoreBreakdown.marketFluidity = "-30 (locked market: <2 new sellers in top 20)"
+  } else if (newSellers20 >= 4) {
+    score += 15
+    scoreBreakdown.marketFluidity = "+15 (fluid market: 4+ new sellers in top 20)"
   }
 
-  // Sponsored ads pressure
-  if (sponsoredTop10Count <= 2) {
-    score += 6
-    scoreBreakdown.sponsoredTop10 = "+6"
-  } else if (sponsoredTop10Count <= 5) {
-    score += 2
-    scoreBreakdown.sponsoredTop10 = "+2"
-  } else {
-    score -= 6
-    scoreBreakdown.sponsoredTop10 = "-6"
+  // Layer 3 — Ad Saturation (Sponsored density across first page, organic gaps)
+  const SERP_SIZE = 30
+  const sponsoredTotal = Number.isFinite(market?.sponsoredTotalCount)
+    ? (market!.sponsoredTotalCount as number)
+    : Math.round((market?.sponsoredShare ?? 0.0) * SERP_SIZE)
+  const sponsoredShare = SERP_SIZE > 0 ? sponsoredTotal / SERP_SIZE : 0
+
+  if (sponsoredShare > 0.35) {
+    score -= 20
+    scoreBreakdown.adSaturation = "-20 (PPC battlefield: >35% sponsored on first page)"
   }
 
-  // Brand dominance (no dominant → +5, dominant → -5)
-  if (!dominantBrand) {
-    score += 5
-    scoreBreakdown.dominantBrand = "+5"
-  } else {
-    score -= 5
-    scoreBreakdown.dominantBrand = "-5"
+  // Approximate organic gaps: organic low‑review listings in positions 15–30
+  const organicGapsCount =
+    Array.isArray(market?.topCompetitors) && market.topCompetitors.length
+      ? market.topCompetitors.filter((c) => {
+          const pos = c.position ?? 0
+          const reviews = c.ratingsTotal ?? 0
+          const isSponsored = c.sponsored === true
+          return !isSponsored && pos >= 15 && pos <= 30 && reviews > 0 && reviews < 200
+        }).length
+      : 0
+
+  if (organicGapsCount >= 2) {
+    score += 10
+    scoreBreakdown.organicGaps = "+10 (organic low‑review gaps between ranks 15–30)"
   }
 
-  // Entry opportunity: newSellersInTop10
-  if (newSellersInTop10 >= 3) {
-    score += 8
-    scoreBreakdown.newSellersTop10 = "+8"
-  } else if (newSellersInTop10 >= 1) {
-    score += 4
-    scoreBreakdown.newSellersTop10 = "+4"
-  } else {
-    score -= 4
-    scoreBreakdown.newSellersTop10 = "-4"
+  // Layer 4 — Differentiation Multiplier
+  const validatedDiffsForScore = getValidatedDifferentiators(
+    differentiationInput,
+    market?.topTitles ?? [],
+    market?.painPoints ?? []
+  )
+  const hasStrongVisualDiff = validatedDiffsForScore.some((d) => d.verdict === "STRONG")
+  const hasAnyDiffText = (differentiationInput ?? "").trim().length > 0
+
+  if (hasStrongVisualDiff) {
+    score += 20
+    scoreBreakdown.differentiation = "+20 (strong differentiation aligned with market pain points)"
+  } else if (hasAnyDiffText) {
+    score -= 10
+    scoreBreakdown.differentiation = "-10 (weak/generic differentiation)"
   }
 
-  // Entry opportunity: newSellersInTop20
-  if (newSellersInTop20 >= 4) {
-    score += 4
-    scoreBreakdown.newSellersTop20 = "+4"
-  } else if (newSellersInTop20 >= 2) {
-    score += 2
-    scoreBreakdown.newSellersTop20 = "+2"
-  } else {
-    score -= 2
-    scoreBreakdown.newSellersTop20 = "-2"
-  }
-
+  // Clamp final score
   score = Math.max(1, Math.min(99, Math.round(score)))
 
-  // Final verdict: profit gate → extreme competition → score bands
+  // Final verdict bands
   let verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
-  if (profitGateFails) {
+  if (economicFloorFails || score < 45) {
     verdict = "NO_GO"
-  } else if (extremeCompetition) {
-    verdict = "NO_GO"
-  } else if (score >= 70) {
-    verdict = "GO"
-  } else if (score >= 45) {
+  } else if (score <= 70) {
     verdict = "IMPROVE_BEFORE_LAUNCH"
   } else {
-    verdict = "NO_GO"
+    verdict = "GO"
   }
 
   console.log("marginThreshold received:", input.marginThreshold)
