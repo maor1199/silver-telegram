@@ -293,32 +293,55 @@ export async function analyzeProduct(input: AnalyzeInput) {
     scoreBreakdown.differentiation = "-10 (weak/generic differentiation)"
   }
 
-  // Clamp final score
+  // Clamp final score (UI only — verdict is logic‑based below)
   score = Math.max(1, Math.min(99, Math.round(score)))
 
-  // Profit First rule: strong unit economics should bias strongly toward GO
-  const profitFirst = profitAfterAds >= 10 && netMarginRatioForGate >= 0.18
+  // ─── Verdict engine — operator style (not score‑driven) ───
+  const hardKill =
+    profitAfterAds < 6 ||
+    netMarginRatioForGate < 0.15
+
+  const weakEconomics =
+    profitAfterAds < 10 ||
+    netMarginRatioForGate < 0.2
+
+  const avgTop10Reviews = market?.avgReviewsTop10 ?? 0
+  const highReviewBarrier = avgTop10Reviews > 300
+
+  const highPPCPressure = sponsoredShare > 0.3
+
+  const rankingDifficulty =
+    (highReviewBarrier ? 1 : 0) +
+    (highPPCPressure ? 1 : 0)
+
+  const avgPriceForVerdict = market?.avgPrice ?? sellingPrice
+  const pricePosition = avgPriceForVerdict > 0 ? sellingPrice / avgPriceForVerdict : 1
+
+  const canCompeteOnPrice = pricePosition <= 0.97
+  const hasRealDiff = hasStrongVisualDiff
+
+  let winAbilityScore = 0
+  if (canCompeteOnPrice) winAbilityScore++
+  if (hasRealDiff) winAbilityScore++
 
   let verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
   let verdictAdvisory: string | undefined
 
-  if (economicFloorFails) {
-    // Layer 1 kill switch: products that don't clear the economic floor are always NO_GO
+  if (hardKill) {
     verdict = "NO_GO"
-  } else if (profitFirst) {
-    // Profit First: high profit + healthy margin must be GO
-    verdict = "GO"
-  } else if (score < 45) {
+  } else if (winAbilityScore === 0 && rankingDifficulty >= 1) {
+    // No real way to win in a competitive market
     verdict = "NO_GO"
-  } else if (score >= 65) {
-    verdict = "GO"
-  } else {
+  } else if (
+    weakEconomics ||
+    rankingDifficulty === 2 ||
+    winAbilityScore === 1
+  ) {
+    // Conditional zone: viable but needs improvement before launch
     verdict = "IMPROVE_BEFORE_LAUNCH"
-  }
-
-  // Success advisory for marginal GO cases
-  if (verdict === "GO" && score >= 65 && score <= 75) {
-    verdictAdvisory = "GO - High potential, but optimization required before launch."
+  } else {
+    // Real GO: survives economics and has a clear competitive path
+    verdict = "GO"
   }
 
   console.log("marginThreshold received:", input.marginThreshold)
