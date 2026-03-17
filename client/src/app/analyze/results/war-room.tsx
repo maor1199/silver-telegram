@@ -740,9 +740,41 @@ export default function WarRoom() {
                 </section>
               )}
 
-              {/* Core Metrics Snapshot — compact repeat of banner metrics */}
+              {/* Core Metrics Snapshot — profit breakdown table + cards */}
               <section>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Core Metrics Snapshot</h3>
+                {pb && typeof pb === "object" && (
+                  <div className="mb-6 overflow-hidden rounded-2xl border border-border bg-card">
+                    <table className="w-full text-sm">
+                      <tbody>
+                        <tr className="border-b border-border">
+                          <td className="py-3 pl-4 font-medium text-foreground">Selling price</td>
+                          <td className="py-3 pr-4 text-right tabular-nums text-foreground">${(Number(pb.sellingPrice) || 0).toFixed(2)}</td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-2 pl-4 text-muted-foreground">− Referral fee (15%)</td>
+                          <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">−${(Number(pb.referralFee) || 0).toFixed(2)}</td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-2 pl-4 text-muted-foreground">− FBA fee</td>
+                          <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">−${(Number(pb.fbaFee) || 0).toFixed(2)}</td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-2 pl-4 text-muted-foreground">− COGS</td>
+                          <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">−${(Number(pb.cogs) || 0).toFixed(2)}</td>
+                        </tr>
+                        <tr className="border-b border-border">
+                          <td className="py-2 pl-4 text-muted-foreground">− PPC cost ({Number(pb.assumedAcosPercent) || 0}% ACoS)</td>
+                          <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">−${(Number(pb.ppcCostPerUnit) || 0).toFixed(2)}</td>
+                        </tr>
+                        <tr className="bg-muted/30">
+                          <td className="py-3 pl-4 font-semibold text-foreground">Net profit after ads</td>
+                          <td className="py-3 pr-4 text-right tabular-nums font-bold text-foreground">${(Number(pb.profitAfterAds) ?? profitAfterAds ?? 0).toFixed(2)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
                 <AnalysisProfitCards
                   netProfit={profitAfterAds}
                   profitBreakdown={pb ? {

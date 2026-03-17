@@ -196,7 +196,8 @@ export async function analyzeProduct(input: AnalyzeInput) {
     : stage === "launch"
       ? launchAcosValue
       : 0.35
-  const assumedAcos = Math.max(assumedAcosRaw, acosFloor, effectiveLaunchAcos)
+  const baseAcos = hasRealMarketData ? (dynamicAcosForMarket ?? 0.35) : 0.35
+  const assumedAcos = Math.min(0.45, Math.max(0.25, Math.max(baseAcos, acosFloor)))
 
   const referralFee = sellingPrice * REFERRAL_FEE_RATE
   const ppcCostPerUnit = sellingPrice * assumedAcos
