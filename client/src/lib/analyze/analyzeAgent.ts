@@ -296,14 +296,33 @@ export async function analyzeProduct(input: AnalyzeInput) {
   // Clamp final score
   score = Math.max(1, Math.min(99, Math.round(score)))
 
-  // Final verdict bands
+  // Final verdict bands with Profit Protector and calibrated thresholds
+  const healthyProfitFloor = profitAfterAds >= 8 && netMarginRatioForGate >= 0.18
+  const veryHealthyProfit = profitAfterAds >= 10 && netMarginRatioForGate >= 0.18
+
+  // Approximate high barrier: heavy sponsored share / very high reviews / few new sellers
+  const highBarrierMarket =
+    sponsoredShare >= 0.5 || avgReviews > 2000 || newSellers20 < 2
+
   let verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
-  if (economicFloorFails || score < 45) {
+
+  if (economicFloorFails) {
+    // Layer 1 kill switch: products that don't clear the economic floor are always NO_GO
     verdict = "NO_GO"
-  } else if (score <= 70) {
+  } else if (score < 45) {
+    // Profit Protector: strong economics should not be hard NO_GO unless score is extremely low
+    if (healthyProfitFloor && score >= 35) {
+      verdict = "IMPROVE_BEFORE_LAUNCH"
+    } else {
+      verdict = "NO_GO"
+    }
+  } else if (veryHealthyProfit && highBarrierMarket) {
+    // Good margins but real PPC / review barriers → steer to IMPROVE_BEFORE_LAUNCH, not GO
     verdict = "IMPROVE_BEFORE_LAUNCH"
-  } else {
+  } else if (score > 75) {
     verdict = "GO"
+  } else {
+    verdict = "IMPROVE_BEFORE_LAUNCH"
   }
 
   console.log("marginThreshold received:", input.marginThreshold)
