@@ -512,6 +512,7 @@ export default function WarRoom() {
   const advisorImplicationCompetitionReality = safeStr(R?.competition_insight ?? analysisData?.competition_insight) || safeStr(R?.advisorImplicationCompetitionReality ?? analysisData?.advisorImplicationCompetitionReality ?? R?.advisor_implication_competition_reality)
   const advisorImplicationOpportunity = safeStr(R?.opportunity_insight ?? analysisData?.opportunity_insight) || safeStr(R?.advisorImplicationOpportunity ?? analysisData?.advisorImplicationOpportunity ?? R?.advisor_implication_opportunity)
   const advisorImplicationEarlyStrategyGuidance = safeStr(R?.advisorImplicationEarlyStrategyGuidance ?? analysisData?.advisorImplicationEarlyStrategyGuidance ?? R?.advisor_implication_early_strategy_guidance)
+  const recommendedAction = safeStr(R?.recommendedAction ?? analysisData?.recommendedAction ?? R?.recommended_action)
   const reviewStructureSummary = safeStr(R?.review_structure_summary ?? analysisData?.review_structure_summary)
   const newSellerPresence = safeStr(R?.new_seller_presence ?? analysisData?.new_seller_presence)
   const keywordSaturationRatio = safeStr(R?.keyword_saturation_ratio ?? analysisData?.keyword_saturation_ratio)
@@ -718,27 +719,10 @@ export default function WarRoom() {
 
           {/* ═══════════════════════════════════════════════
               SECTION 1 — OVERVIEW (Decision Layer)
-              Verdict + Primary Reason + Core Metrics + Why This Decision + Expert + What Most Miss + What Would Flip
+              Verdict + Core Metrics + Why This Decision + Market Reality + What Most Miss + Recommended Action + What Would Flip
               ═══════════════════════════════════════════════ */}
           {activeTab === "overview" && (
             <div className="mt-10 flex flex-col gap-8 animate-in fade-in duration-300">
-
-              {/* Primary Reason — consultant conclusion, at least 1.5 lines */}
-              {(advisorImplicationWhyThisDecision || fWhy?.[0] || consultantSecret) && (
-                <section>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Primary Reason</h3>
-                  <p className="text-sm font-medium text-foreground leading-relaxed min-h-[2.5em]">
-                    {advisorImplicationWhyThisDecision
-                      ? advisorImplicationWhyThisDecision
-                      : (() => {
-                          const fallback = String(fWhy?.[0] ?? consultantSecret)
-                          const sentences = fallback.split(/(?<=[.!?])\s+/).filter(Boolean)
-                          const atLeastTwoLines = sentences.slice(0, 3).join(" ").trim()
-                          return atLeastTwoLines || fallback
-                        })()}
-                  </p>
-                </section>
-              )}
 
               {/* Core Metrics Snapshot — profit breakdown table + cards */}
               <section>
@@ -801,8 +785,8 @@ export default function WarRoom() {
                 </div>
               </section>
 
-              {/* Why This Decision — advisor implication only */}
-              {advisorImplicationWhyThisDecision && (
+              {/* Why This Decision — 3 bullets (DATA → IMPLICATION) */}
+              {fWhy.length > 0 && (
                 <section>
                   <SectionHeader
                     icon={<Shield className="h-5 w-5 text-primary" />}
@@ -811,9 +795,14 @@ export default function WarRoom() {
                     helpText={help("whyThisDecision")}
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
-                    <p className="text-sm font-medium text-foreground leading-relaxed" style={{ lineHeight: '1.5' }}>
-                      {advisorImplicationWhyThisDecision}
-                    </p>
+                    <ul className="flex flex-col gap-2.5">
+                      {fWhy.slice(0, 3).map((item, i) => (
+                        <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
+                          <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-primary/60" />
+                          {String(item)}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </section>
               )}
@@ -864,13 +853,13 @@ export default function WarRoom() {
                 </section>
               )}
 
-              {/* Expert Insight — new expert insight only */}
+              {/* Market Reality — how this market behaves */}
               {advisorImplicationExpertInsight && (
                 <section>
                   <SectionHeader
                     icon={<Brain className="h-5 w-5 text-amber-600" />}
-                    title="Expert Insight"
-                    sub="Summary of the market situation"
+                    title="Market Reality"
+                    sub="How this niche actually behaves"
                     badge="Expert"
                   />
                   <div className="rounded-2xl border-2 border-amber-300/60 dark:border-amber-700/40 bg-amber-50/50 dark:bg-amber-950/20 p-6 shadow-sm">
@@ -903,6 +892,22 @@ export default function WarRoom() {
                         {advisorImplicationWhatMostSellersMiss}
                       </p>
                     )}
+                  </div>
+                </section>
+              )}
+
+              {/* Recommended Action — one sentence, verdict-dependent */}
+              {recommendedAction && (
+                <section>
+                  <SectionHeader
+                    icon={<Target className="h-5 w-5 text-primary" />}
+                    title="Recommended Action"
+                    sub="One clear next move based on this verdict"
+                  />
+                  <div className="rounded-2xl border border-border bg-card p-6">
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {recommendedAction}
+                    </p>
                   </div>
                 </section>
               )}

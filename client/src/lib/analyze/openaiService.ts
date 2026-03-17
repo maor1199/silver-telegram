@@ -174,7 +174,15 @@ Rules:
 
 CORE RULES
 - Use real market signals: review tiers, advertising pressure, price band, keyword saturation, brand structure, new seller presence, market maturity.
-- Format reasoning as: Observation → implication.
+- Always combine market data (Rainforest + computed metrics) with the seller's own inputs (price, COGS, shipping, differentiation text, target positioning, product type).
+- Mandatory data sources: avgReviews, review_structure_summary, sponsored_top10_count, newSellersInTop10 / newSellersInTop20, keyword_saturation_ratio, price_compression, brand_distribution_summary, calculated ACoS, profitAfterAds (unit profit after ads).
+- Format reasoning as: DATA → INSIGHT → IMPLICATION.
+- DECISION RELEVANCE: Only include insights that clearly affect the final verdict (GO / IMPROVE_BEFORE_LAUNCH / NO_GO) through ranking ability, conversion strength, or sustainable profitability. If a point does not change the decision, omit it.
+- CAUSALITY (CRITICAL): Always walk the causal chain when relevant: market signal → impact on ranking → impact on conversion → impact on PPC cost → impact on profit. Never stop at describing the market; always explain what it causes.
+- NO NEUTRAL ANALYSIS: Every statement must implicitly or explicitly push toward GO, IMPROVE_BEFORE_LAUNCH, or NO_GO — no neutral commentary.
+- USER REALITY INTEGRATION: Always connect market data to the user’s actual inputs: price vs market (and its conversion impact), differentiation text (ability to justify price and lift conversion), and cost structure (ability to survive PPC and fees).
+- PROFIT PRESSURE: When estimated margin < 15% or profitAfterAds is low, explicitly state that profitability is at risk and tie it to PPC costs, ranking difficulty, and the verdict.
+- RANKING ECONOMICS: Treat Amazon as a ranking-driven system. Whenever a factor affects ranking (reviews, CPC, sponsored density, keyword saturation, brand dominance), you must explain how that changes traffic and therefore profit.
 - GOOD: "6 of the top 10 listings have over 1k reviews → strong social proof barrier for new entrants."
 - BAD: "Competition is strong." Generic statements are not allowed.
 
@@ -218,14 +226,31 @@ COMPETITION REALITY: Minimum 2 insights. How listings actually compete. Price co
 
 OPPORTUNITY: One realistic differentiation path. Compare: user differentiation, competitor titles, pain points. Do not repeat same idea from other cards.
 
-DEEP DIVE — Convert Rainforest signals into conclusions:
-Use avg_price, avg_reviews, review_distribution, sponsored_density, keyword_saturation, brand_distribution to derive: entry_difficulty, advertising_pressure, price_competition, brand_moat, review_barrier. Every Deep Dive section must end with a short implication for a new seller.
+DEEP DIVE — Convert Rainforest signals into conclusions (not description):
+- MARKET SIGNALS: Keep the raw metrics (avg price, avg reviews, avg rating, review_structure_summary, keyword_saturation_ratio, price_compression, brand_distribution_summary, sponsored_top10_count, sponsored_total_count, new_seller_presence). At the end, add a 1–2 sentence "Market Snapshot" that summarizes competition level, review barrier, and keyword saturation using real numbers only (e.g. "Avg reviews around 1,850 with 6 sponsored in top 10 and high keyword saturation → mature, competitive page where SEO differentiation is limited.").
 
-DIFFERENTIATION ANALYSIS:
-Compare the user's answer ("Do you have a competitive advantage?") to current market conditions. Explain whether differentiation is weak, moderate, or strong and whether it realistically helps overcome the review barrier. Use competitor titles and pain points.
+- ENTRY REALITY: Use BOTH market data and user inputs. Return exactly 3 bullets:
+  1) Price positioning vs market (user price vs avg_price / price_compression),
+  2) Review barrier (avgReviews + review_structure_summary),
+  3) PPC reality (sponsored_top10_count, sponsored_total_count, estimated / calculated ACoS).
+  Each bullet must follow DATA → INSIGHT → IMPLICATION and explicitly connect the seller's price, margin and differentiation strength to these signals.
 
-PROFIT REALITY:
-Explain clearly: selling_price, manufacturing_cost (COGS), shipping, Amazon fees, estimated_acos. Then state net_profit_after_ads and estimated_margin. End with implications (e.g. "At $39 and 50% launch ACoS, net profit after ads is $2.65/unit. This leaves little room for couponing, returns, or PPC inefficiency.").
+- MARKET DOMINATION: Use brand_distribution_summary, distinct brands and top brands to say whether repeated brands dominate. In 2–3 sentences, explain what this brand structure and its review moat mean for a new seller (e.g. how much brand equity and review depth they must overcome).
+
+- COMPETITION REALITY: Structure into three mini-blocks:
+  1) How competition works (1–2 bullets) — use reviews, price_compression, sponsored density to describe how listings actually win and defend rank.
+  2) Barriers to entry (1–2 bullets) — use avgReviews, review tiers and brand concentration to show where the real wall is.
+  3) Where new sellers can break in (1–2 bullets) — use newSellersInTop10 / newSellersInTop20 and weaker review pockets to point to realistic entry lanes.
+  Every bullet: DATA → INSIGHT and must feel like expert strategy, not description.
+
+- OPPORTUNITY (Actionable Differentiation):
+  Use the seller's differentiation text, target positioning and product type against competitor titles, pain points, keyword_saturation_ratio and price_compression. Explain in up to 2 sentences which differentiator is actually strong enough relative to this market and what gap it exploits. Then give 1 clear actionable direction (e.g. exactly where and how to surface it in title / main image / bullet) that could realistically win against current listings.
+
+- PROFIT REALITY:
+  Explain clearly: selling_price, manufacturing_cost (COGS), shipping, Amazon fees, calculated / estimated ACoS, and net_profit_after_ads plus estimated_margin. End with a "Bottom line:" sentence that ties profitability to ACoS and the margin threshold for this niche, using real numbers (e.g. "Bottom line: at 48% ACoS and a 12% margin threshold, your current $2.10 profit after ads leaves almost no buffer for returns, coupons or PPC inefficiency.").
+
+- LAUNCH CAPITAL:
+  When you reason about launch budget (even if returned in other fields), connect required capital to PPC intensity, review barrier and the pace of launch phases (e.g. "This budget assumes sustaining X orders/day at Y% ACoS for Z days to cross the initial review and ranking wall.").
 
 EXECUTION PLAN: Only when verdict = GO. 30-day launch roadmap. Structure: Week 1, Week 2, Week 3–4. When verdict = NO_GO or CONDITIONAL_GO, do not return execution_plan (use pre_launch_improvements for CONDITIONAL_GO only).
 
