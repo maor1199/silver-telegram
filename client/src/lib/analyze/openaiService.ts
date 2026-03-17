@@ -233,31 +233,26 @@ COMPETITION REALITY: Minimum 2 insights. How listings actually compete. Price co
 
 OPPORTUNITY: One realistic differentiation path. Compare: user differentiation, competitor titles, pain points. Do not repeat same idea from other cards.
 
-DEEP DIVE — Convert Rainforest signals into conclusions (not description):
-- MARKET SIGNALS: Keep the raw metrics (avg price, avg reviews, avg rating, review_structure_summary, keyword_saturation_ratio, price_compression, brand_distribution_summary, sponsored_top10_count, sponsored_total_count, new_seller_presence). At the end, add a 1–2 sentence "Market Snapshot" that summarizes competition level, review barrier, and keyword saturation using real numbers only (e.g. "Avg reviews around 1,850 with 6 sponsored in top 10 and high keyword saturation → mature, competitive page where SEO differentiation is limited.").
+DEEP DIVE — Strategic Risk/Reward Engine (convert Rainforest + user inputs into decisions, not description):
+- MARKET SIGNALS (The Battlefield): Keep the raw metrics (avg price, avg reviews, avg rating, review_structure_summary, keyword_saturation_ratio, price_compression, brand_distribution_summary, sponsored_top10_count, sponsored_total_count, new_seller_presence). Then explain the Review Moat and Cost of Entry. Use operator language where appropriate (Review Moat, PPC Floor, Conversion Threshold). End with a 1–2 sentence "Market Snapshot" that summarizes competition level, review barrier and keyword saturation using real numbers (e.g. "Avg reviews around 1,850 with 6 sponsored in top 10 and high keyword saturation → Review Moat that turns this into a 'Locked Market' requiring a $15k–$20k launch budget just to buy initial relevance."). Finish with an explicit single-line Operator’s Verdict for this section.
 
-- ENTRY REALITY: Use BOTH market data and user inputs. Return exactly 3 bullets:
-  1) Price positioning vs market (user price vs avg_price / price_compression),
-  2) Review barrier (avgReviews + review_structure_summary),
-  3) PPC reality (sponsored_top10_count, sponsored_total_count, estimated / calculated ACoS).
-  Each bullet must follow DATA → INSIGHT → IMPLICATION and explicitly connect the seller's price, margin and differentiation strength to these signals.
+- ENTRY REALITY (Differentiation Audit — CRITICAL): Stress-test the seller’s differentiation against real complaints and competitor features. Use pain points from review_structure_summary / negative review signals plus competitor titles. Answer:
+  • Pain Point Alignment — does their differentiation directly solve a top-3 complaint in the niche?
+  • Visual vs Textual — is the differentiator visible in a main image (CTR lift) or only in bullets/description (conversion-only lift)?
+  • Value Verdict — can this differentiation realistically reduce CPC or only justify price after reviews?
+  Use terms like Visual Differentiation vs Textual Differentiation, Newbie Tax, Conversion Threshold. End with one clear Operator’s Verdict line (e.g. "Operator’s Verdict — your differentiation is mostly textual and will not lower your initial CPC; expect to pay a Newbie Tax until social proof catches up.").
 
-- MARKET DOMINATION: Use brand_distribution_summary, distinct brands and top brands to say whether repeated brands dominate. In 2–3 sentences, explain what this brand structure and its review moat mean for a new seller (e.g. how much brand equity and review depth they must overcome).
+- COMPETITION REALITY (Tactical Landscape): Structure into three mini-blocks (you still return one competition_reality array, but conceptually cover all three):
+  1) How competition works — use reviews, price_compression and sponsored density to describe how listings actually win and defend rank (e.g. “PPC Cannibalization detected — major brands are bidding on their own branded terms and generic terms, creating a PPC Floor of ~$X.XX/click.”).
+  2) Barriers to entry — describe Review Moats and Brand Dominance using avgReviews, review tiers, brand_distribution_summary.
+  3) Where new sellers can break in — use newSellersInTop10 / newSellersInTop20 and weaker-review pockets to point to realistic lanes.
+  Every bullet: DATA → INSIGHT → IMPLICATION about ranking, conversion and profitability. End the section with a single-line Operator’s Verdict summarizing whether a new seller has a realistic tactical path or faces a losing PPC war.
 
-- COMPETITION REALITY: Structure into three mini-blocks:
-  1) How competition works (1–2 bullets) — use reviews, price_compression, sponsored density to describe how listings actually win and defend rank.
-  2) Barriers to entry (1–2 bullets) — use avgReviews, review tiers and brand concentration to show where the real wall is.
-  3) Where new sellers can break in (1–2 bullets) — use newSellersInTop10 / newSellersInTop20 and weaker review pockets to point to realistic entry lanes.
-  Every bullet: DATA → INSIGHT and must feel like expert strategy, not description.
+- OPPORTUNITY (Economic Viability of Differentiation): Cross-reference the seller’s differentiation with COGS, target price and market gaps. Ask: can they actually afford their differentiation at the price they want? Use terms like Margin Trap and Net Margin Erosion. Example reasoning: "To execute 'premium material', COGS at $6.00 on a $37 price puts you into a Margin Trap — you either need COGS ≤ $4.80 or a price closer to $44.99 to survive the PPC Floor." End with one clear actionable direction plus an Operator’s Verdict sentence on whether the differentiation is economically viable in this niche.
 
-- OPPORTUNITY (Actionable Differentiation):
-  Use the seller's differentiation text, target positioning and product type against competitor titles, pain points, keyword_saturation_ratio and price_compression. Explain in up to 2 sentences which differentiator is actually strong enough relative to this market and what gap it exploits. Then give 1 clear actionable direction (e.g. exactly where and how to surface it in title / main image / bullet) that could realistically win against current listings.
+- PROFIT REALITY (Stress Test): Explain clearly: selling_price, manufacturing_cost (COGS), shipping, Amazon fees, calculated / estimated ACoS, net_profit_after_ads and estimated_margin. Calculate and reason around breakeven ACoS and Safety Margin. Use language like Net Margin Erosion and Conversion Death Spiral when small shocks (CPC spikes, return rates) flip profit to loss. Always end with a "Bottom line:" sentence plus an Operator’s Verdict on whether the current unit economics can survive realistic PPC and returns.
 
-- PROFIT REALITY:
-  Explain clearly: selling_price, manufacturing_cost (COGS), shipping, Amazon fees, calculated / estimated ACoS, and net_profit_after_ads plus estimated_margin. End with a "Bottom line:" sentence that ties profitability to ACoS and the margin threshold for this niche, using real numbers (e.g. "Bottom line: at 48% ACoS and a 12% margin threshold, your current $2.10 profit after ads leaves almost no buffer for returns, coupons or PPC inefficiency.").
-
-- LAUNCH CAPITAL:
-  When you reason about launch budget (even if returned in other fields), connect required capital to PPC intensity, review barrier and the pace of launch phases (e.g. "This budget assumes sustaining X orders/day at Y% ACoS for Z days to cross the initial review and ranking wall.").
+- LAUNCH CAPITAL (Velocity Plan): Connect inventory cost to the ad spend required to move it. Use inventory units, landed cost, expected ACoS and target rank velocity to reason about cash flow and Inventory Velocity. Call out when this is effectively a "Buy-to-Rank" strategy where 60%+ of capital goes into PPC and the seller risks running out of cash before a second order if page 1 is not reached within ~30 days. End with a one-line Operator’s Verdict that states whether their current capital is sufficient for a realistic launch path in this niche.
 
 EXECUTION PLAN: Only when verdict = GO. 30-day launch roadmap. Structure: Week 1, Week 2, Week 3–4. When verdict = NO_GO or CONDITIONAL_GO, do not return execution_plan (use pre_launch_improvements for CONDITIONAL_GO only).
 
