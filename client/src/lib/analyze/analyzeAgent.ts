@@ -252,10 +252,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const SERP_SIZE = 30
   const sponsoredTotal = Number.isFinite(market?.sponsoredTotalCount)
     ? (market!.sponsoredTotalCount as number)
-    : Math.round((market?.sponsoredShare ?? 0.0) * SERP_SIZE)
-  const sponsoredShare = SERP_SIZE > 0 ? sponsoredTotal / SERP_SIZE : 0
+    : Math.round((sponsoredShare ?? 0.0) * SERP_SIZE)
+  const firstPageSponsoredShare = SERP_SIZE > 0 ? sponsoredTotal / SERP_SIZE : 0
 
-  if (sponsoredShare > 0.35) {
+  if (firstPageSponsoredShare > 0.35) {
     score -= 20
     scoreBreakdown.adSaturation = "-20 (PPC battlefield: >35% sponsored on first page)"
   }
