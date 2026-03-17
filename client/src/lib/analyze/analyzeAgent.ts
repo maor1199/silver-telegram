@@ -329,8 +329,11 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   if (hardKill) {
     verdict = "NO_GO"
-  } else if (winAbilityScore === 0 && rankingDifficulty >= 1) {
-    // No real way to win in a competitive market
+  } else if (winAbilityScore === 0 && rankingDifficulty === 2) {
+    // No real way to win in a very hard market (high reviews + high PPC)
+    verdict = "NO_GO"
+  } else if (winAbilityScore === 0 && weakEconomics) {
+    // No differentiation path and weak economics → block
     verdict = "NO_GO"
   } else if (
     weakEconomics ||
