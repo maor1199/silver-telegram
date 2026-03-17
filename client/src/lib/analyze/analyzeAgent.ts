@@ -296,33 +296,29 @@ export async function analyzeProduct(input: AnalyzeInput) {
   // Clamp final score
   score = Math.max(1, Math.min(99, Math.round(score)))
 
-  // Final verdict bands with Profit Protector and calibrated thresholds
-  const healthyProfitFloor = profitAfterAds >= 8 && netMarginRatioForGate >= 0.18
-  const veryHealthyProfit = profitAfterAds >= 10 && netMarginRatioForGate >= 0.18
-
-  // Approximate high barrier: heavy sponsored share / very high reviews / few new sellers
-  const highBarrierMarket =
-    sponsoredShare >= 0.5 || avgReviews > 2000 || newSellers20 < 2
+  // Profit First rule: strong unit economics should bias strongly toward GO
+  const profitFirst = profitAfterAds >= 10 && netMarginRatioForGate >= 0.18
 
   let verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
+  let verdictAdvisory: string | undefined
 
   if (economicFloorFails) {
     // Layer 1 kill switch: products that don't clear the economic floor are always NO_GO
     verdict = "NO_GO"
+  } else if (profitFirst) {
+    // Profit First: high profit + healthy margin must be GO
+    verdict = "GO"
   } else if (score < 45) {
-    // Profit Protector: strong economics should not be hard NO_GO unless score is extremely low
-    if (healthyProfitFloor && score >= 35) {
-      verdict = "IMPROVE_BEFORE_LAUNCH"
-    } else {
-      verdict = "NO_GO"
-    }
-  } else if (veryHealthyProfit && highBarrierMarket) {
-    // Good margins but real PPC / review barriers → steer to IMPROVE_BEFORE_LAUNCH, not GO
-    verdict = "IMPROVE_BEFORE_LAUNCH"
-  } else if (score > 75) {
+    verdict = "NO_GO"
+  } else if (score >= 65) {
     verdict = "GO"
   } else {
     verdict = "IMPROVE_BEFORE_LAUNCH"
+  }
+
+  // Success advisory for marginal GO cases
+  if (verdict === "GO" && score >= 65 && score <= 75) {
+    verdictAdvisory = "GO - High potential, but optimization required before launch."
   }
 
   console.log("marginThreshold received:", input.marginThreshold)
@@ -847,6 +843,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   const report = {
     verdict,
+    verdictAdvisory,
     score,
     confidence,
     profit_after_ads: profitAfterAds,
@@ -1006,6 +1003,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     alternativeKeywordsWithCost: report.alternative_keywords_with_cost,
     whatWouldMakeGo: verdict === "NO_GO" ? what_would_make_go : verdict === "IMPROVE_BEFORE_LAUNCH" ? what_would_make_go : undefined,
     verdictExplanation: aiInsights?.verdict_explanation ?? undefined,
+    verdictAdvisory: report.verdictAdvisory,
     recommendedAction: aiInsights?.recommended_action ?? undefined,
     profitAfterAds: profitAfterAds,
     profitBreakdown: profitBreakdown,
