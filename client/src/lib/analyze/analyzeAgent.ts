@@ -323,6 +323,14 @@ export async function analyzeProduct(input: AnalyzeInput) {
   let verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
   let verdictAdvisory: string | undefined
 
+  console.log("[VerdictEngine] values", {
+    profitAfterAds,
+    netMarginRatioForGate,
+    hasRealProfit,
+    marketLocked,
+    hasWinPath,
+  })
+
   // NO_GO only if clearly bad
   if (!hasRealProfit) {
     verdict = "NO_GO"
@@ -863,6 +871,13 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const report = {
     verdict,
     verdictAdvisory,
+    debug_values: {
+      profitAfterAds,
+      netMarginRatioForGate,
+      hasRealProfit,
+      marketLocked,
+      hasWinPath,
+    },
     score,
     confidence,
     profit_after_ads: profitAfterAds,
