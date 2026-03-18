@@ -326,12 +326,12 @@ export async function analyzeProduct(input: AnalyzeInput) {
   // NO_GO only if clearly bad
   if (!hasRealProfit) {
     verdict = "NO_GO"
-  } else if (marketLocked && !hasWinPath) {
+  } else if (marketLocked && !hasWinPath && profitAfterAds < 5) {
     verdict = "NO_GO"
   }
 
   // IMPROVE for most realistic cases
-  else if (!hasHealthyProfit || !hasRealDifferentiation) {
+  else if (!hasHealthyProfit) {
     verdict = "IMPROVE_BEFORE_LAUNCH"
   }
 
