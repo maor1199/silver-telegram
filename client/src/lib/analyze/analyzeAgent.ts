@@ -296,54 +296,47 @@ export async function analyzeProduct(input: AnalyzeInput) {
   // Clamp final score (UI only — verdict is logic‑based below)
   score = Math.max(1, Math.min(99, Math.round(score)))
 
-  // ─── Verdict engine — operator style (not score‑driven) ───
-  const hardKill =
-    profitAfterAds < 6 ||
-    netMarginRatioForGate < 0.15
+  // ─── FINAL DECISION ENGINE (SIMPLE & HUMAN-LIKE) ───
 
-  const weakEconomics =
-    profitAfterAds < 10 ||
-    netMarginRatioForGate < 0.2
+  // 1. SURVIVAL — real profit after ads
+  const hasRealProfit = profitAfterAds > 0 && netMarginRatioForGate > 0.12
 
+  // 2. STRONG PROFIT — safe for scaling
+  const hasHealthyProfit = profitAfterAds >= 10 && netMarginRatioForGate >= 0.18
+
+  // 3. MARKET LOCK — entry blocked
   const avgTop10Reviews = market?.avgReviewsTop10 ?? 0
-  const highReviewBarrier = avgTop10Reviews > 300
+  const hasDominantBrand = (market?.brandShareTop3 ?? 0) > 0.5
 
-  const highPPCPressure = sponsoredShare > 0.3
+  const marketLocked = avgTop10Reviews > 500 && hasDominantBrand
 
-  const rankingDifficulty =
-    (highReviewBarrier ? 1 : 0) +
-    (highPPCPressure ? 1 : 0)
-
+  // 4. WIN PATH — any way to compete
   const avgPriceForVerdict = market?.avgPrice ?? sellingPrice
   const pricePosition = avgPriceForVerdict > 0 ? sellingPrice / avgPriceForVerdict : 1
 
-  const canCompeteOnPrice = pricePosition <= 0.97
-  const hasRealDiff = hasStrongVisualDiff
+  const canCompeteOnPrice = pricePosition <= 0.95
+  const hasRealDifferentiation = hasStrongVisualDiff
 
-  let winAbilityScore = 0
-  if (canCompeteOnPrice) winAbilityScore++
-  if (hasRealDiff) winAbilityScore++
+  const hasWinPath = hasRealDifferentiation || canCompeteOnPrice
 
+  // ─── VERDICT ───
   let verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
   let verdictAdvisory: string | undefined
 
-  if (hardKill) {
+  // NO_GO only if clearly bad
+  if (!hasRealProfit) {
     verdict = "NO_GO"
-  } else if (winAbilityScore === 0 && rankingDifficulty === 2) {
-    // No real way to win in a very hard market (high reviews + high PPC)
+  } else if (marketLocked && !hasWinPath) {
     verdict = "NO_GO"
-  } else if (winAbilityScore === 0 && weakEconomics) {
-    // No differentiation path and weak economics → block
-    verdict = "NO_GO"
-  } else if (
-    weakEconomics ||
-    rankingDifficulty === 2 ||
-    winAbilityScore === 1
-  ) {
-    // Conditional zone: viable but needs improvement before launch
+  }
+
+  // IMPROVE for most realistic cases
+  else if (!hasHealthyProfit || !hasRealDifferentiation) {
     verdict = "IMPROVE_BEFORE_LAUNCH"
-  } else {
-    // Real GO: survives economics and has a clear competitive path
+  }
+
+  // GO only for strong cases
+  else {
     verdict = "GO"
   }
 
