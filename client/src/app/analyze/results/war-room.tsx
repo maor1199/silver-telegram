@@ -396,7 +396,16 @@ export default function WarRoom() {
   const rawVerdict = String(R?.verdict ?? analysisData?.verdict ?? "").toUpperCase().replace(/_/g, "-")
   const isGoBut = rawVerdict.includes("GO") && rawVerdict.includes("BUT")
   const isGo = !isGoBut && rawVerdict.includes("GO") && !rawVerdict.includes("NO")
-  const verdict = isGoBut ? "GO-BUT" : isGo ? "GO" : rawVerdict ? "NO-GO" : "PENDING"
+  const verdict =
+    isGoBut
+      ? "GO-BUT"
+      : isGo
+        ? "GO"
+        : rawVerdict.includes("IMPROVE")
+          ? "GO-BUT"
+          : rawVerdict.includes("NO-GO")
+            ? "NO-GO"
+            : "PENDING"
 
   // ── Scalars ────────────────────────────────────────── 
   const score = R?.score != null ? Number(R.score) : (analysisData?.score != null ? Number(analysisData.score) : null)
