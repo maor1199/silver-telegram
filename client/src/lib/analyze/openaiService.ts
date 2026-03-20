@@ -155,16 +155,25 @@ OVERVIEW OUTPUT CONTRACT:
 - MARKET_REALITY:
   Write up to 2 focused, decision-grade sentences.
   Rules:
-  - Each sentence must include at least one concrete number/metric.
-  - Focus only on market mechanics: PPC pressure, review barrier, price structure.
-  - Use DATA -> IMPLICATION framing (what this mechanism causes in traffic/ranking economics).
-  - No advice language, no storytelling.
+  - Max 2 sentences.
+  - Each sentence must include at least one numeric signal.
+  - Describe market behavior only (NOT advice).
+  - Focus only on:
+    - PPC pressure (sponsored count / ad competition)
+    - review barrier (avgReviews / distribution)
+    - price structure (price spread / clustering)
+  - Format: [data] -> [market implication]
+  - Forbidden: "sellers should", "you should", generic explanations.
+  - If no strong data: return shorter output (1 sentence max).
 - WHAT_MOST_SELLERS_MISS:
   Write exactly 1 focused sentence.
   Rules:
-  - Include at least two concrete signals (numbers/metrics) plus one failure outcome.
-  - Frame it as hidden failure dynamic, not a recommendation.
-  - Keep it concise and non-generic.
+  - Exactly 1 sentence.
+  - Must include at least 2 numeric signals.
+  - Must explain failure mechanism (NOT advice).
+  - Format: [data] + [data] -> [why sellers fail]
+  - Forbidden: "sellers should", "focus on", "important to", generic statements.
+  - If not enough data: return empty string.
 
 OUTPUT STRUCTURE (keep existing JSON keys; add these behaviors):
 - VERDICT: One of GO | CONDITIONAL_GO | NO_GO. Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
