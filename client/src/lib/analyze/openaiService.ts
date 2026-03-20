@@ -137,9 +137,9 @@ ADVISOR BEHAVIOR (mandatory):
 
 OVERVIEW OUTPUT CONTRACT:
 - Return valid JSON with existing keys.
-- Why This Decision (`why_this_decision`): max 3 bullets.
-- Market Reality (`market_reality` or `expert_insight`): max 2 short sentences.
-- What Most Sellers Miss (`what_most_sellers_miss`): max 1 sentence.
+- Why This Decision ("why_this_decision"): max 3 bullets.
+- Market Reality ("market_reality" or "expert_insight"): max 2 short sentences.
+- What Most Sellers Miss ("what_most_sellers_miss"): max 1 sentence.
 - For Overview sections, these rules override other writing-style instructions below.
 - WHY_THIS_DECISION:
   - Max 3 bullets.
