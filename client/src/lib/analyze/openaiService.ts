@@ -612,7 +612,7 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
     const opportunityOverview =
       input.verdict === "NO_GO" ? [] : opportunityOverviewRaw
     const decisionConversation = toArray(parsed.decision_conversation)
-    const useWhy = whyDecision.length >= 1 ? whyDecision : decisionConversation
+    const useWhy = decisionConversation
     console.log("[WHY TRACE] fallback decision_conversation:", decisionConversation)
     console.log("[WHY TRACE] final useWhy:", useWhy)
     const decisionSnapshot = compact(
@@ -671,7 +671,7 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
           : toStr(parsed.opportunity),
       profit_reality: toStr(parsed.profit_reality),
       entry_reality: entry_reality ?? toStr(parsed.entry_reality),
-      why_this_decision: whyDecision.length >= 1 ? whyDecision : useWhy,
+      why_this_decision: whyDecision,
       market_domination_analysis: toStr(parsed.market_domination_analysis),
       early_strategy_guidance: toStr(parsed.early_strategy_guidance),
       honeymoon_roadmap: toArray(parsed.honeymoon_roadmap).slice(0, 8),

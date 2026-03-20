@@ -461,19 +461,17 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const why_this_decision_raw =
     (aiInsights?.why_this_decision?.length
       ? aiInsights.why_this_decision
-      : aiInsights?.decision_conversation?.length
-        ? aiInsights.decision_conversation
-        : null) ??
+      : null) ??
     (verdict === "NO_GO"
       ? [
-          "Profit after ads is too thin — PPC will eat it.",
-          `Market avg ${avgReviews.toLocaleString()} reviews; you'll burn roughly $${launchCapitalRequired.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} to get traction.`,
-          "Unless you have a real differentiator and budget, skip it.",
+          `Profit after ads is $${profitAfterAds.toFixed(2)} per unit -> downside risk is high at current economics.`,
+          `Average reviews are ${avgReviews.toLocaleString()} -> ranking requires sustained spend and stronger proof.`,
+          `Required launch capital is about $${launchCapitalRequired.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} -> risk-to-reward is unfavorable now.`,
         ]
       : [
-          `$${profitAfterAds.toFixed(2)}/unit after ads — room to play.`,
-          `Competition: ${avgReviews < 1000 ? "workable" : "tough"}.`,
-          "Worth testing. Nail one differentiator and control ACoS.",
+          `Profit after ads is $${profitAfterAds.toFixed(2)} per unit -> economics can support a controlled launch.`,
+          `Average reviews are ${avgReviews.toLocaleString()} -> competition pressure is ${avgReviews < 1000 ? "lower" : "meaningful"}.`,
+          `Estimated margin is ${estimatedMarginPercent.toFixed(1)}% -> execution quality will determine scalability.`,
         ])
   const why_this_decision = why_this_decision_raw
 
