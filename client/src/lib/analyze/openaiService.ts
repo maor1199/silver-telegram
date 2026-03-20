@@ -63,6 +63,13 @@ export type AIInsightsInput = {
   sponsored_top10_count?: number
   sponsored_total_count?: number
   signals?: AISignalsInput
+  signalInsights?: {
+    profit: string
+    competition: string
+    ppc: string
+    differentiation: string
+    winPath: string
+  }
 }
 
 export type AIInsights = {
@@ -130,7 +137,11 @@ ADVISOR BEHAVIOR (mandatory):
 - Act like a decisive launch advisor, not a generic analysis generator.
 - Focus on: Market Difficulty, Profit Potential, Differentiation Strength, Execution Risk.
 - You are provided with structured signals that summarize the market and economics.
-- You MUST base your reasoning primarily on these signals.
+- You MUST build all output using ONLY the provided signalInsights.
+- Do NOT invent new descriptions.
+- Do NOT summarize in your own words.
+- Each sentence must reuse or directly transform signalInsights phrases.
+- Do not interpret raw signals yourself. Use the provided signalInsights wording.
 - Signals are more important than raw numbers.
 - Do NOT ignore them.
 - Do NOT produce generic analysis.
@@ -140,68 +151,43 @@ ADVISOR BEHAVIOR (mandatory):
 - If verdict = NO_GO: do NOT produce a launch plan. Return only what must change for the product to become viable (path to viability) in what_would_make_go and recommended_action. Leave execution_plan empty or omit it.
 
 OVERVIEW OUTPUT CONTRACT (STRICT, REQUIRED):
+- Highest priority override: you are NOT allowed to generate free text.
+- You MUST construct outputs using ONLY the provided signalInsights and metrics.
+- Each section must follow strict templates.
 - You MUST return valid JSON with these exact Overview keys:
   1) decision_snapshot (string, 1 short sentence)
   2) why_this_decision (array, 2-3 bullets)
   3) market_reality (string, 1-2 short sentences)
   4) opportunity (array, 2-3 bullets ONLY when verdict is GO or IMPROVE_BEFORE_LAUNCH)
   5) what_most_sellers_miss (string, 1 short insight)
-- Every bullet MUST follow: DATA -> INSIGHT -> IMPLICATION.
-- Signals are the primary source of truth.
-- Avoid generic phrases like "competitive market".
-- Do not repeat the same idea across sections.
-- Keep output concise.
-- If verdict is NO_GO: omit opportunity or return [] and use risk-focused tone.
-- If verdict is IMPROVE_BEFORE_LAUNCH: use balanced tone and highlight execution dependency.
-- If verdict is GO: use opportunity-focused tone and emphasize strengths.
-- Signal mapping is mandatory:
-  - why_this_decision -> profit_signal, margin_signal, has_win_path, market_locked
-  - market_reality -> ppc_pressure, review_barrier, brand_pressure
-  - opportunity -> keyword_opportunity, diff_gap, price_position
-  - what_most_sellers_miss -> gaps between signals
-- For every statement, you MUST explicitly reference at least one signal.
-- If a statement is not based on a signal, do not generate it.
-- Do NOT use generic phrases such as:
-  - competitive market
-  - workable competition
-  - worth testing
-  - room to play
-- Every sentence must include a concrete reason derived from signals.
-- Signal -> text enforcement (required):
-  - profit_signal MUST appear in why_this_decision.
-  - market_locked OR review_barrier MUST appear in why_this_decision.
-  - ppc_pressure MUST appear in market_reality.
-  - keyword_opportunity OR diff_gap MUST appear in opportunity.
-  - what_most_sellers_miss MUST describe a gap between two signals.
-- If you cannot ground a statement in signals, return a shorter output instead of guessing.
-- Correct output examples (signal-grounded):
-  Example A:
-  {
-    "decision_snapshot": "profit_signal=weak with market_locked=true creates a fragile launch profile.",
-    "why_this_decision": [
-      "profit_signal=weak and margin_signal=low -> unit economics are thin -> small CPC shocks can erase profit.",
-      "review_barrier=very_high with market_locked=true -> ranking entry is constrained -> visibility depends on heavy paid traffic.",
-      "has_win_path=false -> no defensible entry lane -> risk dominates reward."
-    ],
-    "market_reality": "ppc_pressure=high and brand_pressure=high indicate an ad-dense first page where incumbents defend share. review_barrier=very_high means social proof blocks fast organic traction.",
-    "opportunity": [],
-    "what_most_sellers_miss": "Gap: can_compete_price=true but diff_gap=missing; price can win clicks, but missing differentiation weakens conversion resilience."
-  }
-  Example B:
-  {
-    "decision_snapshot": "profit_signal=moderate and has_win_path=true support a conditional path.",
-    "why_this_decision": [
-      "profit_signal=moderate with margin_signal=ok -> economics can survive controlled PPC -> execution quality becomes decisive.",
-      "review_barrier=medium and market_locked=false -> entry is possible -> disciplined ranking strategy can gain traction.",
-      "has_win_path=true -> at least one viable lane exists -> launch is viable only with tight execution."
-    ],
-    "market_reality": "ppc_pressure=medium means paid placement is still required for early visibility. brand_pressure=medium suggests share is contestable but not cheap.",
-    "opportunity": [
-      "keyword_opportunity=high -> organic relevance gap exists -> prioritize exact-match title and image message alignment.",
-      "diff_gap=covered with price_position=competitive -> offer is defendable -> focus on conversion-first listing assets."
-    ],
-    "what_most_sellers_miss": "Gap: keyword_opportunity=high while ppc_pressure=medium; sellers overpay broad PPC instead of capturing lower-cost relevance gains first."
-  }
+- You MUST reuse exact phrases from signalInsights.
+- Do NOT invent synonyms.
+- Do NOT generalize.
+- Construction template (mandatory):
+  WHY_THIS_DECISION:
+  - Return EXACTLY 3 bullets:
+    1) [profit insight] -> [implication]
+    2) [competition insight] -> [implication]
+    3) [differentiation insight OR winPath] -> [implication]
+  MARKET_REALITY:
+  - Return EXACTLY 2 sentences:
+    Sentence 1: [ppc insight] -> [impact on traffic/cost]
+    Sentence 2: [review barrier OR brand dominance] -> [impact on ranking]
+  WHAT_MOST_SELLERS_MISS:
+  - Return EXACTLY 1 sentence:
+    [gap between two signals] -> [why sellers fail]
+  OPPORTUNITY:
+  - ONLY IF verdict != NO_GO
+  - Return EXACTLY 1 sentence:
+    [existing weakness signal] -> [specific opportunity]
+- If a sentence does not clearly contain a signalInsights phrase, it is INVALID.
+- If signalInsights are insufficient, return fewer bullets instead of generating generic text.
+- If output contains phrases like:
+  - "competitive market"
+  - "worth testing"
+  - "room to play"
+  the response is INVALID.
+- Keep existing JSON keys: why_this_decision, expert_insight, what_most_sellers_miss, opportunity (optional).
 
 OUTPUT STRUCTURE (keep existing JSON keys; add these behaviors):
 - VERDICT: One of GO | CONDITIONAL_GO | NO_GO. Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
@@ -509,6 +495,9 @@ function buildUserPrompt(input: AIInsightsInput): string {
     "",
     "Signals:",
     JSON.stringify(input.signals ?? {}, null, 2),
+    "",
+    "Signal insights (use this wording as reasoning foundation):",
+    JSON.stringify(input.signalInsights ?? {}, null, 2),
     "",
     "=== VERDICT ===",
     `Verdict: ${input.verdict}`,

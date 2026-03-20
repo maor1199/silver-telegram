@@ -436,7 +436,8 @@ export default function WarRoom() {
   const profitExplanation = safeStr(R?.profitExplanation ?? analysisData?.profitExplanation)
 
   // ── Category arrays ────────────────────────────────── 
-  const whyFallback = safeList(R?.whyThisDecision ?? analysisData?.whyThisDecision ?? R?.why_this_decision)
+  const whyFromReport = safeList(R?.why_this_decision)
+  const whyFallback = safeList(R?.whyThisDecision ?? analysisData?.whyThisDecision)
   const reviewIntel = safeList(R?.reviewIntelligence ?? analysisData?.reviewIntelligence ?? R?.review_intelligence)
   const marketTrends = safeList(R?.marketTrends ?? analysisData?.marketTrends ?? R?.market_trends)
   const competitionData = safeList(R?.competition ?? analysisData?.competition)
@@ -449,7 +450,7 @@ export default function WarRoom() {
 
   // ── Fallback: parse formattedReport ────────────────── 
   const fallbackText = safeStr(R?.formattedReport ?? analysisData?.formattedReport)
-  const allEmpty = [whyFallback, reviewIntel, marketTrends, competitionData, profitReality, adReality, risksData, opportunitiesData, diffIdeas, executionPlan].every(a => a.length === 0)
+  const allEmpty = [whyFromReport, whyFallback, reviewIntel, marketTrends, competitionData, profitReality, adReality, risksData, opportunitiesData, diffIdeas, executionPlan].every(a => a.length === 0)
     && !marketRealityStr && marketRealityList.length === 0 && !stratIntelStr && stratIntelList.length === 0
   const sections = allEmpty ? parseFormattedReport(fallbackText) : []
 
@@ -462,7 +463,7 @@ export default function WarRoom() {
   const fOpportunities = opportunitiesData.length > 0 ? opportunitiesData : matchSection(sections, ["opportun", "advantage", "strength", "upside", "potential"])
   const fDiffIdeas = diffIdeas.length > 0 ? diffIdeas : matchSection(sections, ["differenti", "unique", "angle", "positioning", "strategy"])
   const fActionPlan = executionPlan.length > 0 ? executionPlan : matchSection(sections, ["action", "next step", "recommendation", "plan", "todo", "do this", "execution", "month", "timeline", "roadmap"])
-  const fWhy = whyFallback.length > 0 ? whyFallback : [
+  const fWhy = whyFromReport.length > 0 ? whyFromReport : whyFallback.length > 0 ? whyFallback : [
     ...fRisks.slice(0, 2), ...fCompetition.slice(0, 1), ...fProfitReality.slice(0, 1), ...fReviewIntel.slice(0, 1)
   ].filter(Boolean).slice(0, 5)
 

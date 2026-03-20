@@ -411,6 +411,38 @@ export async function analyzeProduct(input: AnalyzeInput) {
     avgPrice,
     userDifferentiation,
   })
+  const signalInsights = {
+    profit:
+      signals.profit_signal === "strong"
+        ? "strong profit margins after ads"
+        : signals.profit_signal === "moderate"
+          ? "viable but limited profit margins"
+          : signals.profit_signal === "weak"
+            ? "thin margins with limited buffer"
+            : "unprofitable after ads",
+    competition:
+      signals.review_barrier === "very_high"
+        ? "very high review barrier"
+        : signals.review_barrier === "high"
+          ? "high review competition"
+          : signals.review_barrier === "medium"
+            ? "moderate competition"
+            : "low competition",
+    ppc:
+      signals.ppc_pressure === "high"
+        ? "high PPC pressure"
+        : signals.ppc_pressure === "medium"
+          ? "moderate PPC competition"
+          : "low PPC pressure",
+    differentiation:
+      signals.diff_gap === "missing"
+        ? "no clear differentiation in the market"
+        : "clear differentiation opportunity exists",
+    winPath:
+      signals.has_win_path
+        ? "there is a realistic path to win"
+        : "there is no clear path to win",
+  }
 
   const aiInput = {
     keyword,
@@ -453,6 +485,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     sponsored_top10_count: market?.sponsored_top10_count,
     sponsored_total_count: market?.sponsored_total_count,
     signals,
+    signalInsights,
   }
   const aiInsights = await getAIInsights(aiInput)
 
