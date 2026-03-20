@@ -306,7 +306,7 @@ EXECUTION PLAN: Only when verdict = GO. 30-day launch roadmap. Structure: Week 1
 
 Return JSON with these exact keys (include advisor_implication for each section below):
 
-OVERVIEW: verdict_explanation (string, one sentence), expert_insight (string), what_most_sellers_miss (string), why_this_decision (array of exactly 3 strings, DATA → IMPLICATION), what_would_make_go (array, ONLY when verdict is NO_GO), recommended_action (string, verdict-dependent).
+OVERVIEW: verdict_explanation (string, one sentence), expert_insight (string), what_most_sellers_miss (string), why_this_decision (array of up to 3 strings, DATA → IMPLICATION), what_would_make_go (array, ONLY when verdict is NO_GO), recommended_action (string, verdict-dependent).
 DEEP DIVE: competition_reality (array, min 2), opportunity (string), profit_reality (string), entry_reality (string or array), market_domination_analysis (string). End each with implication for new seller.
 EXECUTION: alternative_keywords (array, max 3). When verdict=GO only: execution_plan (array, 30-day launch). When verdict=CONDITIONAL_GO only: pre_launch_improvements (array). When verdict=NO_GO: omit execution_plan. early_strategy_guidance (string).
 LEGACY: decision_conversation, review_intelligence (3), opportunities (3), differentiation (3), risks (3).
