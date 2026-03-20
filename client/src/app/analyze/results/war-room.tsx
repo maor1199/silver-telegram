@@ -463,7 +463,7 @@ export default function WarRoom() {
   const fOpportunities = opportunitiesData.length > 0 ? opportunitiesData : matchSection(sections, ["opportun", "advantage", "strength", "upside", "potential"])
   const fDiffIdeas = diffIdeas.length > 0 ? diffIdeas : matchSection(sections, ["differenti", "unique", "angle", "positioning", "strategy"])
   const fActionPlan = executionPlan.length > 0 ? executionPlan : matchSection(sections, ["action", "next step", "recommendation", "plan", "todo", "do this", "execution", "month", "timeline", "roadmap"])
-  const finalWhy = whyFromReport
+  const finalWhy = whyFromReport.length > 0 ? whyFromReport : whyFallback
 
   // Market Reality (single source only for Overview)
   const marketRealityOverview =
@@ -507,18 +507,7 @@ export default function WarRoom() {
   const launchCapitalRequired = R?.launchCapitalRequired ?? analysisData?.launchCapitalRequired ?? R?.launch_capital_required
   const launchCapitalBreakdown = (R?.launchCapitalBreakdown ?? analysisData?.launchCapitalBreakdown ?? R?.launch_capital_breakdown) as Record<string, unknown> | null
   const financialStressTest = safeStr(R?.financialStressTest ?? analysisData?.financialStressTest ?? R?.financial_stress_test)
-  const missStructuredObj = (R?.what_most_sellers_miss_structured ?? analysisData?.what_most_sellers_miss_structured) as Record<string, unknown> | undefined
-  const missStructuredText =
-    missStructuredObj &&
-    typeof missStructuredObj.signalA === "string" &&
-    typeof missStructuredObj.signalB === "string" &&
-    typeof missStructuredObj.failure === "string" &&
-    missStructuredObj.signalA.trim() &&
-    missStructuredObj.signalB.trim() &&
-    missStructuredObj.failure.trim()
-      ? `${missStructuredObj.signalA.trim()} + ${missStructuredObj.signalB.trim()} -> ${missStructuredObj.failure.trim()}`
-      : ""
-  const missSource = missStructuredText || safeStr(R?.what_most_sellers_miss)
+  const missSource = safeStr(R?.what_most_sellers_miss)
   const whatMostSellersMiss = missSource ? missSource.split(/[.!?](?:\s|$)/)[0].trim() : ""
   const marketDominationAnalysis = safeStr(R?.marketDominationAnalysis ?? analysisData?.marketDominationAnalysis ?? R?.market_domination_analysis)
   const difficultyScoreDisplay = safeStr(R?.difficultyScoreDisplay ?? analysisData?.difficultyScoreDisplay ?? R?.difficulty_score_display)

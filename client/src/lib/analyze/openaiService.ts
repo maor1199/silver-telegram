@@ -137,38 +137,17 @@ ADVISOR BEHAVIOR (mandatory):
 
 OVERVIEW OUTPUT CONTRACT:
 - Return valid JSON with existing keys.
-- Why This Decision ("why_this_decision"): max 3 bullets.
-- Market Reality ("market_reality" or "expert_insight"): max 2 short sentences.
-- What Most Sellers Miss ("what_most_sellers_miss"): max 1 sentence.
-- For Overview sections, these rules override other writing-style instructions below.
-- WHY_THIS_DECISION (FINAL RULES):
-  - Exactly 3 bullets (not less, not more).
-  - Each bullet must include a number or metric.
-  - Each bullet max 12 words.
-  - Format: [data] -> [implication].
-  - Strictly forbidden: "worth testing", "workable", "room to play", generic adjectives.
-- MARKET_REALITY (FINAL RULES):
-  - Exactly 2 sentences.
-  - Each sentence must include a number.
-  - Each sentence must describe a market mechanism (not advice).
-  - Sentence 1: traffic/cost dynamic (PPC/sponsored).
-  - Sentence 2: ranking barrier (reviews/brands).
-  - Forbidden: "this category", "listings that", "sellers should".
-- WHAT_MOST_SELLERS_MISS (FINAL RULES):
-  - Exactly 1 sentence.
-  - Max 18 words.
-  - Must include 2 signals (numbers/data) and 1 failure outcome.
-  - Format: [signal] + [signal] -> [failure].
-  - Forbidden: "many sellers", "this creates opportunity", explanations.
-- Global rule: if real data is missing, return shorter output.
-- Never invent insight.
-- Global hard rule: if output does not follow format, regenerate internally.
+- Why This Decision ("why_this_decision"): up to 3 short bullets.
+- Market Reality ("market_reality" or "expert_insight"): up to 2 short sentences.
+- What Most Sellers Miss ("what_most_sellers_miss"): exactly 1 short sentence.
+- Use real numbers/signals when available; if data is weak, return shorter output.
+- Keep language clear, direct, and non-generic. Never invent insight.
 
 OUTPUT STRUCTURE (keep existing JSON keys; add these behaviors):
 - VERDICT: One of GO | CONDITIONAL_GO | NO_GO. Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
-- WHY_THIS_VERDICT (why_this_decision): Exactly 3 concise bullets. Each bullet: DATA → IMPLICATION. Example: "Net margin after ads is only 6.8%, leaving little buffer for launch inefficiencies."
-- MARKET_REALITY (entry_reality / expert_insight): EXACTLY 2 sentences using [signal] -> [market mechanism -> implication], with traffic/cost sentence first and ranking-barrier sentence second.
-- WHAT_MOST_SELLERS_MISS: EXACTLY 1 sentence, under 25 words, combining two different signals to explain why sellers fail.
+- WHY_THIS_VERDICT (why_this_decision): up to 3 concise bullets in DATA → IMPLICATION style.
+- MARKET_REALITY (entry_reality / expert_insight): up to 2 concise sentences focused on PPC/reviews/price structure.
+- WHAT_MOST_SELLERS_MISS: exactly 1 concise sentence with a concrete failure dynamic.
 - RECOMMENDED_ACTION: Verdict-dependent. If GO: short launch recommendation. If CONDITIONAL_GO: improvements needed before launching (also return as pre_launch_improvements array). If NO_GO: what must change for the product to become viable (e.g. "Do not launch. Improve margins to at least 15% or enter through a narrower keyword niche.").
 
 STRATEGY OUTPUT (verdict-dependent):
