@@ -171,11 +171,19 @@ OVERVIEW OUTPUT CONTRACT (STRICT, REQUIRED):
     3) [differentiation insight OR winPath] -> [implication]
   MARKET_REALITY:
   - Return EXACTLY 2 sentences:
-    Sentence 1: [ppc insight] -> [impact on traffic/cost]
-    Sentence 2: [review barrier OR brand dominance] -> [impact on ranking]
+    Sentence 1: [signal] -> [market mechanism -> implication] focused on traffic/cost dynamic (PPC/visibility).
+    Sentence 2: [signal] -> [market mechanism -> implication] focused on ranking barrier (reviews/brands).
+  - MUST use signalInsights phrases (no generic wording).
+  - MUST include at least ONE of: sponsored_top10_count/PPC pressure, avgReviews/review barrier, price spread/price compression.
+  - NO general advice.
   WHAT_MOST_SELLERS_MISS:
   - Return EXACTLY 1 sentence:
-    [gap between two signals] -> [why sellers fail]
+    [signal A] + [signal B] -> [why sellers fail]
+  - MUST combine TWO different signals.
+  - MUST explain failure (not advice).
+  - MUST be under 25 words.
+  - MUST be concrete and tied to actual data.
+  - NO generic phrases like "many sellers overlook" or "this creates opportunity".
   OPPORTUNITY:
   - ONLY IF verdict != NO_GO
   - Return EXACTLY 1 sentence:
@@ -187,13 +195,14 @@ OVERVIEW OUTPUT CONTRACT (STRICT, REQUIRED):
   - "worth testing"
   - "room to play"
   the response is INVALID.
+- Hard validation: if output contains generic explanations, advice tone, or more than required sentences for MARKET_REALITY / WHAT_MOST_SELLERS_MISS, regenerate.
 - Keep existing JSON keys: why_this_decision, expert_insight, what_most_sellers_miss, opportunity (optional).
 
 OUTPUT STRUCTURE (keep existing JSON keys; add these behaviors):
 - VERDICT: One of GO | CONDITIONAL_GO | NO_GO. Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
 - WHY_THIS_VERDICT (why_this_decision): Exactly 3 concise bullets. Each bullet: DATA → IMPLICATION. Example: "Net margin after ads is only 6.8%, leaving little buffer for launch inefficiencies."
-- MARKET_REALITY (entry_reality / expert_insight): Core market dynamic in 2–3 sentences. Example: "In this niche, visibility is largely controlled by advertising. Listings without strong PPC coverage rarely maintain top positions."
-- WHAT_MOST_SELLERS_MISS: One short insight about a hidden dynamic. Do not repeat the same point from other sections.
+- MARKET_REALITY (entry_reality / expert_insight): EXACTLY 2 sentences using [signal] -> [market mechanism -> implication], with traffic/cost sentence first and ranking-barrier sentence second.
+- WHAT_MOST_SELLERS_MISS: EXACTLY 1 sentence, under 25 words, combining two different signals to explain why sellers fail.
 - RECOMMENDED_ACTION: Verdict-dependent. If GO: short launch recommendation. If CONDITIONAL_GO: improvements needed before launching (also return as pre_launch_improvements array). If NO_GO: what must change for the product to become viable (e.g. "Do not launch. Improve margins to at least 15% or enter through a narrower keyword niche.").
 
 STRATEGY OUTPUT (verdict-dependent):
