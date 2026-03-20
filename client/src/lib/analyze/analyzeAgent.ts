@@ -455,6 +455,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     signals,
   }
   const aiInsights = await getAIInsights(aiInput)
+  console.log("STEP 1 - RAW AI WHY:", aiInsights?.why_this_decision)
 
   // ─── 1. WHY THIS DECISION: prefer AI (Observation → implication), else fallback ───
   const why_this_decision_raw =
@@ -515,6 +516,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
   }
   const why_this_decision_final =
     why_this_decision.length > 0 ? why_this_decision : whyBullets.length > 0 ? whyBullets : [verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : verdict === "IMPROVE_BEFORE_LAUNCH" ? "Borderline viability; improve margin or differentiation before launch." : "Economics and market signals support a cautious GO; differentiate and control ACoS."]
+  console.log("STEP 2 - FINAL WHY BEFORE REPORT:", why_this_decision_final)
 
   const review_intelligence = aiInsights?.review_intelligence?.length
     ? aiInsights.review_intelligence
@@ -986,6 +988,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     advisor_implication_opportunity: aiInsights?.advisor_implication_opportunity ?? undefined,
     advisor_implication_early_strategy_guidance: aiInsights?.advisor_implication_early_strategy_guidance ?? undefined,
   }
+  console.log("STEP 3 - REPORT WHY:", report.why_this_decision)
 
   const consultantData: Record<string, unknown> = {
     verdict,

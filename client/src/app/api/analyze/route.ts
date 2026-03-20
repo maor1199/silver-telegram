@@ -97,6 +97,12 @@ export async function POST(req: Request) {
     const raw = resultObj
     const normalized = normalizeAnalysisResponse(raw)
     const analysisData = normalized ?? raw
+    const reportWhyFromResponse =
+      (analysisData as Record<string, unknown>)?.report &&
+      typeof (analysisData as Record<string, unknown>).report === "object"
+        ? ((analysisData as Record<string, unknown>).report as Record<string, unknown>)?.why_this_decision
+        : (analysisData as Record<string, unknown>)?.why_this_decision
+    console.log("STEP 3 - API RESPONSE WHY:", reportWhyFromResponse)
 
     const newCount = currentCount + 1
     await supabase.from("user_usage").upsert(

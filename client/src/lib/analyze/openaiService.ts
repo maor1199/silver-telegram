@@ -590,11 +590,15 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
     }
 
     const whyDecision = toArray(parsed.why_this_decision)
+    console.log("[WHY TRACE] parsed.why_this_decision:", parsed.why_this_decision)
+    console.log("[WHY TRACE] mapped whyDecision array:", whyDecision)
     const opportunityOverviewRaw = toArray(parsed.opportunity).slice(0, 3)
     const opportunityOverview =
       input.verdict === "NO_GO" ? [] : opportunityOverviewRaw
     const decisionConversation = toArray(parsed.decision_conversation)
     const useWhy = whyDecision.length >= 1 ? whyDecision : decisionConversation
+    console.log("[WHY TRACE] fallback decision_conversation:", decisionConversation)
+    console.log("[WHY TRACE] final useWhy:", useWhy)
     const decisionSnapshot = compact(
       parsed.decision_snapshot,
       input.verdict === "NO_GO"

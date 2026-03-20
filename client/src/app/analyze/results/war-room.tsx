@@ -464,11 +464,28 @@ export default function WarRoom() {
   const fDiffIdeas = diffIdeas.length > 0 ? diffIdeas : matchSection(sections, ["differenti", "unique", "angle", "positioning", "strategy"])
   const fActionPlan = executionPlan.length > 0 ? executionPlan : matchSection(sections, ["action", "next step", "recommendation", "plan", "todo", "do this", "execution", "month", "timeline", "roadmap"])
   const finalWhy = whyFromReport.length > 0 ? whyFromReport : whyFallback
+  const cleanedWhy = Array.from(new Set(finalWhy))
+    .filter((b) => b && String(b).trim().length > 20)
+    .slice(0, 3)
+  console.log("STEP 4 - UI RECEIVED WHY:", R?.why_this_decision)
+  console.log("WHY TRACE - whyFallback:", whyFallback)
+  console.log("WHY TRACE - whyFromReport:", whyFromReport)
+  console.log("WHY TRACE - final rendered why:", finalWhy)
 
   // Market Reality (single source only for Overview)
   const marketRealityOverview =
     safeStr(R?.market_reality ?? analysisData?.market_reality) ||
     safeStr(R?.advisor_implication_expert_insight ?? analysisData?.advisor_implication_expert_insight)
+  const marketRealityText = marketRealityOverview || advisorImplicationExpertInsight
+  const sentences = marketRealityText
+    ?.split(/[.?!]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const uniqueSentences = Array.from(new Set(sentences))
+  const cleanedMarket = uniqueSentences
+    .filter((s) => s.length > 30)
+    .slice(0, 2)
+  const finalMarket = cleanedMarket.join(". ") + (cleanedMarket.length ? "." : "")
   const fMarketReality = marketRealityStr || (marketRealityList.length > 0 ? marketRealityList : matchSection(sections, ["market reality", "market overview", "landscape"]))
   const fStratIntel = stratIntelStr || (stratIntelList.length > 0 ? stratIntelList : matchSection(sections, ["strategic", "intelligence", "positioning", "moat"]))
 
@@ -737,7 +754,7 @@ export default function WarRoom() {
             <div className="mt-10 flex flex-col gap-8 animate-in fade-in duration-300">
 
               {/* Why This Decision — 3 bullets (DATA → IMPLICATION) */}
-              {finalWhy.length > 0 && (
+              {cleanedWhy.length > 0 && (
                 <section>
                   <SectionHeader
                     icon={<Shield className="h-5 w-5 text-primary" />}
@@ -747,7 +764,7 @@ export default function WarRoom() {
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <ul className="flex flex-col gap-2.5">
-                      {finalWhy.map((item, i) => (
+                      {cleanedWhy.map((item, i) => (
                         <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
                           <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-primary/60" />
                           {String(item)}
@@ -805,7 +822,7 @@ export default function WarRoom() {
               )}
 
               {/* Market Reality — how this market behaves */}
-              {(marketRealityOverview || advisorImplicationExpertInsight) && (
+              {finalMarket && (
                 <section>
                   <SectionHeader
                     icon={<Brain className="h-5 w-5 text-amber-600" />}
@@ -815,7 +832,7 @@ export default function WarRoom() {
                   />
                   <div className="rounded-2xl border-2 border-amber-300/60 dark:border-amber-700/40 bg-amber-50/50 dark:bg-amber-950/20 p-6 shadow-sm">
                     <p className="text-sm font-medium text-foreground leading-relaxed" style={{ lineHeight: '1.5' }}>
-                      {marketRealityOverview || advisorImplicationExpertInsight}
+                      {finalMarket}
                     </p>
                   </div>
                 </section>
