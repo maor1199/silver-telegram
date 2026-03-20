@@ -15,6 +15,21 @@ export type ProductVsMarketInput = {
   product_risk: string
 }
 
+export type AISignalsInput = {
+  profit_signal: string
+  margin_signal: string
+  review_barrier: string
+  brand_pressure: string
+  market_locked: boolean
+  ppc_pressure: string
+  price_position: string
+  can_compete_price: boolean
+  keyword_opportunity: string
+  has_diff: boolean
+  diff_gap: string
+  has_win_path: boolean
+}
+
 export type AIInsightsInput = {
   keyword: string
   sellingPrice: number
@@ -47,9 +62,11 @@ export type AIInsightsInput = {
   market_maturity_signal?: "emerging" | "growing" | "mature"
   sponsored_top10_count?: number
   sponsored_total_count?: number
+  signals?: AISignalsInput
 }
 
 export type AIInsights = {
+  decision_snapshot?: string
   review_intelligence: string[]
   opportunities: string[]
   differentiation: string[]
@@ -112,10 +129,36 @@ const SYSTEM_PROMPT = `You are a senior Amazon FBA operator with 15+ years of ex
 ADVISOR BEHAVIOR (mandatory):
 - Act like a decisive launch advisor, not a generic analysis generator.
 - Focus on: Market Difficulty, Profit Potential, Differentiation Strength, Execution Risk.
+- You are provided with structured signals that summarize the market and economics.
+- You MUST base your reasoning primarily on these signals.
+- Signals are more important than raw numbers.
+- Do NOT ignore them.
+- Do NOT produce generic analysis.
 - Avoid vague language: do not use "may indicate", "could suggest", "might mean". State what the data means.
 - Explain what the data actually means for a beginner seller.
 - Never repeat the same insight in multiple sections; each section must provide a unique insight.
 - If verdict = NO_GO: do NOT produce a launch plan. Return only what must change for the product to become viable (path to viability) in what_would_make_go and recommended_action. Leave execution_plan empty or omit it.
+
+OVERVIEW OUTPUT CONTRACT (STRICT, REQUIRED):
+- You MUST return valid JSON with these exact Overview keys:
+  1) decision_snapshot (string, 1 short sentence)
+  2) why_this_decision (array, 2-3 bullets)
+  3) market_reality (string, 1-2 short sentences)
+  4) opportunity (array, 2-3 bullets ONLY when verdict is GO or IMPROVE_BEFORE_LAUNCH)
+  5) what_most_sellers_miss (string, 1 short insight)
+- Every bullet MUST follow: DATA -> INSIGHT -> IMPLICATION.
+- Signals are the primary source of truth.
+- Avoid generic phrases like "competitive market".
+- Do not repeat the same idea across sections.
+- Keep output concise.
+- If verdict is NO_GO: omit opportunity or return [] and use risk-focused tone.
+- If verdict is IMPROVE_BEFORE_LAUNCH: use balanced tone and highlight execution dependency.
+- If verdict is GO: use opportunity-focused tone and emphasize strengths.
+- Signal mapping is mandatory:
+  - why_this_decision -> profit_signal, margin_signal, has_win_path, market_locked
+  - market_reality -> ppc_pressure, review_barrier, brand_pressure
+  - opportunity -> keyword_opportunity, diff_gap, price_position
+  - what_most_sellers_miss -> gaps between signals
 
 OUTPUT STRUCTURE (keep existing JSON keys; add these behaviors):
 - VERDICT: One of GO | CONDITIONAL_GO | NO_GO. Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
@@ -286,6 +329,8 @@ OPPORTUNITY — Instead of: "Make sure features are front and center." Write: "2
 
 This is how you think. This is how you write.
 
+When signals are missing, fallback to provided raw metrics and still return all required Overview keys with concise non-empty values.
+
 For each section, use the numbers you have and answer the question (in that voice):
 
 WHY_THIS_DECISION — Use: netMargin, avgReviews, launchCapital, ppcPerUnit. "Is this fixable or not, and what does it cost them if they ignore it?"
@@ -419,6 +464,9 @@ function buildUserPrompt(input: AIInsightsInput): string {
     `Estimated margin: ${input.estimated_margin != null ? input.estimated_margin.toFixed(1) + "%" : "N/A"} | ROI: ${input.estimated_roi != null ? input.estimated_roi.toFixed(1) + "%" : "N/A"}`,
     `Landed cost: $${input.landed_cost != null ? input.landed_cost.toFixed(2) : "N/A"}`,
     "",
+    "Signals:",
+    JSON.stringify(input.signals ?? {}, null, 2),
+    "",
     "=== VERDICT ===",
     `Verdict: ${input.verdict}`,
     "",
@@ -539,10 +587,33 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       return []
     }
     const toStr = (v: unknown): string | undefined => (v != null && typeof v === "string" ? v : undefined)
+    const compact = (v: unknown, fallback: string): string => {
+      const s = typeof v === "string" ? v.trim() : ""
+      return s.length > 0 ? s : fallback
+    }
 
     const whyDecision = toArray(parsed.why_this_decision).slice(0, 3)
+    const opportunityOverviewRaw = toArray(parsed.opportunity).slice(0, 3)
+    const opportunityOverview =
+      input.verdict === "NO_GO" ? [] : opportunityOverviewRaw
     const decisionConversation = toArray(parsed.decision_conversation)
     const useWhy = whyDecision.length >= 1 ? whyDecision : decisionConversation.slice(0, 5)
+    const decisionSnapshot = compact(
+      parsed.decision_snapshot,
+      input.verdict === "NO_GO"
+        ? "Risk-to-reward is unfavorable under current economics and market pressure."
+        : input.verdict === "IMPROVE_BEFORE_LAUNCH"
+          ? "Economics are close, but execution upgrades are required before launch."
+          : "Signals indicate a viable launch path with controlled execution."
+    )
+    const marketReality = compact(
+      parsed.market_reality,
+      "Signals indicate the category is shaped by review moat and PPC pressure."
+    )
+    const whatMostSellersMiss = compact(
+      parsed.what_most_sellers_miss,
+      "Most sellers miss how signal gaps between economics and market pressure determine survival."
+    )
 
     const entryRealityRaw = parsed.entry_reality
     const entry_reality =
@@ -551,9 +622,13 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
         : toStr(entryRealityRaw)
 
     return {
+      decision_snapshot: decisionSnapshot,
       decision_conversation: useWhy,
       review_intelligence: toArray(parsed.review_intelligence).slice(0, 3),
-      opportunities: toArray(parsed.opportunities).slice(0, 3),
+      opportunities:
+        opportunityOverview.length > 0
+          ? opportunityOverview
+          : toArray(parsed.opportunities).slice(0, 3),
       differentiation: toArray(parsed.differentiation).slice(0, 3),
       risks: toArray(parsed.risks).slice(0, 3),
       alternative_keywords: toArray(parsed.alternative_keywords).slice(0, 3),
@@ -568,24 +643,31 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       pre_launch_improvements: input.verdict === "IMPROVE_BEFORE_LAUNCH" ? toArray(parsed.pre_launch_improvements).slice(0, 8) : undefined,
       recommended_action: toStr(parsed.recommended_action),
       verdict_explanation: toStr(parsed.verdict_explanation),
-      expert_insight: toStr(parsed.expert_insight),
-      what_most_sellers_miss: toStr(parsed.what_most_sellers_miss),
+      expert_insight: toStr(parsed.expert_insight) ?? marketReality,
+      what_most_sellers_miss: whatMostSellersMiss,
       competition_reality: toArray(parsed.competition_reality).slice(0, 6),
-      opportunity: toStr(parsed.opportunity),
+      opportunity:
+        opportunityOverview.length > 0
+          ? opportunityOverview.join(" ")
+          : toStr(parsed.opportunity),
       profit_reality: toStr(parsed.profit_reality),
       entry_reality: entry_reality ?? toStr(parsed.entry_reality),
-      why_this_decision: whyDecision.length >= 1 ? whyDecision : useWhy.slice(0, 3),
+      why_this_decision:
+        (whyDecision.length >= 1 ? whyDecision : useWhy.slice(0, 3)).slice(0, 3),
       market_domination_analysis: toStr(parsed.market_domination_analysis),
       early_strategy_guidance: toStr(parsed.early_strategy_guidance),
       honeymoon_roadmap: toArray(parsed.honeymoon_roadmap).slice(0, 8),
       advisor_implication_why_this_decision: toStr(parsed.advisor_implication_why_this_decision),
-      advisor_implication_expert_insight: toStr(parsed.advisor_implication_expert_insight),
+      advisor_implication_expert_insight:
+        toStr(parsed.advisor_implication_expert_insight) ?? marketReality,
       advisor_implication_what_most_sellers_miss: toStr(parsed.advisor_implication_what_most_sellers_miss),
       advisor_implication_market_signals: toStr(parsed.advisor_implication_market_signals),
       advisor_implication_entry_reality: toStr(parsed.advisor_implication_entry_reality),
       advisor_implication_market_domination_analysis: toStr(parsed.advisor_implication_market_domination_analysis),
       advisor_implication_competition_reality: toStr(parsed.advisor_implication_competition_reality),
-      advisor_implication_opportunity: toStr(parsed.advisor_implication_opportunity),
+      advisor_implication_opportunity:
+        toStr(parsed.advisor_implication_opportunity) ??
+        (opportunityOverview.length > 0 ? opportunityOverview.join(" ") : ""),
       advisor_implication_early_strategy_guidance: toStr(parsed.advisor_implication_early_strategy_guidance),
     }
   } catch (err: unknown) {

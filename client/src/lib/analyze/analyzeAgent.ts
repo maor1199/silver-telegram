@@ -1,4 +1,5 @@
 import { getAIInsights, getConsultantInsights, getMarginThreshold, getValidatedDifferentiators, type ConsultantInsights } from "./openaiService"
+import { buildSignals } from "./signals"
 
 type AnalyzeInput = {
   keyword?: string
@@ -306,6 +307,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   // 3. MARKET LOCK — entry blocked
   const avgTop10Reviews = market?.avgReviewsTop10 ?? 0
+  const brandShareTop3 = Number(market?.brandShareTop3 ?? 0)
   const hasDominantBrand = (market?.brandShareTop3 ?? 0) > 0.5
 
   const marketLocked = avgTop10Reviews > 500 && hasDominantBrand
@@ -395,6 +397,20 @@ export async function analyzeProduct(input: AnalyzeInput) {
         ? "Moderate complexity: 8% buffer; watch returns and listing clarity."
         : "Lower complexity; standard margin rules apply.",
   }
+  const keywordSaturation = keywordSaturationCount != null ? keywordSaturationCount / 30 : 1
+  const userDifferentiation = differentiationInput
+  const sponsoredTop10 = sponsoredTop10Count
+  const signals = buildSignals({
+    profitAfterAds,
+    estimatedMarginPercent,
+    avgTop10Reviews,
+    brandShareTop3,
+    sponsoredTop10,
+    keywordSaturation,
+    sellingPrice,
+    avgPrice,
+    userDifferentiation,
+  })
 
   const aiInput = {
     keyword,
@@ -436,6 +452,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     market_maturity_signal: market?.market_maturity_signal,
     sponsored_top10_count: market?.sponsored_top10_count,
     sponsored_total_count: market?.sponsored_total_count,
+    signals,
   }
   const aiInsights = await getAIInsights(aiInput)
 
