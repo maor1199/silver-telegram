@@ -141,22 +141,28 @@ OVERVIEW OUTPUT CONTRACT:
 - Market Reality ("market_reality" or "expert_insight"): max 2 short sentences.
 - What Most Sellers Miss ("what_most_sellers_miss"): max 1 sentence.
 - For Overview sections, these rules override other writing-style instructions below.
-- WHY_THIS_DECISION:
-  - Max 3 bullets.
-  - Each bullet must include at least one real number or metric.
+- WHY_THIS_DECISION (FINAL RULES):
+  - Exactly 3 bullets (not less, not more).
+  - Each bullet must include a number or metric.
+  - Each bullet max 12 words.
   - Format: [data] -> [implication].
-  - Do not use generic phrases: "workable", "worth testing", "room to play".
-- MARKET_REALITY:
-  - Max 2 sentences.
-  - Each sentence must include a real signal (number/count) and a market implication.
-  - Focus only on PPC pressure, review barrier, and price structure.
-  - No advice language (no "sellers should").
-- WHAT_MOST_SELLERS_MISS:
+  - Strictly forbidden: "worth testing", "workable", "room to play", generic adjectives.
+- MARKET_REALITY (FINAL RULES):
+  - Exactly 2 sentences.
+  - Each sentence must include a number.
+  - Each sentence must describe a market mechanism (not advice).
+  - Sentence 1: traffic/cost dynamic (PPC/sponsored).
+  - Sentence 2: ranking barrier (reviews/brands).
+  - Forbidden: "this category", "listings that", "sellers should".
+- WHAT_MOST_SELLERS_MISS (FINAL RULES):
   - Exactly 1 sentence.
+  - Max 18 words.
   - Must include 2 signals (numbers/data) and 1 failure outcome.
   - Format: [signal] + [signal] -> [failure].
+  - Forbidden: "many sellers", "this creates opportunity", explanations.
 - Global rule: if real data is missing, return shorter output.
 - Never invent insight.
+- Global hard rule: if output does not follow format, regenerate internally.
 
 OUTPUT STRUCTURE (keep existing JSON keys; add these behaviors):
 - VERDICT: One of GO | CONDITIONAL_GO | NO_GO. Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
