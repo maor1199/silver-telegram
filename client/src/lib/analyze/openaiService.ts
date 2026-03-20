@@ -159,6 +159,49 @@ OVERVIEW OUTPUT CONTRACT (STRICT, REQUIRED):
   - market_reality -> ppc_pressure, review_barrier, brand_pressure
   - opportunity -> keyword_opportunity, diff_gap, price_position
   - what_most_sellers_miss -> gaps between signals
+- For every statement, you MUST explicitly reference at least one signal.
+- If a statement is not based on a signal, do not generate it.
+- Do NOT use generic phrases such as:
+  - competitive market
+  - workable competition
+  - worth testing
+  - room to play
+- Every sentence must include a concrete reason derived from signals.
+- Signal -> text enforcement (required):
+  - profit_signal MUST appear in why_this_decision.
+  - market_locked OR review_barrier MUST appear in why_this_decision.
+  - ppc_pressure MUST appear in market_reality.
+  - keyword_opportunity OR diff_gap MUST appear in opportunity.
+  - what_most_sellers_miss MUST describe a gap between two signals.
+- If you cannot ground a statement in signals, return a shorter output instead of guessing.
+- Correct output examples (signal-grounded):
+  Example A:
+  {
+    "decision_snapshot": "profit_signal=weak with market_locked=true creates a fragile launch profile.",
+    "why_this_decision": [
+      "profit_signal=weak and margin_signal=low -> unit economics are thin -> small CPC shocks can erase profit.",
+      "review_barrier=very_high with market_locked=true -> ranking entry is constrained -> visibility depends on heavy paid traffic.",
+      "has_win_path=false -> no defensible entry lane -> risk dominates reward."
+    ],
+    "market_reality": "ppc_pressure=high and brand_pressure=high indicate an ad-dense first page where incumbents defend share. review_barrier=very_high means social proof blocks fast organic traction.",
+    "opportunity": [],
+    "what_most_sellers_miss": "Gap: can_compete_price=true but diff_gap=missing; price can win clicks, but missing differentiation weakens conversion resilience."
+  }
+  Example B:
+  {
+    "decision_snapshot": "profit_signal=moderate and has_win_path=true support a conditional path.",
+    "why_this_decision": [
+      "profit_signal=moderate with margin_signal=ok -> economics can survive controlled PPC -> execution quality becomes decisive.",
+      "review_barrier=medium and market_locked=false -> entry is possible -> disciplined ranking strategy can gain traction.",
+      "has_win_path=true -> at least one viable lane exists -> launch is viable only with tight execution."
+    ],
+    "market_reality": "ppc_pressure=medium means paid placement is still required for early visibility. brand_pressure=medium suggests share is contestable but not cheap.",
+    "opportunity": [
+      "keyword_opportunity=high -> organic relevance gap exists -> prioritize exact-match title and image message alignment.",
+      "diff_gap=covered with price_position=competitive -> offer is defendable -> focus on conversion-first listing assets."
+    ],
+    "what_most_sellers_miss": "Gap: keyword_opportunity=high while ppc_pressure=medium; sellers overpay broad PPC instead of capturing lower-cost relevance gains first."
+  }
 
 OUTPUT STRUCTURE (keep existing JSON keys; add these behaviors):
 - VERDICT: One of GO | CONDITIONAL_GO | NO_GO. Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
