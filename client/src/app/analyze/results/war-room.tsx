@@ -851,19 +851,6 @@ export default function WarRoom() {
                     </table>
                   </div>
                 )}
-                <AnalysisProfitCards
-                  netProfit={profitAfterAds}
-                  profitBreakdown={pb ? {
-                    sellingPrice: Number(pb.sellingPrice) || 0,
-                    referralFee: Number(pb.referralFee) || 0,
-                    fbaFee: Number(pb.fbaFee) || 0,
-                    cogs: Number(pb.cogs) || 0,
-                    ppcCostPerUnit: Number(pb.ppcCostPerUnit) || 0,
-                    assumedAcosPercent: Number(pb.assumedAcosPercent) || 0,
-                    profitAfterAds: Number(pb.profitAfterAds) || 0,
-                  } : undefined}
-                  profitAfterAds={profitAfterAds}
-                />
               </section>
 
               {/* What Would Flip This Decision — three conditions (NO-GO → GO) */}
