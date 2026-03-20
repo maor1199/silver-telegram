@@ -411,38 +411,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
     avgPrice,
     userDifferentiation,
   })
-  const signalInsights = {
-    profit:
-      signals.profit_signal === "strong"
-        ? "strong profit margins after ads"
-        : signals.profit_signal === "moderate"
-          ? "viable but limited profit margins"
-          : signals.profit_signal === "weak"
-            ? "thin margins with limited buffer"
-            : "unprofitable after ads",
-    competition:
-      signals.review_barrier === "very_high"
-        ? "very high review barrier"
-        : signals.review_barrier === "high"
-          ? "high review competition"
-          : signals.review_barrier === "medium"
-            ? "moderate competition"
-            : "low competition",
-    ppc:
-      signals.ppc_pressure === "high"
-        ? "high PPC pressure"
-        : signals.ppc_pressure === "medium"
-          ? "moderate PPC competition"
-          : "low PPC pressure",
-    differentiation:
-      signals.diff_gap === "missing"
-        ? "no clear differentiation in the market"
-        : "clear differentiation opportunity exists",
-    winPath:
-      signals.has_win_path
-        ? "there is a realistic path to win"
-        : "there is no clear path to win",
-  }
 
   const aiInput = {
     keyword,
@@ -485,41 +453,16 @@ export async function analyzeProduct(input: AnalyzeInput) {
     sponsored_top10_count: market?.sponsored_top10_count,
     sponsored_total_count: market?.sponsored_total_count,
     signals,
-    signalInsights,
   }
   const aiInsights = await getAIInsights(aiInput)
-  const whyFromStructured =
-    (aiInsights?.why_this_decision_structured ?? [])
-      .map((item) => {
-        const signal = typeof item?.signal === "string" ? item.signal.trim() : ""
-        const meaning = typeof item?.meaning === "string" ? item.meaning.trim() : ""
-        const implication = typeof item?.implication === "string" ? item.implication.trim() : ""
-        return signal && meaning && implication
-          ? `${signal} -> ${meaning} -> ${implication}`
-          : ""
-      })
-      .filter(Boolean)
-  const marketFromStructured =
-    aiInsights?.market_reality_structured?.length === 2
-      ? aiInsights.market_reality_structured.map(
-          ({ signal, mechanism, implication }) =>
-            `${signal} -> ${mechanism} -> ${implication}`
-        )
-      : []
-  const missFromStructured =
-    aiInsights?.what_most_sellers_miss_structured
-      ? `${aiInsights.what_most_sellers_miss_structured.signalA} + ${aiInsights.what_most_sellers_miss_structured.signalB} -> ${aiInsights.what_most_sellers_miss_structured.failure}`
-      : ""
 
   // ─── 1. WHY THIS DECISION: prefer AI (Observation → implication), else fallback ───
   const why_this_decision_raw =
-    (whyFromStructured.length
-      ? whyFromStructured
-      : aiInsights?.why_this_decision?.length
-        ? aiInsights.why_this_decision
-        : aiInsights?.decision_conversation?.length
-          ? aiInsights.decision_conversation
-          : null) ??
+    (aiInsights?.why_this_decision?.length
+      ? aiInsights.why_this_decision
+      : aiInsights?.decision_conversation?.length
+        ? aiInsights.decision_conversation
+        : null) ??
     (verdict === "NO_GO"
       ? [
           "Profit after ads is too thin — PPC will eat it.",
@@ -593,8 +536,26 @@ export async function analyzeProduct(input: AnalyzeInput) {
         "Saturation risk is real — winners differentiate on materials, size niche, or bundle value.",
       ]
 
-  // ─── 2. WHAT MOST SELLERS MISS: structured ONLY, else empty ───
-  const what_most_sellers_miss = missFromStructured
+  // ─── 2. WHAT MOST SELLERS MISS: prefer AI text, else fallback ───
+  let what_most_sellers_miss = aiInsights?.what_most_sellers_miss?.trim() ?? ""
+  if (!what_most_sellers_miss && hasRealMarketData) {
+    const parts: string[] = []
+    if (dominantBrand && dominantBrandNames.length > 0) {
+      parts.push(`A few brands (${dominantBrandNames.slice(0, 2).join(", ")}) repeat in the top results.`)
+    }
+    if (sponsoredShare >= 0.6) {
+      parts.push("Most top slots are sponsored — ad spend is the real gate.")
+    }
+    if (priceMin != null && priceMax != null && priceMax > 0 && (priceMax - priceMin) / priceMax < 0.25) {
+      parts.push(`Prices are tightly clustered ($${priceMin.toFixed(0)}–$${priceMax.toFixed(0)}) so undercutting barely works.`)
+    }
+    if (avgReviews >= 5000) {
+      parts.push("Review counts in the thousands mean new listings get outranked on both organic and PPC.")
+    }
+    what_most_sellers_miss = parts.length ? parts.join(" ") + " Most beginners underestimate this." : `Top listings average ${avgReviews.toLocaleString()} reviews — the real barrier is social proof, not just price. Most beginners underestimate this.`
+  } else if (!what_most_sellers_miss) {
+    what_most_sellers_miss = "Enable live market data (Rainforest API) to see what most sellers miss in this niche."
+  }
 
   // ─── 3. MARKET DOMINATION ANALYSIS: prefer AI, else fallback ───
   let market_domination_analysis = aiInsights?.market_domination_analysis?.trim() ?? ""
@@ -788,8 +749,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     hasRealMarketData && (priceGapPct > 0 || differentiationInput)
       ? `Market Reality Check: ${priceGapPct > 0 ? `Your price is ${priceGapPct}% higher than the top 5 sellers (avg $${avgPrice.toFixed(2)}). ` : ""}${differentiationInput ? `Your differentiation ("${differentiationInput.slice(0, 80)}${differentiationInput.length > 80 ? "…" : ""}") must justify this gap to maintain a ${marginThresholdPct}% net margin.` : "Your positioning must justify the price to maintain viability."}`
       : undefined
-  const marketRealityStructuredText = marketFromStructured.length === 2 ? marketFromStructured.join(" ") : ""
-  const marketRealityCheck = marketRealityStructuredText || aiInsights?.entry_reality?.trim() || marketRealityCheckFallback
+  const marketRealityCheck = aiInsights?.entry_reality?.trim() ?? marketRealityCheckFallback
 
   const underpricingPct =
     hasRealMarketData && avgPrice > 0 && sellingPrice < avgPrice

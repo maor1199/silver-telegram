@@ -463,12 +463,12 @@ export default function WarRoom() {
   const fOpportunities = opportunitiesData.length > 0 ? opportunitiesData : matchSection(sections, ["opportun", "advantage", "strength", "upside", "potential"])
   const fDiffIdeas = diffIdeas.length > 0 ? diffIdeas : matchSection(sections, ["differenti", "unique", "angle", "positioning", "strategy"])
   const fActionPlan = executionPlan.length > 0 ? executionPlan : matchSection(sections, ["action", "next step", "recommendation", "plan", "todo", "do this", "execution", "month", "timeline", "roadmap"])
-  const finalWhy =
-    whyFromReport.length > 0
-      ? whyFromReport
-      : whyFallback
+  const finalWhy = whyFromReport
 
-  // Market Reality fallback from parsed sections
+  // Market Reality (single source only for Overview)
+  const marketRealityOverview =
+    safeStr(R?.market_reality ?? analysisData?.market_reality) ||
+    safeStr(R?.advisor_implication_expert_insight ?? analysisData?.advisor_implication_expert_insight)
   const fMarketReality = marketRealityStr || (marketRealityList.length > 0 ? marketRealityList : matchSection(sections, ["market reality", "market overview", "landscape"]))
   const fStratIntel = stratIntelStr || (stratIntelList.length > 0 ? stratIntelList : matchSection(sections, ["strategic", "intelligence", "positioning", "moat"]))
 
@@ -507,7 +507,19 @@ export default function WarRoom() {
   const launchCapitalRequired = R?.launchCapitalRequired ?? analysisData?.launchCapitalRequired ?? R?.launch_capital_required
   const launchCapitalBreakdown = (R?.launchCapitalBreakdown ?? analysisData?.launchCapitalBreakdown ?? R?.launch_capital_breakdown) as Record<string, unknown> | null
   const financialStressTest = safeStr(R?.financialStressTest ?? analysisData?.financialStressTest ?? R?.financial_stress_test)
-  const whatMostSellersMiss = safeStr(R?.whatMostSellersMiss ?? analysisData?.whatMostSellersMiss ?? R?.what_most_sellers_miss)
+  const missStructuredObj = (R?.what_most_sellers_miss_structured ?? analysisData?.what_most_sellers_miss_structured) as Record<string, unknown> | undefined
+  const missStructuredText =
+    missStructuredObj &&
+    typeof missStructuredObj.signalA === "string" &&
+    typeof missStructuredObj.signalB === "string" &&
+    typeof missStructuredObj.failure === "string" &&
+    missStructuredObj.signalA.trim() &&
+    missStructuredObj.signalB.trim() &&
+    missStructuredObj.failure.trim()
+      ? `${missStructuredObj.signalA.trim()} + ${missStructuredObj.signalB.trim()} -> ${missStructuredObj.failure.trim()}`
+      : ""
+  const missSource = missStructuredText || safeStr(R?.what_most_sellers_miss)
+  const whatMostSellersMiss = missSource ? missSource.split(/[.!?](?:\s|$)/)[0].trim() : ""
   const marketDominationAnalysis = safeStr(R?.marketDominationAnalysis ?? analysisData?.marketDominationAnalysis ?? R?.market_domination_analysis)
   const difficultyScoreDisplay = safeStr(R?.difficultyScoreDisplay ?? analysisData?.difficultyScoreDisplay ?? R?.difficulty_score_display)
   const difficultyLevel = safeStr(R?.difficultyLevel ?? analysisData?.difficultyLevel ?? R?.difficulty_level)
@@ -804,7 +816,7 @@ export default function WarRoom() {
               )}
 
               {/* Market Reality — how this market behaves */}
-              {advisorImplicationExpertInsight && (
+              {(marketRealityOverview || advisorImplicationExpertInsight) && (
                 <section>
                   <SectionHeader
                     icon={<Brain className="h-5 w-5 text-amber-600" />}
@@ -814,7 +826,7 @@ export default function WarRoom() {
                   />
                   <div className="rounded-2xl border-2 border-amber-300/60 dark:border-amber-700/40 bg-amber-50/50 dark:bg-amber-950/20 p-6 shadow-sm">
                     <p className="text-sm font-medium text-foreground leading-relaxed" style={{ lineHeight: '1.5' }}>
-                      {advisorImplicationExpertInsight}
+                      {marketRealityOverview || advisorImplicationExpertInsight}
                     </p>
                   </div>
                 </section>
@@ -910,17 +922,6 @@ export default function WarRoom() {
                   } : undefined}
                   profitAfterAds={profitAfterAds}
                 />
-                <div className="mt-3 flex flex-wrap gap-4">
-                  {score != null && !isNaN(score) && (
-                    <span className="text-xs text-muted-foreground">Viability Score: <strong className="text-foreground">{Math.round(Number(score))}/100</strong></span>
-                  )}
-                  {confidence != null && !isNaN(confidence) && (
-                    <span className="text-xs text-muted-foreground">Confidence: <strong className="text-foreground">{Number(confidence).toFixed(1)}%</strong></span>
-                  )}
-                  {estimatedMargin && (
-                    <span className="text-xs text-muted-foreground">Estimated Margin: <strong className="text-foreground">{estimatedMargin}</strong></span>
-                  )}
-                </div>
               </section>
 
               {/* What Would Flip This Decision — three conditions (NO-GO → GO) */}

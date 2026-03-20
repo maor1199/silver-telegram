@@ -63,20 +63,10 @@ export type AIInsightsInput = {
   sponsored_top10_count?: number
   sponsored_total_count?: number
   signals?: AISignalsInput
-  signalInsights?: {
-    profit: string
-    competition: string
-    ppc: string
-    differentiation: string
-    winPath: string
-  }
 }
 
 export type AIInsights = {
   decision_snapshot?: string
-  why_this_decision_structured?: { signal: string; meaning: string; implication: string }[]
-  market_reality_structured?: { signal: string; mechanism: string; implication: string }[]
-  what_most_sellers_miss_structured?: { signalA: string; signalB: string; failure: string }
   review_intelligence: string[]
   opportunities: string[]
   differentiation: string[]
@@ -137,97 +127,36 @@ const RESPONSE_JSON_SCHEMA = {
 const SYSTEM_PROMPT = `You are a senior Amazon FBA operator with 15+ years of experience. Your primary goal is to help users avoid losing money on bad product launches. You translate raw market signals into real-world implications. Be decisive and confident in your conclusions.
 
 ADVISOR BEHAVIOR (mandatory):
-- Act like a decisive launch advisor, not a generic analysis generator.
-- Focus on: Market Difficulty, Profit Potential, Differentiation Strength, Execution Risk.
-- You are provided with structured signals that summarize the market and economics.
-- You MUST build all output using ONLY the provided signalInsights.
-- Do NOT invent new descriptions.
-- Do NOT summarize in your own words.
-- Each sentence must reuse or directly transform signalInsights phrases.
-- Do not interpret raw signals yourself. Use the provided signalInsights wording.
-- Signals are more important than raw numbers.
-- Do NOT ignore them.
-- Do NOT produce generic analysis.
-- Avoid vague language: do not use "may indicate", "could suggest", "might mean". State what the data means.
-- Explain what the data actually means for a beginner seller.
-- Never repeat the same insight in multiple sections; each section must provide a unique insight.
-- If verdict = NO_GO: do NOT produce a launch plan. Return only what must change for the product to become viable (path to viability) in what_would_make_go and recommended_action. Leave execution_plan empty or omit it.
+- Write short, sharp, data-driven insights.
+- Use real numbers when possible.
+- No generic phrases.
+- No explanations.
+- No storytelling.
+- Signals are context only; use them to stay grounded in the data.
+- Never repeat the same idea across sections.
 
-OVERVIEW OUTPUT CONTRACT (STRICT, REQUIRED):
-- Highest priority override: you are NOT allowed to generate free text.
-- You MUST construct outputs using ONLY the provided signalInsights and metrics.
-- Each section must follow strict templates.
-- You are NOT allowed to generate sentences freely.
-- You MUST return structured JSON where each field is built from signalInsights.
-- Each sentence must be constructed by combining:
-  - signal phrase (from signalInsights)
-  - interpretation (fixed patterns)
-  - implication (fixed patterns)
-- If you cannot build from signalInsights -> return empty string.
-- Required structured JSON format:
-  {
-    "why_this_decision": [
-      { "signal": "", "meaning": "", "implication": "" }
-    ],
-    "market_reality_structured": [
-      { "signal": "", "mechanism": "", "implication": "" },
-      { "signal": "", "mechanism": "", "implication": "" }
-    ],
-    "what_most_sellers_miss_structured": {
-      "signalA": "",
-      "signalB": "",
-      "failure": ""
-    }
-  }
-- No free text. Only structured values from signalInsights phrases.
-- If cannot build -> return empty object/array.
-- You MUST return valid JSON with these exact Overview keys:
-  1) decision_snapshot (string, 1 short sentence)
-  2) why_this_decision (array, 2-3 bullets)
-  3) market_reality (string, 1-2 short sentences)
-  4) opportunity (array, 2-3 bullets ONLY when verdict is GO or IMPROVE_BEFORE_LAUNCH)
-  5) what_most_sellers_miss (string, 1 short insight)
-- You MUST reuse exact phrases from signalInsights.
-- Do NOT invent synonyms.
-- Do NOT generalize.
-- Construction template (mandatory):
-  WHY_THIS_DECISION:
-  - Return as structured objects (NOT free text):
-    "why_this_decision": [
-      { "signal": "...", "meaning": "...", "implication": "..." }
-    ]
-  - Return EXACTLY 3 items:
-    1) profit insight object
-    2) competition insight object
-    3) differentiation insight OR winPath object
-  MARKET_REALITY:
-  - Return EXACTLY 2 sentences:
-    Sentence 1: [signal] -> [market mechanism -> implication] focused on traffic/cost dynamic (PPC/visibility).
-    Sentence 2: [signal] -> [market mechanism -> implication] focused on ranking barrier (reviews/brands).
-  - MUST use signalInsights phrases (no generic wording).
-  - MUST include at least ONE of: sponsored_top10_count/PPC pressure, avgReviews/review barrier, price spread/price compression.
-  - NO general advice.
-  WHAT_MOST_SELLERS_MISS:
-  - Return EXACTLY 1 sentence:
-    [signal A] + [signal B] -> [why sellers fail]
-  - MUST combine TWO different signals.
-  - MUST explain failure (not advice).
-  - MUST be under 25 words.
-  - MUST be concrete and tied to actual data.
-  - NO generic phrases like "many sellers overlook" or "this creates opportunity".
-  OPPORTUNITY:
-  - ONLY IF verdict != NO_GO
-  - Return EXACTLY 1 sentence:
-    [existing weakness signal] -> [specific opportunity]
-- If a sentence does not clearly contain a signalInsights phrase, it is INVALID.
-- If signalInsights are insufficient, return fewer bullets instead of generating generic text.
-- If output contains phrases like:
-  - "competitive market"
-  - "worth testing"
-  - "room to play"
-  the response is INVALID.
-- Hard validation: if output contains generic explanations, advice tone, or more than required sentences for MARKET_REALITY / WHAT_MOST_SELLERS_MISS, regenerate.
-- Keep existing JSON keys: why_this_decision, expert_insight, what_most_sellers_miss, opportunity (optional).
+OVERVIEW OUTPUT CONTRACT:
+- Return valid JSON with existing keys.
+- Why This Decision (`why_this_decision`): max 3 bullets.
+- Market Reality (`market_reality` or `expert_insight`): max 2 short sentences.
+- What Most Sellers Miss (`what_most_sellers_miss`): max 1 sentence.
+- For Overview sections, these rules override other writing-style instructions below.
+- WHY_THIS_DECISION:
+  - Max 3 bullets.
+  - Each bullet must include at least one real number or metric.
+  - Format: [data] -> [implication].
+  - Do not use generic phrases: "workable", "worth testing", "room to play".
+- MARKET_REALITY:
+  - Max 2 sentences.
+  - Each sentence must include a real signal (number/count) and a market implication.
+  - Focus only on PPC pressure, review barrier, and price structure.
+  - No advice language (no "sellers should").
+- WHAT_MOST_SELLERS_MISS:
+  - Exactly 1 sentence.
+  - Must include 2 signals (numbers/data) and 1 failure outcome.
+  - Format: [signal] + [signal] -> [failure].
+- Global rule: if real data is missing, return shorter output.
+- Never invent insight.
 
 OUTPUT STRUCTURE (keep existing JSON keys; add these behaviors):
 - VERDICT: One of GO | CONDITIONAL_GO | NO_GO. Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
@@ -536,9 +465,6 @@ function buildUserPrompt(input: AIInsightsInput): string {
     "Signals:",
     JSON.stringify(input.signals ?? {}, null, 2),
     "",
-    "Signal insights (use this wording as reasoning foundation):",
-    JSON.stringify(input.signalInsights ?? {}, null, 2),
-    "",
     "=== VERDICT ===",
     `Verdict: ${input.verdict}`,
     "",
@@ -658,59 +584,21 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       if (typeof v === "string") return [v]
       return []
     }
-    const toWhyStructured = (
-      v: unknown
-    ): { signal: string; meaning: string; implication: string }[] => {
-      if (!Array.isArray(v)) return []
-      return v
-        .map((item) => {
-          if (!item || typeof item !== "object") return null
-          const r = item as Record<string, unknown>
-          const signal = typeof r.signal === "string" ? r.signal.trim() : ""
-          const meaning = typeof r.meaning === "string" ? r.meaning.trim() : ""
-          const implication = typeof r.implication === "string" ? r.implication.trim() : ""
-          if (!signal || !meaning || !implication) return null
-          return { signal, meaning, implication }
-        })
-        .filter(Boolean) as { signal: string; meaning: string; implication: string }[]
-    }
-    const toMarketStructured = (
-      v: unknown
-    ): { signal: string; mechanism: string; implication: string }[] => {
-      if (!Array.isArray(v)) return []
-      return v
-        .map((item) => {
-          if (!item || typeof item !== "object") return null
-          const r = item as Record<string, unknown>
-          const signal = typeof r.signal === "string" ? r.signal.trim() : ""
-          const mechanism = typeof r.mechanism === "string" ? r.mechanism.trim() : ""
-          const implication = typeof r.implication === "string" ? r.implication.trim() : ""
-          if (!signal || !mechanism || !implication) return null
-          return { signal, mechanism, implication }
-        })
-        .filter(Boolean) as { signal: string; mechanism: string; implication: string }[]
-    }
-    const toMissStructured = (
-      v: unknown
-    ): { signalA: string; signalB: string; failure: string } | undefined => {
-      if (!v || typeof v !== "object") return undefined
-      const r = v as Record<string, unknown>
-      const signalA = typeof r.signalA === "string" ? r.signalA.trim() : ""
-      const signalB = typeof r.signalB === "string" ? r.signalB.trim() : ""
-      const failure = typeof r.failure === "string" ? r.failure.trim() : ""
-      if (!signalA || !signalB || !failure) return undefined
-      return { signalA, signalB, failure }
-    }
     const toStr = (v: unknown): string | undefined => (v != null && typeof v === "string" ? v : undefined)
     const compact = (v: unknown, fallback: string): string => {
       const s = typeof v === "string" ? v.trim() : ""
       return s.length > 0 ? s : fallback
     }
+    const firstSentences = (text: string, max: number): string => {
+      const parts = text
+        .split(/(?<=[.!?])\s+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+      if (parts.length === 0) return text.trim()
+      return parts.slice(0, max).join(" ").trim()
+    }
 
-    const whyStructured = toWhyStructured(parsed.why_this_decision).slice(0, 3)
-    const marketStructured = toMarketStructured(parsed.market_reality_structured).slice(0, 2)
-    const missStructured = toMissStructured(parsed.what_most_sellers_miss_structured)
-    const whyDecision = whyStructured.map((w) => `${w.signal} -> ${w.meaning} -> ${w.implication}`).slice(0, 3)
+    const whyDecision = toArray(parsed.why_this_decision).slice(0, 3)
     const opportunityOverviewRaw = toArray(parsed.opportunity).slice(0, 3)
     const opportunityOverview =
       input.verdict === "NO_GO" ? [] : opportunityOverviewRaw
@@ -732,6 +620,8 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       parsed.what_most_sellers_miss,
       "Most sellers miss how signal gaps between economics and market pressure determine survival."
     )
+    const marketRealityClean = firstSentences(marketReality, 2)
+    const missClean = firstSentences(whatMostSellersMiss, 1)
 
     const entryRealityRaw = parsed.entry_reality
     const entry_reality =
@@ -741,9 +631,6 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
 
     return {
       decision_snapshot: decisionSnapshot,
-      why_this_decision_structured: whyStructured,
-      market_reality_structured: marketStructured,
-      what_most_sellers_miss_structured: missStructured,
       decision_conversation: useWhy,
       review_intelligence: toArray(parsed.review_intelligence).slice(0, 3),
       opportunities:
@@ -764,8 +651,8 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       pre_launch_improvements: input.verdict === "IMPROVE_BEFORE_LAUNCH" ? toArray(parsed.pre_launch_improvements).slice(0, 8) : undefined,
       recommended_action: toStr(parsed.recommended_action),
       verdict_explanation: toStr(parsed.verdict_explanation),
-      expert_insight: toStr(parsed.expert_insight) ?? marketReality,
-      what_most_sellers_miss: whatMostSellersMiss,
+      expert_insight: firstSentences(toStr(parsed.expert_insight) ?? marketRealityClean, 2),
+      what_most_sellers_miss: missClean,
       competition_reality: toArray(parsed.competition_reality).slice(0, 6),
       opportunity:
         opportunityOverview.length > 0
@@ -780,7 +667,7 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       honeymoon_roadmap: toArray(parsed.honeymoon_roadmap).slice(0, 8),
       advisor_implication_why_this_decision: toStr(parsed.advisor_implication_why_this_decision),
       advisor_implication_expert_insight:
-        toStr(parsed.advisor_implication_expert_insight) ?? marketReality,
+        firstSentences(toStr(parsed.advisor_implication_expert_insight) ?? marketRealityClean, 2),
       advisor_implication_what_most_sellers_miss: toStr(parsed.advisor_implication_what_most_sellers_miss),
       advisor_implication_market_signals: toStr(parsed.advisor_implication_market_signals),
       advisor_implication_entry_reality: toStr(parsed.advisor_implication_entry_reality),
