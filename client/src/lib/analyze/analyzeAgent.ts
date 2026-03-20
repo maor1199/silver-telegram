@@ -474,7 +474,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
           `Competition: ${avgReviews < 1000 ? "workable" : "tough"}.`,
           "Worth testing. Nail one differentiator and control ACoS.",
         ])
-  const why_this_decision = why_this_decision_raw.slice(0, 5)
+  const why_this_decision = why_this_decision_raw
 
   const whyBullets: string[] = []
   if (hasRealMarketData && !aiInsights?.why_this_decision?.length) {
@@ -514,7 +514,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     }
   }
   const why_this_decision_final =
-    why_this_decision.length > 0 ? why_this_decision : whyBullets.length > 0 ? whyBullets.slice(0, 5) : [verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : verdict === "IMPROVE_BEFORE_LAUNCH" ? "Borderline viability; improve margin or differentiation before launch." : "Economics and market signals support a cautious GO; differentiate and control ACoS."]
+    why_this_decision.length > 0 ? why_this_decision : whyBullets.length > 0 ? whyBullets : [verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : verdict === "IMPROVE_BEFORE_LAUNCH" ? "Borderline viability; improve margin or differentiation before launch." : "Economics and market signals support a cautious GO; differentiate and control ACoS."]
 
   const review_intelligence = aiInsights?.review_intelligence?.length
     ? aiInsights.review_intelligence

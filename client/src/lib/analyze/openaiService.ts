@@ -137,7 +137,13 @@ ADVISOR BEHAVIOR (mandatory):
 
 OVERVIEW OUTPUT CONTRACT:
 - Return valid JSON with existing keys.
-- Why This Decision ("why_this_decision"): up to 3 short bullets.
+- WHY_THIS_DECISION:
+  Write 2–3 short, sharp bullets explaining the decision.
+  Rules:
+  - Be data-driven when possible
+  - Keep each bullet concise
+  - Focus on profit, competition, and feasibility
+  - Avoid generic phrases like: "workable", "worth testing", "room to play"
 - Market Reality ("market_reality" or "expert_insight"): up to 2 short sentences.
 - What Most Sellers Miss ("what_most_sellers_miss"): exactly 1 short sentence.
 - Use real numbers/signals when available; if data is weak, return shorter output.
@@ -583,12 +589,12 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       return parts.slice(0, max).join(" ").trim()
     }
 
-    const whyDecision = toArray(parsed.why_this_decision).slice(0, 3)
+    const whyDecision = toArray(parsed.why_this_decision)
     const opportunityOverviewRaw = toArray(parsed.opportunity).slice(0, 3)
     const opportunityOverview =
       input.verdict === "NO_GO" ? [] : opportunityOverviewRaw
     const decisionConversation = toArray(parsed.decision_conversation)
-    const useWhy = whyDecision.length >= 1 ? whyDecision : decisionConversation.slice(0, 5)
+    const useWhy = whyDecision.length >= 1 ? whyDecision : decisionConversation
     const decisionSnapshot = compact(
       parsed.decision_snapshot,
       input.verdict === "NO_GO"
@@ -645,8 +651,7 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
           : toStr(parsed.opportunity),
       profit_reality: toStr(parsed.profit_reality),
       entry_reality: entry_reality ?? toStr(parsed.entry_reality),
-      why_this_decision:
-        (whyDecision.length >= 1 ? whyDecision : useWhy.slice(0, 3)).slice(0, 3),
+      why_this_decision: whyDecision.length >= 1 ? whyDecision : useWhy,
       market_domination_analysis: toStr(parsed.market_domination_analysis),
       early_strategy_guidance: toStr(parsed.early_strategy_guidance),
       honeymoon_roadmap: toArray(parsed.honeymoon_roadmap).slice(0, 8),

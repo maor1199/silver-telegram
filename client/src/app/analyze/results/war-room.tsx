@@ -747,7 +747,7 @@ export default function WarRoom() {
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <ul className="flex flex-col gap-2.5">
-                      {finalWhy.slice(0, 3).map((item, i) => (
+                      {finalWhy.map((item, i) => (
                         <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
                           <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-primary/60" />
                           {String(item)}
