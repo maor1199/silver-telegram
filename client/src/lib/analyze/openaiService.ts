@@ -145,7 +145,9 @@ OVERVIEW OUTPUT CONTRACT:
   - Use DATA -> IMPLICATION framing (what this number causes in practice).
   - Be specific about risk-to-reward, not generic commentary.
   - Mention consequence when relevant (ranking cost, conversion pressure, or margin erosion).
-  - Avoid generic phrases like: "workable", "worth testing", "room to play"
+  - Max 3 bullets.
+  - Output format: why_this_decision: string[]
+  - Avoid generic phrases: "workable", "worth testing", "room to play", "competitive market"
 - Market Reality ("market_reality" or "expert_insight"): up to 2 short sentences.
 - What Most Sellers Miss ("what_most_sellers_miss"): exactly 1 short sentence.
 - Use real numbers/signals when available; if data is weak, return shorter output.
@@ -166,7 +168,7 @@ OVERVIEW OUTPUT CONTRACT:
 
 OUTPUT STRUCTURE (keep existing JSON keys; add these behaviors):
 - VERDICT: One of GO | CONDITIONAL_GO | NO_GO. Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
-- WHY_THIS_VERDICT (why_this_decision): up to 3 concise bullets in DATA → IMPLICATION style, each with concrete metrics and practical consequence.
+- WHY_THIS_VERDICT (why_this_decision): up to 3 concise bullets in DATA → IMPLICATION style (string[] only, no objects).
 - MARKET_REALITY (entry_reality / expert_insight): up to 2 concise DATA → IMPLICATION sentences, each with concrete metrics on PPC/reviews/price structure.
 - WHAT_MOST_SELLERS_MISS: exactly 1 concise sentence with at least two concrete signals and one failure dynamic.
 - RECOMMENDED_ACTION: Verdict-dependent. If GO: short launch recommendation. If CONDITIONAL_GO: improvements needed before launching (also return as pre_launch_improvements array). If NO_GO: what must change for the product to become viable (e.g. "Do not launch. Improve margins to at least 15% or enter through a narrower keyword niche.").
