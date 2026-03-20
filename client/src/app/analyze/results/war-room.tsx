@@ -656,64 +656,6 @@ export default function WarRoom() {
                 </div>
               </div>
 
-              {/* Key Metrics Row */}
-              <div className="mt-8 flex items-center justify-center gap-8 flex-wrap">
-                {score != null && !isNaN(score) && (
-                  <div className="text-center">
-                    <p className="text-3xl font-black text-foreground">{Math.round(Number(score))}<span className="text-base font-normal text-muted-foreground">/100</span></p>
-                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Viability Score</p>
-                  </div>
-                )}
-                {confidence != null && !isNaN(confidence) && score !== confidence && (
-                  <div className="text-center">
-                    <p className="text-3xl font-black text-foreground">{Number(confidence).toFixed(1)}<span className="text-base font-normal text-muted-foreground">%</span></p>
-                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Confidence</p>
-                  </div>
-                )}
-                {profitAfterAds != null && !isNaN(profitAfterAds) && (
-                  <div className="text-center">
-                    <p className={cn("text-3xl font-black", profitAfterAds >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")}>
-                      ${profitAfterAds.toFixed(2)}
-                    </p>
-                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Net Profit</p>
-                  </div>
-                )}
-                {(() => {
-                  const pbObj = pb as Record<string, unknown> | null
-                  if (!pbObj) return null
-                  const _cogs = Number(pbObj?.cogs) || 0
-                  const _fbaFee = Number(pbObj?.fbaFee) || 0
-                  const _referralFee = Number(pbObj?.referralFee) || 0
-                  const _ppcCost = Number(pbObj?.ppcCostPerUnit) || 0
-                  const _profit = profitAfterAds ?? (Number(pbObj?.profitAfterAds) || 0)
-                  const totalCost = _cogs + _fbaFee + _referralFee + _ppcCost
-                  const roiValue = totalCost > 0 ? (_profit / totalCost) * 100 : 0
-                  const amazonFeesSum = _fbaFee + _referralFee
-                  return (
-                    <>
-                      <div className="text-center">
-                        <p className={cn("text-3xl font-black", roiValue >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")}>
-                          {roiValue.toFixed(1)}%
-                        </p>
-                        <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">ROI</p>
-                      </div>
-                      {amazonFeesSum > 0 && (
-                        <div className="text-center">
-                          <p className="text-3xl font-black text-foreground">${amazonFeesSum.toFixed(2)}</p>
-                          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Amazon Fees</p>
-                        </div>
-                      )}
-                    </>
-                  )
-                })()}
-                {estimatedMargin && (
-                  <div className="text-center">
-                    <p className="text-3xl font-black text-foreground">{estimatedMargin}</p>
-                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Est. Margin</p>
-                  </div>
-                )}
-              </div>
-
               {/* Navigation Tabs */}
               <div className="mt-8 flex items-center justify-center gap-1 rounded-xl bg-secondary/50 p-1 w-fit mx-auto">
                 {(["overview", "deep-dive", "execution"] as const).map((tab) => (
