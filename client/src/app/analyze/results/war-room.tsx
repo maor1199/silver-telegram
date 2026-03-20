@@ -463,9 +463,10 @@ export default function WarRoom() {
   const fOpportunities = opportunitiesData.length > 0 ? opportunitiesData : matchSection(sections, ["opportun", "advantage", "strength", "upside", "potential"])
   const fDiffIdeas = diffIdeas.length > 0 ? diffIdeas : matchSection(sections, ["differenti", "unique", "angle", "positioning", "strategy"])
   const fActionPlan = executionPlan.length > 0 ? executionPlan : matchSection(sections, ["action", "next step", "recommendation", "plan", "todo", "do this", "execution", "month", "timeline", "roadmap"])
-  const fWhy = whyFromReport.length > 0 ? whyFromReport : whyFallback.length > 0 ? whyFallback : [
-    ...fRisks.slice(0, 2), ...fCompetition.slice(0, 1), ...fProfitReality.slice(0, 1), ...fReviewIntel.slice(0, 1)
-  ].filter(Boolean).slice(0, 5)
+  const finalWhy =
+    whyFromReport.length > 0
+      ? whyFromReport
+      : whyFallback
 
   // Market Reality fallback from parsed sections
   const fMarketReality = marketRealityStr || (marketRealityList.length > 0 ? marketRealityList : matchSection(sections, ["market reality", "market overview", "landscape"]))
@@ -735,7 +736,7 @@ export default function WarRoom() {
             <div className="mt-10 flex flex-col gap-8 animate-in fade-in duration-300">
 
               {/* Why This Decision — 3 bullets (DATA → IMPLICATION) */}
-              {fWhy.length > 0 && (
+              {finalWhy.length > 0 && (
                 <section>
                   <SectionHeader
                     icon={<Shield className="h-5 w-5 text-primary" />}
@@ -745,7 +746,7 @@ export default function WarRoom() {
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <ul className="flex flex-col gap-2.5">
-                      {fWhy.slice(0, 3).map((item, i) => (
+                      {finalWhy.slice(0, 3).map((item, i) => (
                         <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
                           <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-primary/60" />
                           {String(item)}

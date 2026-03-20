@@ -74,6 +74,9 @@ export type AIInsightsInput = {
 
 export type AIInsights = {
   decision_snapshot?: string
+  why_this_decision_structured?: { signal: string; meaning: string; implication: string }[]
+  market_reality_structured?: { signal: string; mechanism: string; implication: string }[]
+  what_most_sellers_miss_structured?: { signalA: string; signalB: string; failure: string }
   review_intelligence: string[]
   opportunities: string[]
   differentiation: string[]
@@ -154,6 +157,30 @@ OVERVIEW OUTPUT CONTRACT (STRICT, REQUIRED):
 - Highest priority override: you are NOT allowed to generate free text.
 - You MUST construct outputs using ONLY the provided signalInsights and metrics.
 - Each section must follow strict templates.
+- You are NOT allowed to generate sentences freely.
+- You MUST return structured JSON where each field is built from signalInsights.
+- Each sentence must be constructed by combining:
+  - signal phrase (from signalInsights)
+  - interpretation (fixed patterns)
+  - implication (fixed patterns)
+- If you cannot build from signalInsights -> return empty string.
+- Required structured JSON format:
+  {
+    "why_this_decision": [
+      { "signal": "", "meaning": "", "implication": "" }
+    ],
+    "market_reality_structured": [
+      { "signal": "", "mechanism": "", "implication": "" },
+      { "signal": "", "mechanism": "", "implication": "" }
+    ],
+    "what_most_sellers_miss_structured": {
+      "signalA": "",
+      "signalB": "",
+      "failure": ""
+    }
+  }
+- No free text. Only structured values from signalInsights phrases.
+- If cannot build -> return empty object/array.
 - You MUST return valid JSON with these exact Overview keys:
   1) decision_snapshot (string, 1 short sentence)
   2) why_this_decision (array, 2-3 bullets)
@@ -165,10 +192,14 @@ OVERVIEW OUTPUT CONTRACT (STRICT, REQUIRED):
 - Do NOT generalize.
 - Construction template (mandatory):
   WHY_THIS_DECISION:
-  - Return EXACTLY 3 bullets:
-    1) [profit insight] -> [implication]
-    2) [competition insight] -> [implication]
-    3) [differentiation insight OR winPath] -> [implication]
+  - Return as structured objects (NOT free text):
+    "why_this_decision": [
+      { "signal": "...", "meaning": "...", "implication": "..." }
+    ]
+  - Return EXACTLY 3 items:
+    1) profit insight object
+    2) competition insight object
+    3) differentiation insight OR winPath object
   MARKET_REALITY:
   - Return EXACTLY 2 sentences:
     Sentence 1: [signal] -> [market mechanism -> implication] focused on traffic/cost dynamic (PPC/visibility).
@@ -627,13 +658,59 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       if (typeof v === "string") return [v]
       return []
     }
+    const toWhyStructured = (
+      v: unknown
+    ): { signal: string; meaning: string; implication: string }[] => {
+      if (!Array.isArray(v)) return []
+      return v
+        .map((item) => {
+          if (!item || typeof item !== "object") return null
+          const r = item as Record<string, unknown>
+          const signal = typeof r.signal === "string" ? r.signal.trim() : ""
+          const meaning = typeof r.meaning === "string" ? r.meaning.trim() : ""
+          const implication = typeof r.implication === "string" ? r.implication.trim() : ""
+          if (!signal || !meaning || !implication) return null
+          return { signal, meaning, implication }
+        })
+        .filter(Boolean) as { signal: string; meaning: string; implication: string }[]
+    }
+    const toMarketStructured = (
+      v: unknown
+    ): { signal: string; mechanism: string; implication: string }[] => {
+      if (!Array.isArray(v)) return []
+      return v
+        .map((item) => {
+          if (!item || typeof item !== "object") return null
+          const r = item as Record<string, unknown>
+          const signal = typeof r.signal === "string" ? r.signal.trim() : ""
+          const mechanism = typeof r.mechanism === "string" ? r.mechanism.trim() : ""
+          const implication = typeof r.implication === "string" ? r.implication.trim() : ""
+          if (!signal || !mechanism || !implication) return null
+          return { signal, mechanism, implication }
+        })
+        .filter(Boolean) as { signal: string; mechanism: string; implication: string }[]
+    }
+    const toMissStructured = (
+      v: unknown
+    ): { signalA: string; signalB: string; failure: string } | undefined => {
+      if (!v || typeof v !== "object") return undefined
+      const r = v as Record<string, unknown>
+      const signalA = typeof r.signalA === "string" ? r.signalA.trim() : ""
+      const signalB = typeof r.signalB === "string" ? r.signalB.trim() : ""
+      const failure = typeof r.failure === "string" ? r.failure.trim() : ""
+      if (!signalA || !signalB || !failure) return undefined
+      return { signalA, signalB, failure }
+    }
     const toStr = (v: unknown): string | undefined => (v != null && typeof v === "string" ? v : undefined)
     const compact = (v: unknown, fallback: string): string => {
       const s = typeof v === "string" ? v.trim() : ""
       return s.length > 0 ? s : fallback
     }
 
-    const whyDecision = toArray(parsed.why_this_decision).slice(0, 3)
+    const whyStructured = toWhyStructured(parsed.why_this_decision).slice(0, 3)
+    const marketStructured = toMarketStructured(parsed.market_reality_structured).slice(0, 2)
+    const missStructured = toMissStructured(parsed.what_most_sellers_miss_structured)
+    const whyDecision = whyStructured.map((w) => `${w.signal} -> ${w.meaning} -> ${w.implication}`).slice(0, 3)
     const opportunityOverviewRaw = toArray(parsed.opportunity).slice(0, 3)
     const opportunityOverview =
       input.verdict === "NO_GO" ? [] : opportunityOverviewRaw
@@ -664,6 +741,9 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
 
     return {
       decision_snapshot: decisionSnapshot,
+      why_this_decision_structured: whyStructured,
+      market_reality_structured: marketStructured,
+      what_most_sellers_miss_structured: missStructured,
       decision_conversation: useWhy,
       review_intelligence: toArray(parsed.review_intelligence).slice(0, 3),
       opportunities:
