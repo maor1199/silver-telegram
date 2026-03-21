@@ -50,6 +50,34 @@ function asString(v: unknown, fallback = ""): string {
   return typeof v === "string" ? v : fallback
 }
 
+/** Overview "What would flip" — derived from unified execution_plan (single AI field). */
+function whatWouldFlipFromExecutionPlan(verdict: string, plan: string[]): string[] | undefined {
+  if (verdict !== "NO_GO" && verdict !== "IMPROVE_BEFORE_LAUNCH") return undefined
+  if (!plan.length) return undefined
+  const lower = plan.map((s) => s.toLowerCase().trim())
+  if (verdict === "NO_GO") {
+    const iFix = lower.findIndex((s) => s.includes("what to fix"))
+    const iBetter = lower.findIndex((s) => s.includes("better move"))
+    if (iFix >= 0 && iBetter > iFix) {
+      const mid = plan.slice(iFix + 1, iBetter).filter((s) => String(s).trim().length > 0)
+      if (mid.length) return mid.slice(0, 3)
+    }
+  } else {
+    const iDo = lower.findIndex((s) => s === "what to do" || s.includes("what to do"))
+    const iRc = lower.findIndex((s) => s.includes("reality check"))
+    if (iDo >= 0 && iRc > iDo) {
+      const mid = plan.slice(iDo + 1, iRc).filter((s) => String(s).trim().length > 0)
+      if (mid.length) return mid.slice(0, 3)
+    }
+    if (iDo >= 0) {
+      const mid = plan.slice(iDo + 1, iDo + 5).filter((s) => String(s).trim().length > 0)
+      if (mid.length) return mid.slice(0, 3)
+    }
+  }
+  const rest = plan.slice(1).filter((s) => !/^(why it fails|critical gaps|game plan)$/i.test(String(s).trim()))
+  return (rest.length ? rest : plan).slice(0, 3)
+}
+
 /** Dynamic ACoS from market data (competition, review barrier, keyword opportunity, price compression). */
 function calculateDynamicACoS(marketData: {
   sponsoredTop10?: number
@@ -673,8 +701,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
         .trim() || s
     })
     .filter(Boolean)
-  const what_would_make_go = aiInsights?.what_would_make_go
-
   const highIntentKeywords = [
     keyword,
     alternative_keywords[0] ?? `${keyword} premium`,
@@ -686,16 +712,23 @@ export async function analyzeProduct(input: AnalyzeInput) {
     "Step 3 (Day 21–30): Conversion Boost — Apply a 15–20% 'Green Coupon' to offset your lack of reviews and steal clicks from incumbents.",
   ]
   const executionFromAi = aiInsights?.execution_plan?.length ? aiInsights.execution_plan : null
-  const preLaunchFromAi = aiInsights?.pre_launch_improvements?.length ? aiInsights.pre_launch_improvements : null
   const honeymoonFromAi = aiInsights?.honeymoon_roadmap?.length ? aiInsights.honeymoon_roadmap : null
-  const honeymoonRoadmap = honeymoonFromAi ?? executionFromAi ?? honeymoonRoadmapDefault
+  // Only GO should reuse execution_plan as honeymoon fallback — NO_GO / IMPROVE execution_plan is rejection/conditional, not launch steps.
+  const honeymoonRoadmap =
+    verdict === "GO"
+      ? honeymoonFromAi ?? executionFromAi ?? honeymoonRoadmapDefault
+      : honeymoonFromAi ?? honeymoonRoadmapDefault
   const highBarrierStep = "High Barrier to Entry detected. Do not launch without a minimum $15,000 launch budget for PPC and Vine reviews."
   const ppcCannibalizationStep = "PPC Cannibalization Risk: Your ad costs will likely exceed 60% of your revenue during launch. You MUST have a backend funnel or high LTV (Lifetime Value) to survive this."
   const executionPlanRaw =
     verdict === "NO_GO"
-      ? (what_would_make_go?.length ? what_would_make_go : ["Do not launch. Improve margins or choose a narrower keyword niche before re-running analysis."])
+      ? (executionFromAi?.length
+          ? executionFromAi
+          : ["Do not launch. Improve margins or choose a narrower keyword niche before re-running analysis."])
       : verdict === "IMPROVE_BEFORE_LAUNCH"
-        ? (preLaunchFromAi?.length ? preLaunchFromAi : what_would_make_go?.length ? what_would_make_go : ["Complete margin and differentiation improvements before launching. Re-run analysis when ready."])
+        ? (executionFromAi?.length
+            ? executionFromAi
+            : ["Complete margin and differentiation improvements before launching. Re-run analysis when ready."])
         : (executionFromAi ?? [
             ...(avgReviews > 10000 ? [highBarrierStep] : []),
             ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
@@ -704,6 +737,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const execution_plan = executionPlanRaw.map((step: string) =>
     String(step).replace(/\bkeywords:\s*:\s*/gi, "keywords: ")
   )
+  const what_would_make_go = whatWouldFlipFromExecutionPlan(verdict, execution_plan)
 
   const estimatedCpcRange = avgReviews >= 2000 ? { min: 1.5, max: 3 } : avgReviews >= 500 ? { min: 0.8, max: 2 } : { min: 0.3, max: 1 }
   const minCpc = Number.isFinite(estimatedCpcRange.min) ? estimatedCpcRange.min : 0.5
@@ -784,7 +818,8 @@ export async function analyzeProduct(input: AnalyzeInput) {
         ]
       : [
           `Net margin ${estimatedMarginPercent.toFixed(1)}% is below the ${marginThresholdPct}% threshold — real-time PPC (${(acosFloor * 100).toFixed(1)}% floor) and returns would erase profit.`,
-          financialPivotNoGo ?? (what_would_make_go?.length ? what_would_make_go[0] : "Raise price, cut COGS, or target a lower-ACoS niche to reach viability."),
+          financialPivotNoGo ??
+            (execution_plan.length ? execution_plan[0] : "Raise price, cut COGS, or target a lower-ACoS niche to reach viability."),
           `Re-run with updated numbers once unit economics clear ${marginThresholdPct}%.`,
         ]
   if (underpricingAdvice) strategicIntelligenceParts.push(underpricingAdvice)
@@ -956,7 +991,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
     estimated_acos_for_market: dynamicAcosForMarket,
     alternative_keywords,
     alternative_keywords_with_cost,
-    what_would_make_go: verdict === "NO_GO" ? what_would_make_go : verdict === "IMPROVE_BEFORE_LAUNCH" ? what_would_make_go : undefined,
+    what_would_make_go:
+      (verdict === "NO_GO" || verdict === "IMPROVE_BEFORE_LAUNCH") && what_would_make_go?.length
+        ? what_would_make_go
+        : undefined,
     verdict_explanation: aiInsights?.verdict_explanation ?? undefined,
     recommended_action: aiInsights?.recommended_action ?? undefined,
     profit_breakdown: profitBreakdown,
@@ -1057,7 +1095,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
     honeymoonRoadmap: honeymoonRoadmap,
     alternativeKeywords: report.alternative_keywords,
     alternativeKeywordsWithCost: report.alternative_keywords_with_cost,
-    whatWouldMakeGo: verdict === "NO_GO" ? what_would_make_go : verdict === "IMPROVE_BEFORE_LAUNCH" ? what_would_make_go : undefined,
+    whatWouldMakeGo:
+      (verdict === "NO_GO" || verdict === "IMPROVE_BEFORE_LAUNCH") && what_would_make_go?.length
+        ? what_would_make_go
+        : undefined,
     verdictExplanation: aiInsights?.verdict_explanation ?? undefined,
     verdictAdvisory: report.verdictAdvisory,
     recommendedAction: aiInsights?.recommended_action ?? undefined,

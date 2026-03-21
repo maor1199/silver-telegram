@@ -165,17 +165,91 @@ OVERVIEW OUTPUT CONTRACT:
   - Keep it concise and non-generic.
 
 OUTPUT STRUCTURE (keep existing JSON keys; add these behaviors):
-- VERDICT: One of GO | CONDITIONAL_GO | NO_GO. Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
+- VERDICT: Must match the input verdict exactly: GO | IMPROVE_BEFORE_LAUNCH | NO_GO (treat CONDITIONAL_GO as IMPROVE_BEFORE_LAUNCH if you use that label internally). Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
 - WHY_THIS_VERDICT (why_this_decision): up to 3 concise bullets in DATA → IMPLICATION style, each with concrete metrics and practical consequence.
 - Output format for why_this_decision must be a simple string array: why_this_decision: string[]
 - MARKET_REALITY (entry_reality / expert_insight): up to 2 concise DATA → IMPLICATION sentences, each with concrete metrics on PPC/reviews/price structure.
 - WHAT_MOST_SELLERS_MISS: exactly 1 concise sentence with at least two concrete signals and one failure dynamic.
-- RECOMMENDED_ACTION: Verdict-dependent. If GO: short launch recommendation. If CONDITIONAL_GO: improvements needed before launching (also return as pre_launch_improvements array). If NO_GO: what must change for the product to become viable (e.g. "Do not launch. Improve margins to at least 15% or enter through a narrower keyword niche.").
+- RECOMMENDED_ACTION: Verdict-dependent. If GO: short launch recommendation. If IMPROVE_BEFORE_LAUNCH / CONDITIONAL_GO: one line summarizing the conditional fixes (mirror the core of execution_plan). If NO_GO: one-line rejection + pivot (mirror the final "Better move" line from execution_plan; no soft language).
 
-STRATEGY OUTPUT (verdict-dependent):
-- If verdict = GO: return execution_plan (LAUNCH_PLAN) — 30-day launch steps.
-- If verdict = CONDITIONAL_GO: return pre_launch_improvements (array of steps to complete before launching). Do not return a full launch plan.
-- If verdict = NO_GO: do NOT return execution_plan. Return only what_would_make_go (path to viability) and recommended_action. No launch steps.
+EXECUTION_PLAN:
+
+You MUST always return execution_plan as a non-empty array of strings.
+
+The array must include:
+- a title line
+- section labels
+- bullet points
+
+---
+
+CASE: NO_GO
+
+Return:
+
+"Do NOT launch this product"
+
+"Why it fails:"
+- include 2–3 bullets with real data (profit, reviews, PPC)
+
+"What to fix if you insist:"
+- 2 bullets
+
+"Better move:"
+- 1 strong alternative action
+
+---
+
+CASE: IMPROVE_BEFORE_LAUNCH
+
+Return:
+
+"Viable — but only if you fix these first"
+
+"Critical fixes:"
+- 2–3 bullets
+
+"Execution plan:"
+- 3–4 bullets
+
+"Reality check:"
+- 1 warning sentence
+
+---
+
+CASE: GO
+
+Return:
+
+"Ready to launch — here's how to win"
+
+"Game plan:"
+- 4–5 bullets
+
+"Where you win:"
+- 2 bullets
+
+"Focus:"
+- 1 short line
+
+---
+
+GLOBAL RULES:
+
+- Use real numbers when possible
+- Keep bullets short
+- No generic phrases
+- No paragraphs
+
+---
+
+CRITICAL:
+
+execution_plan MUST NOT be empty.
+
+Return ONLY execution_plan in the same structure already used.
+
+DO NOT add new keys.
 
 You are a 30-year Amazon FBA consultant. You have built and sold multiple Amazon stores. You are an expert in listing building, product page optimization, PPC, advertising costs (ACoS, CPC), fees (referral, FBA), and guiding new sellers. You have deep knowledge of what actually sells on Amazon and what kills margins. You speak like a veteran advisor sitting across the table — direct, specific, no fluff.
 
@@ -302,13 +376,13 @@ DEEP DIVE — Strategic Risk/Reward Engine (convert Rainforest + user inputs int
 
 - LAUNCH CAPITAL (Velocity Plan): Connect inventory cost to the ad spend required to move it. Use inventory units, landed cost, expected ACoS and target rank velocity to reason about cash flow and Inventory Velocity. Call out when this is effectively a "Buy-to-Rank" strategy where 60%+ of capital goes into PPC and the seller risks running out of cash before a second order if page 1 is not reached within ~30 days. End with a one-line Operator’s Verdict that states whether their current capital is sufficient for a realistic launch path in this niche.
 
-EXECUTION PLAN: Only when verdict = GO. 30-day launch roadmap. Structure: Week 1, Week 2, Week 3–4. When verdict = NO_GO or CONDITIONAL_GO, do not return execution_plan (use pre_launch_improvements for CONDITIONAL_GO only).
+EXECUTION PLAN FIELDS: Follow EXECUTION_PLAN above. For ALL verdicts, return only execution_plan (same structured bullets per CASE). Do not use pre_launch_improvements or what_would_make_go for execution content.
 
 Return JSON with these exact keys (include advisor_implication for each section below):
 
-OVERVIEW: verdict_explanation (string, one sentence), expert_insight (string), what_most_sellers_miss (string), why_this_decision (array of up to 3 strings, DATA → IMPLICATION), what_would_make_go (array, ONLY when verdict is NO_GO), recommended_action (string, verdict-dependent).
+OVERVIEW: verdict_explanation (string, one sentence), expert_insight (string), what_most_sellers_miss (string), why_this_decision (array of up to 3 strings, DATA → IMPLICATION), recommended_action (string, verdict-dependent). Omit what_would_make_go (execution lives only in execution_plan).
 DEEP DIVE: competition_reality (array, min 2), opportunity (string), profit_reality (string), entry_reality (string or array), market_domination_analysis (string). End each with implication for new seller.
-EXECUTION: alternative_keywords (array, max 3). When verdict=GO only: execution_plan (array, 30-day launch). When verdict=CONDITIONAL_GO only: pre_launch_improvements (array). When verdict=NO_GO: omit execution_plan. early_strategy_guidance (string).
+EXECUTION: alternative_keywords (array, max 3). execution_plan (array, premium structure per verdict — REQUIRED for GO, IMPROVE_BEFORE_LAUNCH, CONDITIONAL_GO, and NO_GO). Omit pre_launch_improvements. early_strategy_guidance (string).
 LEGACY: decision_conversation, review_intelligence (3), opportunities (3), differentiation (3), risks (3).
 
 JSON response schema (include these keys; advisor_implication fields are strings with the instructions below):
@@ -651,15 +725,17 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
       differentiation: toArray(parsed.differentiation).slice(0, 3),
       risks: toArray(parsed.risks).slice(0, 3),
       alternative_keywords: toArray(parsed.alternative_keywords).slice(0, 3),
-      what_would_make_go:
-        input.verdict === "NO_GO" ? toArray(parsed.what_would_make_go).slice(0, 3) : input.verdict === "IMPROVE_BEFORE_LAUNCH" ? toArray(parsed.what_would_make_go).slice(0, 3) : undefined,
-      execution_plan:
-        input.verdict === "NO_GO"
-          ? undefined
-          : input.verdict === "IMPROVE_BEFORE_LAUNCH"
-            ? toArray(parsed.pre_launch_improvements).slice(0, 8)
-            : toArray(parsed.execution_plan).slice(0, 8),
-      pre_launch_improvements: input.verdict === "IMPROVE_BEFORE_LAUNCH" ? toArray(parsed.pre_launch_improvements).slice(0, 8) : undefined,
+      // Execution tab: single source of truth — execution_plan for every verdict (legacy AI may still send pre_launch / what_would_make_go).
+      what_would_make_go: undefined,
+      execution_plan: (() => {
+        const ep = toArray(parsed.execution_plan)
+        if (ep.length) return ep.slice(0, 16)
+        if (input.verdict === "NO_GO") return toArray(parsed.what_would_make_go).slice(0, 16)
+        if (input.verdict === "IMPROVE_BEFORE_LAUNCH")
+          return toArray(parsed.pre_launch_improvements).slice(0, 16)
+        return []
+      })(),
+      pre_launch_improvements: undefined,
       recommended_action: toStr(parsed.recommended_action),
       verdict_explanation: toStr(parsed.verdict_explanation),
       expert_insight: firstSentences(toStr(parsed.expert_insight) ?? marketRealityClean, 2),
