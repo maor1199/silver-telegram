@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils"
 import { useRequireAuth } from "@/hooks/use-require-auth"
 
 /* ── Config ── */
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://unresuscitable-unskirted-shaniqua.ngrok-free.dev"
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ""
 const NGROK_URL = `${API_URL}/api/generate-listing`
 
 /* ── Types ── */

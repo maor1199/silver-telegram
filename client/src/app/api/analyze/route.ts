@@ -8,7 +8,9 @@ import { getMarketData } from "@/lib/analyze/marketDataProvider"
 
 const FREE_TIER_ANALYSIS_LIMIT = 5
 /** Emails that bypass the free-tier limit (unlimited analyses). */
-const UNLIMITED_ANALYSIS_EMAILS = new Set(["pardilov11@gmail.com"].map((e) => e.toLowerCase()))
+const UNLIMITED_ANALYSIS_EMAILS = new Set(
+  (process.env.UNLIMITED_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
+)
 
 export async function POST(req: Request) {
   try {
@@ -105,7 +107,7 @@ export async function POST(req: Request) {
     console.log("STEP 3 - API RESPONSE WHY:", reportWhyFromResponse)
 
     const newCount = currentCount + 1
-    await supabase.from("user_usage").upsert(
+    const { error: upsertError } = await supabase.from("user_usage").upsert(
       {
         user_id: user.id,
         analysis_count: newCount,
@@ -113,6 +115,7 @@ export async function POST(req: Request) {
       },
       { onConflict: "user_id" }
     )
+    if (upsertError) console.error("Usage tracking failed:", upsertError.message)
 
     const product_name = typeof body?.keyword === "string" ? body.keyword.trim() : ""
     await supabase.from("analyses").insert({
