@@ -41,7 +41,7 @@ export function HeroSection() {
               </Link>
             </Button>
             <Button size="lg" variant="outline" className="h-12 rounded-xl px-8 text-base font-semibold" asChild>
-              <Link href="/pricing">View pricing</Link>
+              <Link href="/guide">Amazon Starter Guide</Link>
             </Button>
           </div>
 

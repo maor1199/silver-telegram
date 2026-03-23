@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
@@ -130,12 +131,31 @@ app.use((req, _res, next) => {
   next();
 });
 
-// CORS first (v0, ngrok) — origin: '*' for tunnel/proxy
+// CORS — only allow configured origins
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: "*",
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "ngrok-skip-browser-warning", "bypass-tunnel-reminder"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 }));
+
+// Rate limiting — max 20 requests per minute per IP
+const limiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: { error: "Too many requests, please try again later." },
+});
+app.use("/api/", limiter);
 
 // Body parsers at the top — no strict validation, no Zod
 app.use(express.json({ limit: "50mb" }));
