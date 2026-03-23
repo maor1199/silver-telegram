@@ -88,7 +88,7 @@ export default function GuidePage() {
                 Step-by-step. No experience needed.
               </Badge>
               <h1 className="text-4xl font-black text-foreground md:text-5xl leading-[1.1]" style={{ letterSpacing: "-0.04em" }}>
-                Amazon FBA Starter Guide
+                Amazon FBA Seller&apos;s Guide
               </h1>
               <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground leading-relaxed">
                 9 chapters. Everything a new seller needs to launch, grow, and profit on Amazon in 2026 — written clearly, no fluff.

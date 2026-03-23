@@ -17,7 +17,7 @@ const TOOLS_MENU_ITEMS = [
     icon: Sparkles,
   },
   {
-    name: "Amazon Starter Guide",
+    name: "Amazon FBA Seller's Guide",
     href: "/guide",
     description: "9-chapter free course for new Amazon FBA sellers — 2026 edition",
     icon: BookOpen,
