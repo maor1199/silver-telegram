@@ -258,48 +258,100 @@ export async function analyzeProduct(input: AnalyzeInput) {
       ? `Premium Risk: Your price ($${sellingPrice.toFixed(2)}) is ${(((sellingPrice - avgPrice) / avgPrice) * 100).toFixed(1)}% higher than the top-5 market average ($${avgPrice.toFixed(2)}). Differentiation must justify this gap to maintain viability.`
       : undefined
 
+  // ─── Decision engine: 4‑Layer Verdict Model ───
+  // Layer 1 — Economic Floor (Kill Switch)
+  const netMarginRatioForGate = sellingPrice > 0 ? profitAfterAds / sellingPrice : 0
+  const economicFloorFails = profitAfterAds < 6 || netMarginRatioForGate < 0.15
+
+  // Base score before market/differentiation layers
   let score = 50
   const scoreBreakdown: Record<string, string> = { base: "50" }
 
-  if (hasRealMarketData) {
-    if (avgReviews < 500) {
-      score += 8
-      scoreBreakdown.avgReviews = "+8"
-    } else if (avgReviews < 2000) {
-      score += 3
-      scoreBreakdown.avgReviews = "+3"
-    } else {
-      score -= 5
-      scoreBreakdown.avgReviews = "-5"
-    }
-    if (!dominantBrand) {
-      score += 5
-      scoreBreakdown.dominantBrand = "+5"
-    } else {
-      scoreBreakdown.dominantBrand = "0"
-    }
+  // Layer 2 — Market Fluidity (New Seller Scan, Top 20)
+  const newSellers20 = Number.isFinite(newSellersInTop20) ? (newSellersInTop20 as number) : 0
+  if (newSellers20 < 2) {
+    score -= 30
+    scoreBreakdown.marketFluidity = "-30 (locked market: <2 new sellers in top 20)"
+  } else if (newSellers20 >= 4) {
+    score += 15
+    scoreBreakdown.marketFluidity = "+15 (fluid market: 4+ new sellers in top 20)"
   }
 
-  if (profitAfterAds >= 25) {
-    score += 20
-    scoreBreakdown.profitAfterAds = "+20"
-  } else if (profitAfterAds >= 15) {
+  // Layer 3 — Ad Saturation (Sponsored density across first page, organic gaps)
+  const SERP_SIZE = 30
+  const sponsoredTotal = Number.isFinite(market?.sponsored_total_count)
+    ? (market!.sponsored_total_count as number)
+    : Math.round((sponsoredShare ?? 0.0) * SERP_SIZE)
+  const firstPageSponsoredShare = SERP_SIZE > 0 ? sponsoredTotal / SERP_SIZE : 0
+
+  if (firstPageSponsoredShare > 0.35) {
+    score -= 20
+    scoreBreakdown.adSaturation = "-20 (PPC battlefield: >35% sponsored on first page)"
+  }
+
+  // Approximate organic gaps: organic low‑review listings in positions 15–30
+  const organicGapsCount =
+    Array.isArray(market?.topCompetitors) && market.topCompetitors.length
+      ? market.topCompetitors.filter((c) => {
+          const pos = c.position ?? 0
+          const reviews = c.ratingsTotal ?? 0
+          const isSponsored = c.sponsored === true
+          return !isSponsored && pos >= 15 && pos <= 30 && reviews > 0 && reviews < 200
+        }).length
+      : 0
+
+  if (organicGapsCount >= 2) {
     score += 10
-    scoreBreakdown.profitAfterAds = "+10"
-  } else if (profitAfterAds >= 8) {
-    score += 2
-    scoreBreakdown.profitAfterAds = "+2"
-  } else {
-    score -= 18
-    scoreBreakdown.profitAfterAds = "-18"
+    scoreBreakdown.organicGaps = "+10 (organic low‑review gaps between ranks 15–30)"
   }
 
+  // Layer 4 — Differentiation Multiplier
+  const validatedDiffsForScore = getValidatedDifferentiators(
+    differentiationInput,
+    market?.topTitles ?? [],
+    market?.painPoints ?? []
+  )
+  const hasStrongVisualDiff = validatedDiffsForScore.some((d) => d.verdict === "STRONG")
+  const hasAnyDiffText = (differentiationInput ?? "").trim().length > 0
+
+  if (hasStrongVisualDiff) {
+    score += 20
+    scoreBreakdown.differentiation = "+20 (strong differentiation aligned with market pain points)"
+  } else if (hasAnyDiffText) {
+    score -= 10
+    scoreBreakdown.differentiation = "-10 (weak/generic differentiation)"
+  }
+
+  // Clamp final score (UI only — verdict is logic‑based below)
   score = Math.max(1, Math.min(99, Math.round(score)))
 
-  // Verdict: Aggregator rule overrides score. Real-time PPC (ACoS floor) + margin threshold (15% or 20%).
-  let verdict: "GO" | "NO_GO" = score >= 55 ? "GO" : "NO_GO"
-  if (!passesMarginRule) verdict = "NO_GO"
-  const verdictAdvisory: string | undefined = undefined
+  // ─── FINAL DECISION ENGINE (SIMPLE & HUMAN-LIKE) ───
+  const hasRealProfit = profitAfterAds > 0 && netMarginRatioForGate > 0.12
+  const hasHealthyProfit = profitAfterAds >= 10 && netMarginRatioForGate >= 0.18
+
+  const avgTop10Reviews = avgReviews
+  const brandShareTop3 = dominantBrand ? 0.6 : 0.2
+  const hasDominantBrand = dominantBrand
+  const marketLocked = avgTop10Reviews > 500 && hasDominantBrand
+
+  const avgPriceForVerdict = avgPrice
+  const pricePosition = avgPriceForVerdict > 0 ? sellingPrice / avgPriceForVerdict : 1
+  const canCompeteOnPrice = pricePosition <= 0.95
+  const hasRealDifferentiation = hasStrongVisualDiff
+  const hasWinPath = hasRealDifferentiation || canCompeteOnPrice
+
+  let verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
+  let verdictAdvisory: string | undefined
+
+  if (!hasRealProfit) {
+    verdict = "NO_GO"
+  } else if (marketLocked && !hasWinPath && profitAfterAds < 5) {
+    verdict = "NO_GO"
+  } else if (!hasHealthyProfit) {
+    verdict = "IMPROVE_BEFORE_LAUNCH"
+  } else {
+    verdict = "GO"
+  }
 
   const confidence = Math.max(35, Math.min(92, Math.round(55 + (score - 50) * 0.7)))
 
@@ -342,14 +394,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
         ? "Moderate complexity: 8% buffer; watch returns and listing clarity."
         : "Lower complexity; standard margin rules apply.",
   }
-  // Derived values kept for backward compatibility with buildSignals and debug_values
-  const netMarginRatioForGate = netMarginRatio
-  const hasRealProfit = profitAfterAds > 0 && netMarginRatioForGate > 0.12
-  const avgTop10Reviews = avgReviews
-  const brandShareTop3 = dominantBrand ? 0.6 : 0.2
-  const hasDominantBrand = dominantBrand
-  const marketLocked = avgTop10Reviews > 500 && hasDominantBrand
-  const hasWinPath = differentiationInput.length >= 50 || sellingPrice <= (market?.avgPrice ?? sellingPrice) * 0.95
   const keywordSaturation = keywordSaturationCount != null ? keywordSaturationCount / 30 : 1
   const userDifferentiation = differentiationInput
   const sponsoredTop10 = sponsoredTop10Count
@@ -466,7 +510,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     }
   }
   const why_this_decision_final =
-    why_this_decision.length > 0 ? why_this_decision : whyBullets.length > 0 ? whyBullets : [verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : "Economics and market signals support a cautious GO; differentiate and control ACoS."]
+    why_this_decision.length > 0 ? why_this_decision : whyBullets.length > 0 ? whyBullets : [verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : verdict === "IMPROVE_BEFORE_LAUNCH" ? "Borderline viability; improve margin or differentiation before launch." : "Economics and market signals support a cautious GO; differentiate and control ACoS."]
 
   const review_intelligence = aiInsights?.review_intelligence?.length
     ? aiInsights.review_intelligence
@@ -927,7 +971,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     alternative_keywords,
     alternative_keywords_with_cost,
     what_would_make_go:
-      verdict === "NO_GO" && what_would_make_go?.length
+      (verdict === "NO_GO" || verdict === "IMPROVE_BEFORE_LAUNCH") && what_would_make_go?.length
         ? what_would_make_go
         : undefined,
     verdict_explanation: aiInsights?.verdict_explanation ?? undefined,
@@ -1028,7 +1072,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     alternativeKeywords: report.alternative_keywords,
     alternativeKeywordsWithCost: report.alternative_keywords_with_cost,
     whatWouldMakeGo:
-      verdict === "NO_GO" && what_would_make_go?.length
+      (verdict === "NO_GO" || verdict === "IMPROVE_BEFORE_LAUNCH") && what_would_make_go?.length
         ? what_would_make_go
         : undefined,
     verdictExplanation: aiInsights?.verdict_explanation ?? undefined,
