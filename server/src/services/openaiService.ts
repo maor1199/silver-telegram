@@ -48,6 +48,8 @@ export type AIInsightsInput = {
   shippingCost?: number;
   profitAfterAds: number;
   verdict: "GO" | "NO_GO";
+  /** The exact ACoS used in the profit calculation — use this in early_strategy_guidance, not a recalculated value */
+  assumed_acos?: number;
   avgPrice: number;
   avgRating: number;
   avgReviews: number;
@@ -214,6 +216,8 @@ Return JSON with these exact keys (include advisor_implication for each section 
 OVERVIEW: expert_insight (string), what_most_sellers_miss (string), why_this_decision (array of exactly 3 strings, DATA → INSIGHT → IMPLICATION), what_would_make_go (array of 3 strings, ONLY when verdict is NO_GO).
 DEEP DIVE: competition_reality (array, min 2), opportunity (string, one), profit_reality (string), entry_reality (string or array 2–3 bullets), market_domination_analysis (string).
 EXECUTION: alternative_keywords (array, max 3), execution_plan (array, 30-day: Week 1 / Week 2 / Week 3–4), early_strategy_guidance (string).
+
+CRITICAL KEYWORD RULE — alternative_keywords and any keywords mentioned inside execution_plan MUST be short natural Amazon search terms: 2–4 words maximum (e.g. "pilates kit", "resistance bands set", "home pilates equipment"). NEVER use full product titles or sentences as keywords. NEVER repeat the same keyword phrase with only "premium" or "best" appended — those are not real search terms.
 LEGACY: decision_conversation, review_intelligence (3), opportunities (3), differentiation (3), risks (3).
 
 JSON response schema (include these keys; advisor_implication fields are strings with the instructions below):
@@ -406,6 +410,7 @@ function buildUserPrompt(input: AIInsightsInput): string {
     `Profit after ads: $${input.profitAfterAds.toFixed(2)}/unit`,
     `Estimated margin: ${input.estimated_margin != null ? input.estimated_margin.toFixed(1) + "%" : "N/A"} | ROI: ${input.estimated_roi != null ? input.estimated_roi.toFixed(1) + "%" : "N/A"}`,
     `Landed cost: $${input.landed_cost != null ? input.landed_cost.toFixed(2) : "N/A"}`,
+    `ACoS used in this calculation: ${input.assumed_acos != null ? (input.assumed_acos * 100).toFixed(1) + "%" : "N/A"} — this is the exact ACoS applied to compute profit after ads and margin above. Use ONLY this ACoS value in early_strategy_guidance. Do NOT recalculate or override it.`,
     "",
     "=== VERDICT ===",
     `Verdict: ${input.verdict}`,

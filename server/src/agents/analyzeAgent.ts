@@ -371,6 +371,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     sponsored_top10_count: market?.sponsored_top10_count,
     sponsored_total_count: market?.sponsored_total_count,
     estimated_acos_for_market: dynamicAcosForMarket,
+    assumed_acos: assumedAcos,
   };
   const aiInsights = await getAIInsights(aiInput);
 
@@ -409,9 +410,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
         "Saturation risk is real — winners differentiate on materials, size niche, or bundle value."
       ];
 
+  const reviewBarrierLabel = avgReviews >= 2000 ? "high" : avgReviews >= 500 ? "moderate" : avgReviews >= 100 ? "low" : "very low";
   const dominantControl = hasRealMarketData && dominantBrand
     ? [
-        `Dominant control: top listings have ${avgReviews.toLocaleString()}+ reviews — high barrier to entry.`,
+        `Dominant brand present: avg ${avgReviews.toLocaleString()} reviews in top results — ${reviewBarrierLabel} review barrier to entry.`,
         "Dominant brands win via image stack + A+ content + variants, not only price.",
         newSellersInTop10 > 0
           ? `Opportunity: ${newSellersInTop10} sellers with ≤100 reviews in top 10 — market not fully locked.`
@@ -419,7 +421,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
       ]
     : hasRealMarketData
       ? [
-          `Competition: avg ${avgReviews.toLocaleString()} reviews — ${avgReviews >= 2000 ? "high" : avgReviews >= 500 ? "medium" : "lower"} barrier.`,
+          `Competition: avg ${avgReviews.toLocaleString()} reviews — ${reviewBarrierLabel} barrier.`,
           newSellersInTop10 > 0
             ? `New-seller opportunity: ${newSellersInTop10} with ≤100 reviews in top 10, ${newSellersInTop20} in top 20.`
             : null,
