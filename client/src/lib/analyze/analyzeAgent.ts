@@ -322,6 +322,18 @@ export async function analyzeProduct(input: AnalyzeInput) {
     scoreBreakdown.differentiation = "-10 (weak/generic differentiation)"
   }
 
+  // Layer 5 — Profit Gate (aligns score with economic reality so score never misleads vs verdict)
+  if (profitAfterAds <= 0) {
+    score -= 40
+    scoreBreakdown.profitGate = "-40 (negative profit after ads)"
+  } else if (netMarginRatioForGate < 0.12) {
+    score -= 25
+    scoreBreakdown.profitGate = "-25 (margin below 12% floor)"
+  } else if (profitAfterAds >= 15 && netMarginRatioForGate >= 0.18) {
+    score += 15
+    scoreBreakdown.profitGate = "+15 (healthy profit and margin)"
+  }
+
   // Clamp final score (UI only — verdict is logic‑based below)
   score = Math.max(1, Math.min(99, Math.round(score)))
 
