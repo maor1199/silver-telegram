@@ -150,8 +150,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const effectiveLaunchAcos = sellingPrice > 0 ? launchAdCostPerUnit / sellingPrice : 0;
 
   // Survival Logic: Estimated Launch Capital (first 30 days).
-  const FIRST_ORDER_UNITS = 500;
-  const SALES_PER_DAY = 15;
+  // FIRST_ORDER_UNITS: 300 units is a realistic starter order for most new sellers.
+  // SALES_PER_DAY: 7/day is a conservative, realistic estimate for a new listing with no reviews.
+  const FIRST_ORDER_UNITS = 300;
+  const SALES_PER_DAY = 7;
   const LAUNCH_DAYS = 30;
   const VINE_AND_MISC = 500;
   const launchInventoryCost = (unitCost + shippingCost) * FIRST_ORDER_UNITS;
@@ -456,7 +458,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   const advertising = [
     "Launch ACoS assumption: 40–60% for the first 30–60 days.",
-    "Typical CPC range in competitive pet niches can be $1.2–$2.8 depending on keyword intent.",
+    `Typical CPC for "${keyword}" is estimated at $${(baseCpcFinal * 0.8).toFixed(2)}–$${(baseCpcFinal * 1.4).toFixed(2)}/click based on market competition level.`,
     "PPC plan: start exact/phrase long-tail, add negatives daily, cap broad until conversion proven."
   ];
 

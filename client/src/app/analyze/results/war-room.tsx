@@ -658,6 +658,13 @@ export default function WarRoom() {
                 </div>
               </div>
 
+              {/* GO-BUT explanation */}
+              {verdict === "GO-BUT" && (
+                <p className="mt-4 text-sm text-amber-700 dark:text-amber-400 font-medium max-w-md mx-auto">
+                  Viable — but margin is tight. Fix at least one of: raise price, cut COGS, or sharpen differentiation before investing.
+                </p>
+              )}
+
               {/* Key Metrics Row */}
               <div className="mt-8 flex items-center justify-center gap-8 flex-wrap">
                 {score != null && !isNaN(score) && (
@@ -913,8 +920,8 @@ export default function WarRoom() {
                 )}
               </section>
 
-              {/* What Would Flip This Decision — three conditions (NO-GO → GO) */}
-              {(whatWouldMakeGo?.length ?? 0) > 0 && (
+              {/* What Would Flip This Decision — only shown for NO-GO verdict */}
+              {verdict === "NO-GO" && (whatWouldMakeGo?.length ?? 0) > 0 && (
                 <section>
                   <SectionHeader
                     icon={<Lightbulb className="h-5 w-5 text-primary" />}
