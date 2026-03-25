@@ -353,14 +353,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
   let verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
   let verdictAdvisory: string | undefined
 
-  console.log("[VerdictEngine] values", {
-    profitAfterAds,
-    netMarginRatioForGate,
-    hasRealProfit,
-    marketLocked,
-    hasWinPath,
-  })
-
   // NO_GO only if clearly bad
   if (!hasRealProfit) {
     verdict = "NO_GO"
@@ -377,12 +369,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
   else {
     verdict = "GO"
   }
-
-  console.log("marginThreshold received:", input.marginThreshold)
-  console.log("effectiveMarginThreshold:", effectiveMarginThreshold)
-  console.log("netMarginRatio:", netMarginRatio)
-  console.log("passesMarginRule:", passesMarginRule)
-  console.log("decisionEngine: score", score, "verdict", verdict)
 
   const confidence = Math.max(35, Math.min(92, Math.round(55 + (score - 50) * 0.7)))
 
@@ -1006,7 +992,13 @@ export async function analyzeProduct(input: AnalyzeInput) {
         ? what_would_make_go
         : undefined,
     verdict_explanation: aiInsights?.verdict_explanation ?? undefined,
-    recommended_action: aiInsights?.recommended_action ?? undefined,
+    recommended_action: aiInsights?.recommended_action ?? (
+      verdict === "NO_GO"
+        ? "Do not invest. Fix margins or choose a less saturated keyword before re-running."
+        : verdict === "IMPROVE_BEFORE_LAUNCH"
+          ? "Viable but not yet safe. Raise price, cut COGS, or sharpen differentiation — then re-run."
+          : "Proceed with a controlled launch: 100–200 units, Amazon Vine, exact-match PPC only."
+    ),
     profit_breakdown: profitBreakdown,
     profit_explanation: profitExplanation,
     net_profit: Math.round(profitAfterAds * 100) / 100,
@@ -1110,7 +1102,13 @@ export async function analyzeProduct(input: AnalyzeInput) {
         : undefined,
     verdictExplanation: aiInsights?.verdict_explanation ?? undefined,
     verdictAdvisory: report.verdictAdvisory,
-    recommendedAction: aiInsights?.recommended_action ?? undefined,
+    recommendedAction: aiInsights?.recommended_action ?? (
+      verdict === "NO_GO"
+        ? "Do not invest. Fix margins or choose a less saturated keyword before re-running."
+        : verdict === "IMPROVE_BEFORE_LAUNCH"
+          ? "Viable but not yet safe. Raise price, cut COGS, or sharpen differentiation — then re-run."
+          : "Proceed with a controlled launch: 100–200 units, Amazon Vine, exact-match PPC only."
+    ),
     profitAfterAds: profitAfterAds,
     profitBreakdown: profitBreakdown,
     profitExplanation: profitExplanation,
