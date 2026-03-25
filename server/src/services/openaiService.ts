@@ -330,21 +330,55 @@ export function getValidatedDifferentiators(
 
 const validateDifferentiators = (
   differentiation: string,
-  _topTitles: string[],
-  _painPoints: string[]
+  topTitles: string[],
+  painPoints: string[]
 ) => {
   if (!differentiation) return [];
   return differentiation
     .split(",")
     .map((d) => d.trim())
     .filter((d) => d.length > 2)
-    .map((d) => ({
-      differentiator: d,
-      appearsInTitles: 0,
-      appearsInPainPoints: false,
-      verdict: "PENDING" as const,
-      marginImpact: 0,
-    }));
+    .map((d) => {
+      const dLower = d.toLowerCase();
+
+      // How many competitor titles contain this differentiator word(s)?
+      const appearsInTitles = topTitles.filter((t) =>
+        dLower.split(" ").every((word) => t.toLowerCase().includes(word))
+      ).length;
+
+      // Does this differentiator address a known pain point?
+      const appearsInPainPoints = painPoints.some((p) =>
+        dLower.includes(p.toLowerCase()) || p.toLowerCase().includes(dLower)
+      );
+
+      // TABLE_STAKES: appears in 5+ competitor titles → already common, no edge
+      // STRONG: addresses a pain point AND rare in titles → real differentiator
+      // WEAK: doesn't address pain points and common in titles
+      // UNIQUE: rare in titles but doesn't address a known pain point
+      const verdict =
+        appearsInTitles >= 5
+          ? ("TABLE_STAKES" as const)
+          : appearsInPainPoints && appearsInTitles <= 2
+          ? ("STRONG" as const)
+          : appearsInPainPoints
+          ? ("STRONG" as const)
+          : appearsInTitles <= 1
+          ? ("UNIQUE" as const)
+          : ("WEAK" as const);
+
+      // Margin impact: STRONG differentiator → can support higher threshold (+1%)
+      // TABLE_STAKES → actually lowers threshold (no edge, -1%)
+      const marginImpact =
+        verdict === "STRONG" ? 0.01 : verdict === "TABLE_STAKES" ? -0.01 : 0;
+
+      return {
+        differentiator: d,
+        appearsInTitles,
+        appearsInPainPoints,
+        verdict,
+        marginImpact,
+      };
+    });
 };
 
 function buildUserPrompt(input: AIInsightsInput): string {
