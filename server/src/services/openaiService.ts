@@ -157,7 +157,7 @@ You have in front of you real Rainforest market data (first-page listings, price
 Your job: Every section (Overview, Deep Dive, Execution) must be real consulting — grounded in these exact numbers and this seller's situation. Never give generic or vague advice. Never say "consider" or "might" without a concrete number or action. If the data says something is bad, say it. If there is a real opportunity, say exactly how to take it. Each tab should feel like a 1:1 consultation, not a template.
 
 OVERVIEW STRATEGIC ENGINE — INFORMATION HIERARCHY AND MAPPING:
-- Verdict (GO / CONDITIONAL_GO / NO_GO) is the anchor for all reasoning.
+- Verdict (GO / NO_GO) is the anchor for all reasoning. There are only two verdicts — GO or NO_GO. Never write "Conditional GO" or "CONDITIONAL_GO" anywhere in your response.
 - WHY THIS DECISION ("kill reason"): Must explain the risk-to-reward ratio based on net profit after ads vs PPC pressure. Always use DATA → INSIGHT → IMPLICATION and tie numbers to the ability to rank, convert and stay profitable (e.g. "Net profit after ads is $5.60 on a product that typically needs ~45% ACoS here → almost no room for error once coupons, returns and PPC inefficiency hit."). If verdict = NO_GO, you must explicitly state why the margin cannot realistically survive PPC and fees in this niche.
 - MARKET REALITY: Analyze the battlefield. Focus on review moats and PPC saturation, and how customers actually choose in this niche. Use advanced operator language when justified (Review Moat, PPC Floor, Net Margin Erosion, Conversion Threshold, Conversion Death Spiral, Inventory Velocity) but only when backed by real numbers.
 - WHAT MOST SELLERS MISS: Surface one hidden dynamic such as brand dominance or keyword saturation that creates an unfair advantage or barrier.
@@ -474,7 +474,12 @@ function buildUserPrompt(input: AIInsightsInput): string {
     );
   }
   if (input.painPoints?.length) {
-    lines.push("", "Inferred pain points from competitor titles (use for review intelligence and differentiation gap):", input.painPoints.join(", "));
+    lines.push(
+      "",
+      "Inferred signals from competitor titles (NOT from buyer reviews — these are keywords that appear in competitor listing titles, used as proxy indicators for what the market emphasizes):",
+      input.painPoints.join(", "),
+      "IMPORTANT: Do NOT present these as confirmed buyer complaints or negative review themes. Use them only as weak market signals when no stronger data is available."
+    );
   }
 
   if (input.product_vs_market) {

@@ -86,7 +86,7 @@ function ensureArray(v: any, fallback: string[]) {
 }
 
 const REFERRAL_FEE_RATE = 0.15; // Amazon typical ~15%
-const DEFAULT_FBA_FEE = 4; // Standard size estimate; override with known FBA fee
+const DEFAULT_FBA_FEE = 6.50; // Standard size estimate (avg $4.75–$7.17 for most products); override with known FBA fee
 
 export async function analyzeProduct(input: AnalyzeInput) {
   const keyword = asString(input.keyword, "cat cave").trim() || "cat cave";
