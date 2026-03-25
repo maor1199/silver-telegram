@@ -505,7 +505,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     keyword,
     alternative_keywords[0] ?? `${keyword} premium`,
     alternative_keywords[1] ?? `${keyword} best`,
-  ].slice(0, 3);
+  ].slice(0, 3).map(kw => kw.split(" ").slice(0, 5).join(" "));
   const honeymoonRoadmapDefault = [
     "Step 1 (Day 1–7): Vine Enrollment — Register for Amazon Vine immediately to get your first 15–30 reviews (Social Proof).",
     `Step 2 (Day 8–20): Aggressive Exact Match — Run PPC on these 3 high-intent keywords: ${highIntentKeywords.join(", ")} to build rank fast.`,

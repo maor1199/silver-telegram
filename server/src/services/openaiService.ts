@@ -365,6 +365,7 @@ function buildUserPrompt(input: AIInsightsInput): string {
     `Differentiation: ${input.differentiation?.trim() || "(none provided)"}`,
     `Validated differentiators: ${JSON.stringify(validatedDiffs)}`,
     `Margin threshold for this analysis: ${marginThreshold * 100}%`,
+    `Margin stress test: ${input.estimated_margin != null && input.estimated_margin >= marginThreshold * 100 ? `PASS — ${input.estimated_margin.toFixed(1)}% is ABOVE the ${(marginThreshold * 100).toFixed(0)}% threshold. Unit economics are viable.` : `FAIL — ${input.estimated_margin?.toFixed(1) ?? "N/A"}% is BELOW the ${(marginThreshold * 100).toFixed(0)}% threshold.`}`,
     `Complexity: ${input.complexity?.trim() || "not specified"}`,
     "",
     "=== UNIT ECONOMICS ===",

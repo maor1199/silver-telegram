@@ -467,10 +467,6 @@ export default function WarRoom() {
   const cleanedWhy = Array.from(new Set(finalWhy))
     .filter((b) => b && String(b).trim().length > 20)
     .slice(0, 3)
-  console.log("STEP 4 - UI RECEIVED WHY:", R?.why_this_decision)
-  console.log("WHY TRACE - whyFallback:", whyFallback)
-  console.log("WHY TRACE - whyFromReport:", whyFromReport)
-  console.log("WHY TRACE - final rendered why:", finalWhy)
 
   // Market Reality (single source only for Overview)
   const marketRealityOverview =
