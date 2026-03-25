@@ -535,25 +535,16 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const executionFromAi = aiInsights?.execution_plan?.length ? aiInsights.execution_plan : null;
   const honeymoonFromAi = aiInsights?.honeymoon_roadmap?.length ? aiInsights.honeymoon_roadmap : null;
 
-  // Post-process AI execution plan: fix any step that embeds long product titles as keywords
-  const cleanedExecutionFromAi = executionFromAi?.map((step: string) => {
-    const s = String(step);
-    // If the step mentions "keywords:" followed by a long string (product title), replace with clean short keywords
-    if (/keywords:/i.test(s) && s.length > 200) {
-      return s.replace(/keywords:.*$/i, `keywords: ${highIntentKeywords.join(", ")} — run Exact Match only, $${dailyPpcBudget}/day budget.`);
-    }
-    return s;
-  }) ?? null;
-
-  const honeymoonRoadmap = honeymoonFromAi ?? cleanedExecutionFromAi ?? honeymoonRoadmapDefault;
+  // Always use the structured default execution plan — the AI's execution_plan
+  // consistently embeds full product titles as keywords and produces lower-quality steps.
+  // Our data-driven default is more specific, seller-friendly and reliable.
   const highBarrierStep = `High Review Barrier: avg ${avgReviews.toLocaleString()} reviews in this niche. Do not launch without at least $15,000 total budget (inventory + PPC + Vine).`;
   const ppcCannibalizationStep = `PPC Warning: your launch ACoS will likely hit 60%+ in the first 30 days. Cap your daily budget at $${dailyPpcBudget} and only scale when ACoS drops below ${targetAcosDisplay}%.`;
-  const executionPlanRaw = cleanedExecutionFromAi
-    ?? [
-        ...(avgReviews > 10000 ? [highBarrierStep] : []),
-        ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
-        ...honeymoonRoadmap,
-      ];
+  const executionPlanRaw = [
+    ...(avgReviews > 10000 ? [highBarrierStep] : []),
+    ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
+    ...honeymoonRoadmapDefault,
+  ];
   const execution_plan = executionPlanRaw.map((step: string) =>
     String(step).replace(/\bkeywords:\s*:\s*/gi, "keywords: ")
   );
