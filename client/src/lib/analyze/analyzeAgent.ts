@@ -225,8 +225,8 @@ export async function analyzeProduct(input: AnalyzeInput) {
     : stage === "launch"
       ? launchAcosValue
       : 0.35
-  // Use the higher of: user/stage ACoS, percentage floor, or dollar-based launch ACoS.
-  const assumedAcos = Math.max(assumedAcosRaw, acosFloor, effectiveLaunchAcos)
+  const baseAcos = hasRealMarketData ? (dynamicAcosForMarket ?? 0.35) : 0.35
+  const assumedAcos = Math.min(0.45, Math.max(0.25, Math.max(baseAcos, acosFloor)))
 
   const referralFee = sellingPrice * REFERRAL_FEE_RATE
   const ppcCostPerUnit = sellingPrice * assumedAcos
@@ -322,48 +322,67 @@ export async function analyzeProduct(input: AnalyzeInput) {
     scoreBreakdown.differentiation = "-10 (weak/generic differentiation)"
   }
 
-  // Layer 5 — Profit Gate (aligns score with economic reality so score never misleads vs verdict)
-  if (profitAfterAds <= 0) {
-    score -= 40
-    scoreBreakdown.profitGate = "-40 (negative profit after ads)"
-  } else if (netMarginRatioForGate < 0.12) {
-    score -= 25
-    scoreBreakdown.profitGate = "-25 (margin below 12% floor)"
-  } else if (profitAfterAds >= 15 && netMarginRatioForGate >= 0.18) {
-    score += 15
-    scoreBreakdown.profitGate = "+15 (healthy profit and margin)"
-  }
-
   // Clamp final score (UI only — verdict is logic‑based below)
   score = Math.max(1, Math.min(99, Math.round(score)))
 
   // ─── FINAL DECISION ENGINE (SIMPLE & HUMAN-LIKE) ───
+
+  // 1. SURVIVAL — real profit after ads
   const hasRealProfit = profitAfterAds > 0 && netMarginRatioForGate > 0.12
+
+  // 2. STRONG PROFIT — safe for scaling
   const hasHealthyProfit = profitAfterAds >= 10 && netMarginRatioForGate >= 0.18
 
-  const avgTop10Reviews = avgReviews
+  // 3. MARKET LOCK — entry blocked
+  const avgTop10Reviews = market?.avgReviews ?? 0
   const brandShareTop3 = dominantBrand ? 0.6 : 0.2
   const hasDominantBrand = dominantBrand
+
   const marketLocked = avgTop10Reviews > 500 && hasDominantBrand
 
-  const avgPriceForVerdict = avgPrice
+  // 4. WIN PATH — any way to compete
+  const avgPriceForVerdict = market?.avgPrice ?? sellingPrice
   const pricePosition = avgPriceForVerdict > 0 ? sellingPrice / avgPriceForVerdict : 1
+
   const canCompeteOnPrice = pricePosition <= 0.95
   const hasRealDifferentiation = hasStrongVisualDiff
+
   const hasWinPath = hasRealDifferentiation || canCompeteOnPrice
 
+  // ─── VERDICT ───
   let verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
   let verdictAdvisory: string | undefined
 
+  console.log("[VerdictEngine] values", {
+    profitAfterAds,
+    netMarginRatioForGate,
+    hasRealProfit,
+    marketLocked,
+    hasWinPath,
+  })
+
+  // NO_GO only if clearly bad
   if (!hasRealProfit) {
     verdict = "NO_GO"
   } else if (marketLocked && !hasWinPath && profitAfterAds < 5) {
     verdict = "NO_GO"
-  } else if (!hasHealthyProfit) {
+  }
+
+  // IMPROVE for most realistic cases
+  else if (!hasHealthyProfit) {
     verdict = "IMPROVE_BEFORE_LAUNCH"
-  } else {
+  }
+
+  // GO only for strong cases
+  else {
     verdict = "GO"
   }
+
+  console.log("marginThreshold received:", input.marginThreshold)
+  console.log("effectiveMarginThreshold:", effectiveMarginThreshold)
+  console.log("netMarginRatio:", netMarginRatio)
+  console.log("passesMarginRule:", passesMarginRule)
+  console.log("decisionEngine: score", score, "verdict", verdict)
 
   const confidence = Math.max(35, Math.min(92, Math.round(55 + (score - 50) * 0.7)))
 
@@ -461,10 +480,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
     market_maturity_signal: market?.market_maturity_signal,
     sponsored_top10_count: market?.sponsored_top10_count,
     sponsored_total_count: market?.sponsored_total_count,
-    assumed_acos: assumedAcos,
     signals,
   }
   const aiInsights = await getAIInsights(aiInput)
+  console.log("STEP 1 - RAW AI WHY:", aiInsights?.why_this_decision)
 
   // ─── 1. WHY THIS DECISION: prefer AI (Observation → implication), else fallback ───
   const why_this_decision_raw =
@@ -523,6 +542,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
   }
   const why_this_decision_final =
     why_this_decision.length > 0 ? why_this_decision : whyBullets.length > 0 ? whyBullets : [verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : verdict === "IMPROVE_BEFORE_LAUNCH" ? "Borderline viability; improve margin or differentiation before launch." : "Economics and market signals support a cautious GO; differentiate and control ACoS."]
+  console.log("STEP 2 - FINAL WHY BEFORE REPORT:", why_this_decision_final)
 
   const review_intelligence = aiInsights?.review_intelligence?.length
     ? aiInsights.review_intelligence
@@ -597,10 +617,9 @@ export async function analyzeProduct(input: AnalyzeInput) {
     ? `${difficultyLevel} (${difficultyScore}/8 — review moat, brand concentration, ad saturation, price band)`
     : "Unknown (enable live market data)"
 
-  const reviewBarrierLabel = avgReviews >= 2000 ? "high" : avgReviews >= 500 ? "moderate" : avgReviews >= 100 ? "low" : "very low"
   const dominantControl = hasRealMarketData && dominantBrand
     ? [
-        `Dominant brand present: avg ${avgReviews.toLocaleString()} reviews in top results — ${reviewBarrierLabel} review barrier to entry.`,
+        `Dominant control: top listings have ${avgReviews.toLocaleString()}+ reviews — high barrier to entry.`,
         "Dominant brands win via image stack + A+ content + variants, not only price.",
         newSellersInTop10 > 0
           ? `Opportunity: ${newSellersInTop10} sellers with ≤100 reviews in top 10 — market not fully locked.`
@@ -608,7 +627,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
       ]
     : hasRealMarketData
       ? [
-          `Competition: avg ${avgReviews.toLocaleString()} reviews — ${reviewBarrierLabel} barrier.`,
+          `Competition: avg ${avgReviews.toLocaleString()} reviews — ${avgReviews >= 2000 ? "high" : avgReviews >= 500 ? "medium" : "lower"} barrier.`,
           newSellersInTop10 > 0
             ? `New-seller opportunity: ${newSellersInTop10} with ≤100 reviews in top 10, ${newSellersInTop20} in top 20.`
             : null,
@@ -643,7 +662,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   const advertising = [
     "Launch ACoS assumption: 40–60% for the first 30–60 days.",
-    `Typical CPC for "${keyword}" is estimated at $${(baseCpcFinal * 0.8).toFixed(2)}–$${(baseCpcFinal * 1.4).toFixed(2)}/click based on market competition level.`,
+    "Typical CPC range in competitive pet niches can be $1.2–$2.8 depending on keyword intent.",
     "PPC plan: start exact/phrase long-tail, add negatives daily, cap broad until conversion proven.",
   ]
 
@@ -686,7 +705,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     keyword,
     alternative_keywords[0] ?? `${keyword} for beginners`,
     alternative_keywords[1] ?? `${keyword} set`,
-  ].slice(0, 3).map(kw => kw.split(" ").slice(0, 5).join(" "))
+  ].slice(0, 3).map(kw => String(kw).split(" ").slice(0, 5).join(" "))
 
   const dailyPpcBudget = Math.max(30, Math.round(launchAdCostPerUnit * 5 / 10) * 10)
   const startingBid = baseCpcFinal > 0 ? baseCpcFinal.toFixed(2) : "0.75"
@@ -716,6 +735,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   const executionFromAi = aiInsights?.execution_plan?.length ? aiInsights.execution_plan : null
   const honeymoonFromAi = aiInsights?.honeymoon_roadmap?.length ? aiInsights.honeymoon_roadmap : null
+  const honeymoonRoadmap = honeymoonRoadmapDefault
 
   const highBarrierStep = `High Review Barrier: avg ${avgReviews.toLocaleString()} reviews in this niche. Do not launch without at least $15,000 total budget (inventory + PPC + Vine).`
   const ppcCannibalizationStep = `PPC Warning: your launch ACoS will likely hit 60%+ in the first 30 days. Cap your daily budget at $${dailyPpcBudget} and only scale when ACoS drops below ${targetAcosDisplay}%.`
@@ -724,11 +744,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
     ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
     ...honeymoonRoadmapDefault,
   ]
-
   const execution_plan = executionPlanRaw.map((step: string) =>
     String(step).replace(/\bkeywords:\s*:\s*/gi, "keywords: ")
   )
-  const what_would_make_go = aiInsights?.what_would_make_go
+  const what_would_make_go = whatWouldFlipFromExecutionPlan(verdict, execution_plan)
 
   const estimatedCpcRange = avgReviews >= 2000 ? { min: 1.5, max: 3 } : avgReviews >= 500 ? { min: 0.8, max: 2 } : { min: 0.3, max: 1 }
   const minCpc = Number.isFinite(estimatedCpcRange.min) ? estimatedCpcRange.min : 0.5
@@ -908,7 +927,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
           avgReviews,
           topCompetitors,
           painPoints,
-          marketDensity: marketDensityHigh ? ("high" as const) : ("low" as const),
+          marketDensity: marketDensityHigh ? "high" : "low",
           acosFloorUsed: acosFloor,
           premiumRiskWarning: premiumRiskWarning ?? undefined,
           marketRealityCheck: marketRealityCheck ?? undefined,
@@ -956,7 +975,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     launch_ad_cost_per_unit: launchAdCostPerUnit,
     differentiation_score: differentiationScore,
     differentiation_gap_tip: gapTip,
-    honeymoon_roadmap: honeymoonRoadmapDefault,
+    honeymoon_roadmap: honeymoonRoadmap,
     market_snapshot: hasRealMarketData
       ? {
           avgPrice,
@@ -1014,6 +1033,8 @@ export async function analyzeProduct(input: AnalyzeInput) {
     advisor_implication_opportunity: aiInsights?.advisor_implication_opportunity ?? undefined,
     advisor_implication_early_strategy_guidance: aiInsights?.advisor_implication_early_strategy_guidance ?? undefined,
   }
+  console.log("STEP 3 - REPORT WHY:", report.why_this_decision)
+
   const consultantData: Record<string, unknown> = {
     verdict,
     profitAfterAds,
@@ -1080,7 +1101,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     launchAdCostPerUnit: launchAdCostPerUnit,
     differentiationScore: differentiationScore,
     differentiationGapTip: gapTip,
-    honeymoonRoadmap: honeymoonRoadmapDefault,
+    honeymoonRoadmap: honeymoonRoadmap,
     alternativeKeywords: report.alternative_keywords,
     alternativeKeywordsWithCost: report.alternative_keywords_with_cost,
     whatWouldMakeGo:
