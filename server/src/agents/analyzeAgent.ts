@@ -499,23 +499,56 @@ export async function analyzeProduct(input: AnalyzeInput) {
   }).filter(Boolean);
   const what_would_make_go = aiInsights?.what_would_make_go;
 
-  // 30-Day Honeymoon Roadmap: prefer OpenAI execution_plan/honeymoon_roadmap when present
+  // 30-Day Launch Plan — written in plain seller language, specific and actionable
   const highIntentKeywords = [
     keyword,
-    alternative_keywords[0] ?? `${keyword} premium`,
-    alternative_keywords[1] ?? `${keyword} best`,
+    alternative_keywords[0] ?? `${keyword} for beginners`,
+    alternative_keywords[1] ?? `${keyword} set`,
   ].slice(0, 3).map(kw => kw.split(" ").slice(0, 5).join(" "));
+
+  const dailyPpcBudget = Math.max(30, Math.round(launchAdCostPerUnit * 5 / 10) * 10);
+  const startingBid = baseCpcFinal > 0 ? baseCpcFinal.toFixed(2) : "0.75";
+  const targetAcosDisplay = Math.round(assumedAcos * 100);
+  const reorderTrigger = Math.max(3, Math.round(SALES_PER_DAY * 0.6));
+
   const honeymoonRoadmapDefault = [
-    "Step 1 (Day 1–7): Vine Enrollment — Register for Amazon Vine immediately to get your first 15–30 reviews (Social Proof).",
-    `Step 2 (Day 8–20): Aggressive Exact Match — Run PPC on these 3 high-intent keywords: ${highIntentKeywords.join(", ")} to build rank fast.`,
-    "Step 3 (Day 21–30): Conversion Boost — Apply a 15–20% 'Green Coupon' to offset your lack of reviews and steal clicks from incumbents.",
+    `Week 1 (Day 1–7) — Get Your House in Order Before Spending a Dollar: ` +
+    `(1) Title: make sure "${keyword}" appears in your first 5 words. ` +
+    `(2) Main image: white background, product fills 85% of frame — this is your #1 CTR lever. ` +
+    `(3) Bullet points: first bullet = your biggest benefit, not a feature. ` +
+    `(4) Enroll in Amazon Vine ($0 if brand-registered) — this gets you 15–30 honest reviews and is the single highest-ROI action you can take this week. ` +
+    `Do NOT turn on PPC until Vine is enrolled and your listing is complete.`,
+
+    `Week 2 (Day 8–20) — Turn On Ads, But Stay Disciplined: ` +
+    `Launch Exact Match PPC on these 3 keywords only: ${highIntentKeywords.join(", ")}. ` +
+    `Daily budget: $${dailyPpcBudget}. Starting bid: $${startingBid} — raise by $0.25 every 2 days until you start getting clicks. ` +
+    `Check your Search Term Report every single day and add irrelevant terms as negative keywords. ` +
+    `Your target ACoS is under ${targetAcosDisplay}%. If you're above that after Day 14, pause the worst-performing keyword and focus spend on the other two.`,
+
+    `Week 3–4 (Day 21–30) — Convert Clicks into Sales: ` +
+    `Add a 15–20% coupon — the green badge makes buyers click even without reviews. ` +
+    `Once you have 5+ Vine reviews, drop the coupon to 10%. ` +
+    `Check your conversion rate: if it's below 10%, stop increasing ad spend and fix your main image or price first. ` +
+    `If you're moving ${reorderTrigger}+ units per day, place your second order now — running out of stock in month 2 kills your ranking and wastes everything you spent in month 1.`,
   ];
+
   const executionFromAi = aiInsights?.execution_plan?.length ? aiInsights.execution_plan : null;
   const honeymoonFromAi = aiInsights?.honeymoon_roadmap?.length ? aiInsights.honeymoon_roadmap : null;
-  const honeymoonRoadmap = honeymoonFromAi ?? executionFromAi ?? honeymoonRoadmapDefault;
-  const highBarrierStep = "High Barrier to Entry detected. Do not launch without a minimum $15,000 launch budget for PPC and Vine reviews.";
-  const ppcCannibalizationStep = "PPC Cannibalization Risk: Your ad costs will likely exceed 60% of your revenue during launch. You MUST have a backend funnel or high LTV (Lifetime Value) to survive this.";
-  const executionPlanRaw = executionFromAi
+
+  // Post-process AI execution plan: fix any step that embeds long product titles as keywords
+  const cleanedExecutionFromAi = executionFromAi?.map((step: string) => {
+    const s = String(step);
+    // If the step mentions "keywords:" followed by a long string (product title), replace with clean short keywords
+    if (/keywords:/i.test(s) && s.length > 200) {
+      return s.replace(/keywords:.*$/i, `keywords: ${highIntentKeywords.join(", ")} — run Exact Match only, $${dailyPpcBudget}/day budget.`);
+    }
+    return s;
+  }) ?? null;
+
+  const honeymoonRoadmap = honeymoonFromAi ?? cleanedExecutionFromAi ?? honeymoonRoadmapDefault;
+  const highBarrierStep = `High Review Barrier: avg ${avgReviews.toLocaleString()} reviews in this niche. Do not launch without at least $15,000 total budget (inventory + PPC + Vine).`;
+  const ppcCannibalizationStep = `PPC Warning: your launch ACoS will likely hit 60%+ in the first 30 days. Cap your daily budget at $${dailyPpcBudget} and only scale when ACoS drops below ${targetAcosDisplay}%.`;
+  const executionPlanRaw = cleanedExecutionFromAi
     ?? [
         ...(avgReviews > 10000 ? [highBarrierStep] : []),
         ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
