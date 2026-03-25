@@ -737,7 +737,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     launch_ad_cost_per_unit: launchAdCostPerUnit,
     differentiation_score: differentiationScore,
     differentiation_gap_tip: gapTip,
-    honeymoon_roadmap: honeymoonRoadmap,
+    honeymoon_roadmap: honeymoonRoadmapDefault,
     market_snapshot: hasRealMarketData
       ? { avgPrice, avgRating, avgReviews, dominantBrand, newSellersInTop10, newSellersInTop20, topTitles: market?.topTitles ?? [], topPrices: market?.topPrices ?? [], painPoints, competitorsWithOver1000Reviews }
       : undefined,
@@ -835,7 +835,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     whatMostSellersMiss: whatMostSellersMiss ?? undefined,
     marketDominationAnalysis: marketDominationAnalysis ?? undefined,
     opportunity: opportunitySingle ?? undefined,
-    honeymoonRoadmap: honeymoonRoadmap,
+    honeymoonRoadmap: honeymoonRoadmapDefault,
     alternativeKeywords: alternative_keywords,
     alternativeKeywordsWithCost: alternative_keywords_with_cost,
     whatWouldMakeGo: verdict === "NO_GO" ? what_would_make_go : undefined,
