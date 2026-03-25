@@ -114,7 +114,7 @@ function ensureArray(v: unknown, fallback: string[]): string[] {
 }
 
 const REFERRAL_FEE_RATE = 0.15
-const DEFAULT_FBA_FEE = 4
+const DEFAULT_FBA_FEE = 6.50
 
 export async function analyzeProduct(input: AnalyzeInput) {
   const keyword = asString(input.keyword, "cat cave").trim() || "cat cave"
@@ -175,8 +175,8 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const launchAdCostPerUnit = baseCpcFinal / LAUNCH_CVR
   const effectiveLaunchAcos = sellingPrice > 0 ? launchAdCostPerUnit / sellingPrice : 0
 
-  const FIRST_ORDER_UNITS = 500
-  const SALES_PER_DAY = 15
+  const FIRST_ORDER_UNITS = 300
+  const SALES_PER_DAY = 7
   const LAUNCH_DAYS = 30
   const VINE_AND_MISC = 500
   const launchInventoryCost = (unitCost + shippingCost) * FIRST_ORDER_UNITS
@@ -225,8 +225,8 @@ export async function analyzeProduct(input: AnalyzeInput) {
     : stage === "launch"
       ? launchAcosValue
       : 0.35
-  const baseAcos = hasRealMarketData ? (dynamicAcosForMarket ?? 0.35) : 0.35
-  const assumedAcos = Math.min(0.45, Math.max(0.25, Math.max(baseAcos, acosFloor)))
+  // Use the higher of: user/stage ACoS, percentage floor, or dollar-based launch ACoS.
+  const assumedAcos = Math.max(assumedAcosRaw, acosFloor, effectiveLaunchAcos)
 
   const referralFee = sellingPrice * REFERRAL_FEE_RATE
   const ppcCostPerUnit = sellingPrice * assumedAcos
@@ -258,131 +258,48 @@ export async function analyzeProduct(input: AnalyzeInput) {
       ? `Premium Risk: Your price ($${sellingPrice.toFixed(2)}) is ${(((sellingPrice - avgPrice) / avgPrice) * 100).toFixed(1)}% higher than the top-5 market average ($${avgPrice.toFixed(2)}). Differentiation must justify this gap to maintain viability.`
       : undefined
 
-  // ─── Decision engine: 4‑Layer Verdict Model ───
-  // Layer 1 — Economic Floor (Kill Switch)
-  const netMarginRatioForGate = sellingPrice > 0 ? profitAfterAds / sellingPrice : 0
-  const economicFloorFails = profitAfterAds < 6 || netMarginRatioForGate < 0.15
-
-  // Base score before market/differentiation layers
   let score = 50
   const scoreBreakdown: Record<string, string> = { base: "50" }
 
-  // Layer 2 — Market Fluidity (New Seller Scan, Top 20)
-  const newSellers20 = Number.isFinite(newSellersInTop20) ? (newSellersInTop20 as number) : 0
-  if (newSellers20 < 2) {
-    score -= 30
-    scoreBreakdown.marketFluidity = "-30 (locked market: <2 new sellers in top 20)"
-  } else if (newSellers20 >= 4) {
-    score += 15
-    scoreBreakdown.marketFluidity = "+15 (fluid market: 4+ new sellers in top 20)"
+  if (hasRealMarketData) {
+    if (avgReviews < 500) {
+      score += 8
+      scoreBreakdown.avgReviews = "+8"
+    } else if (avgReviews < 2000) {
+      score += 3
+      scoreBreakdown.avgReviews = "+3"
+    } else {
+      score -= 5
+      scoreBreakdown.avgReviews = "-5"
+    }
+    if (!dominantBrand) {
+      score += 5
+      scoreBreakdown.dominantBrand = "+5"
+    } else {
+      scoreBreakdown.dominantBrand = "0"
+    }
   }
 
-  // Layer 3 — Ad Saturation (Sponsored density across first page, organic gaps)
-  const SERP_SIZE = 30
-  const sponsoredTotal = Number.isFinite(market?.sponsoredTotalCount)
-    ? (market!.sponsoredTotalCount as number)
-    : Math.round((sponsoredShare ?? 0.0) * SERP_SIZE)
-  const firstPageSponsoredShare = SERP_SIZE > 0 ? sponsoredTotal / SERP_SIZE : 0
-
-  if (firstPageSponsoredShare > 0.35) {
-    score -= 20
-    scoreBreakdown.adSaturation = "-20 (PPC battlefield: >35% sponsored on first page)"
-  }
-
-  // Approximate organic gaps: organic low‑review listings in positions 15–30
-  const organicGapsCount =
-    Array.isArray(market?.topCompetitors) && market.topCompetitors.length
-      ? market.topCompetitors.filter((c) => {
-          const pos = c.position ?? 0
-          const reviews = c.ratingsTotal ?? 0
-          const isSponsored = c.sponsored === true
-          return !isSponsored && pos >= 15 && pos <= 30 && reviews > 0 && reviews < 200
-        }).length
-      : 0
-
-  if (organicGapsCount >= 2) {
-    score += 10
-    scoreBreakdown.organicGaps = "+10 (organic low‑review gaps between ranks 15–30)"
-  }
-
-  // Layer 4 — Differentiation Multiplier
-  const validatedDiffsForScore = getValidatedDifferentiators(
-    differentiationInput,
-    market?.topTitles ?? [],
-    market?.painPoints ?? []
-  )
-  const hasStrongVisualDiff = validatedDiffsForScore.some((d) => d.verdict === "STRONG")
-  const hasAnyDiffText = (differentiationInput ?? "").trim().length > 0
-
-  if (hasStrongVisualDiff) {
+  if (profitAfterAds >= 25) {
     score += 20
-    scoreBreakdown.differentiation = "+20 (strong differentiation aligned with market pain points)"
-  } else if (hasAnyDiffText) {
-    score -= 10
-    scoreBreakdown.differentiation = "-10 (weak/generic differentiation)"
+    scoreBreakdown.profitAfterAds = "+20"
+  } else if (profitAfterAds >= 15) {
+    score += 10
+    scoreBreakdown.profitAfterAds = "+10"
+  } else if (profitAfterAds >= 8) {
+    score += 2
+    scoreBreakdown.profitAfterAds = "+2"
+  } else {
+    score -= 18
+    scoreBreakdown.profitAfterAds = "-18"
   }
 
-  // Clamp final score (UI only — verdict is logic‑based below)
   score = Math.max(1, Math.min(99, Math.round(score)))
 
-  // ─── FINAL DECISION ENGINE (SIMPLE & HUMAN-LIKE) ───
-
-  // 1. SURVIVAL — real profit after ads
-  const hasRealProfit = profitAfterAds > 0 && netMarginRatioForGate > 0.12
-
-  // 2. STRONG PROFIT — safe for scaling
-  const hasHealthyProfit = profitAfterAds >= 10 && netMarginRatioForGate >= 0.18
-
-  // 3. MARKET LOCK — entry blocked
-  const avgTop10Reviews = market?.avgReviewsTop10 ?? 0
-  const brandShareTop3 = Number(market?.brandShareTop3 ?? 0)
-  const hasDominantBrand = (market?.brandShareTop3 ?? 0) > 0.5
-
-  const marketLocked = avgTop10Reviews > 500 && hasDominantBrand
-
-  // 4. WIN PATH — any way to compete
-  const avgPriceForVerdict = market?.avgPrice ?? sellingPrice
-  const pricePosition = avgPriceForVerdict > 0 ? sellingPrice / avgPriceForVerdict : 1
-
-  const canCompeteOnPrice = pricePosition <= 0.95
-  const hasRealDifferentiation = hasStrongVisualDiff
-
-  const hasWinPath = hasRealDifferentiation || canCompeteOnPrice
-
-  // ─── VERDICT ───
-  let verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
-  let verdictAdvisory: string | undefined
-
-  console.log("[VerdictEngine] values", {
-    profitAfterAds,
-    netMarginRatioForGate,
-    hasRealProfit,
-    marketLocked,
-    hasWinPath,
-  })
-
-  // NO_GO only if clearly bad
-  if (!hasRealProfit) {
-    verdict = "NO_GO"
-  } else if (marketLocked && !hasWinPath && profitAfterAds < 5) {
-    verdict = "NO_GO"
-  }
-
-  // IMPROVE for most realistic cases
-  else if (!hasHealthyProfit) {
-    verdict = "IMPROVE_BEFORE_LAUNCH"
-  }
-
-  // GO only for strong cases
-  else {
-    verdict = "GO"
-  }
-
-  console.log("marginThreshold received:", input.marginThreshold)
-  console.log("effectiveMarginThreshold:", effectiveMarginThreshold)
-  console.log("netMarginRatio:", netMarginRatio)
-  console.log("passesMarginRule:", passesMarginRule)
-  console.log("decisionEngine: score", score, "verdict", verdict)
+  // Verdict: Aggregator rule overrides score. Real-time PPC (ACoS floor) + margin threshold (15% or 20%).
+  let verdict: "GO" | "NO_GO" = score >= 55 ? "GO" : "NO_GO"
+  if (!passesMarginRule) verdict = "NO_GO"
+  const verdictAdvisory: string | undefined = undefined
 
   const confidence = Math.max(35, Math.min(92, Math.round(55 + (score - 50) * 0.7)))
 
@@ -425,6 +342,14 @@ export async function analyzeProduct(input: AnalyzeInput) {
         ? "Moderate complexity: 8% buffer; watch returns and listing clarity."
         : "Lower complexity; standard margin rules apply.",
   }
+  // Derived values kept for backward compatibility with buildSignals and debug_values
+  const netMarginRatioForGate = netMarginRatio
+  const hasRealProfit = profitAfterAds > 0 && netMarginRatioForGate > 0.12
+  const avgTop10Reviews = avgReviews
+  const brandShareTop3 = dominantBrand ? 0.6 : 0.2
+  const hasDominantBrand = dominantBrand
+  const marketLocked = avgTop10Reviews > 500 && hasDominantBrand
+  const hasWinPath = differentiationInput.length >= 50 || sellingPrice <= (market?.avgPrice ?? sellingPrice) * 0.95
   const keywordSaturation = keywordSaturationCount != null ? keywordSaturationCount / 30 : 1
   const userDifferentiation = differentiationInput
   const sponsoredTop10 = sponsoredTop10Count
@@ -480,10 +405,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
     market_maturity_signal: market?.market_maturity_signal,
     sponsored_top10_count: market?.sponsored_top10_count,
     sponsored_total_count: market?.sponsored_total_count,
+    assumed_acos: assumedAcos,
     signals,
   }
   const aiInsights = await getAIInsights(aiInput)
-  console.log("STEP 1 - RAW AI WHY:", aiInsights?.why_this_decision)
 
   // ─── 1. WHY THIS DECISION: prefer AI (Observation → implication), else fallback ───
   const why_this_decision_raw =
@@ -541,8 +466,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     }
   }
   const why_this_decision_final =
-    why_this_decision.length > 0 ? why_this_decision : whyBullets.length > 0 ? whyBullets : [verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : verdict === "IMPROVE_BEFORE_LAUNCH" ? "Borderline viability; improve margin or differentiation before launch." : "Economics and market signals support a cautious GO; differentiate and control ACoS."]
-  console.log("STEP 2 - FINAL WHY BEFORE REPORT:", why_this_decision_final)
+    why_this_decision.length > 0 ? why_this_decision : whyBullets.length > 0 ? whyBullets : [verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : "Economics and market signals support a cautious GO; differentiate and control ACoS."]
 
   const review_intelligence = aiInsights?.review_intelligence?.length
     ? aiInsights.review_intelligence
@@ -617,9 +541,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
     ? `${difficultyLevel} (${difficultyScore}/8 — review moat, brand concentration, ad saturation, price band)`
     : "Unknown (enable live market data)"
 
+  const reviewBarrierLabel = avgReviews >= 2000 ? "high" : avgReviews >= 500 ? "moderate" : avgReviews >= 100 ? "low" : "very low"
   const dominantControl = hasRealMarketData && dominantBrand
     ? [
-        `Dominant control: top listings have ${avgReviews.toLocaleString()}+ reviews — high barrier to entry.`,
+        `Dominant brand present: avg ${avgReviews.toLocaleString()} reviews in top results — ${reviewBarrierLabel} review barrier to entry.`,
         "Dominant brands win via image stack + A+ content + variants, not only price.",
         newSellersInTop10 > 0
           ? `Opportunity: ${newSellersInTop10} sellers with ≤100 reviews in top 10 — market not fully locked.`
@@ -627,7 +552,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
       ]
     : hasRealMarketData
       ? [
-          `Competition: avg ${avgReviews.toLocaleString()} reviews — ${avgReviews >= 2000 ? "high" : avgReviews >= 500 ? "medium" : "lower"} barrier.`,
+          `Competition: avg ${avgReviews.toLocaleString()} reviews — ${reviewBarrierLabel} barrier.`,
           newSellersInTop10 > 0
             ? `New-seller opportunity: ${newSellersInTop10} with ≤100 reviews in top 10, ${newSellersInTop20} in top 20.`
             : null,
@@ -662,7 +587,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   const advertising = [
     "Launch ACoS assumption: 40–60% for the first 30–60 days.",
-    "Typical CPC range in competitive pet niches can be $1.2–$2.8 depending on keyword intent.",
+    `Typical CPC for "${keyword}" is estimated at $${(baseCpcFinal * 0.8).toFixed(2)}–$${(baseCpcFinal * 1.4).toFixed(2)}/click based on market competition level.`,
     "PPC plan: start exact/phrase long-tail, add negatives daily, cap broad until conversion proven.",
   ]
 
@@ -703,41 +628,51 @@ export async function analyzeProduct(input: AnalyzeInput) {
     .filter(Boolean)
   const highIntentKeywords = [
     keyword,
-    alternative_keywords[0] ?? `${keyword} premium`,
-    alternative_keywords[1] ?? `${keyword} best`,
-  ].slice(0, 3)
+    alternative_keywords[0] ?? `${keyword} for beginners`,
+    alternative_keywords[1] ?? `${keyword} set`,
+  ].slice(0, 3).map(kw => kw.split(" ").slice(0, 5).join(" "))
+
+  const dailyPpcBudget = Math.max(30, Math.round(launchAdCostPerUnit * 5 / 10) * 10)
+  const startingBid = baseCpcFinal > 0 ? baseCpcFinal.toFixed(2) : "0.75"
+  const targetAcosDisplay = Math.round(assumedAcos * 100)
+  const reorderTrigger = Math.max(3, Math.round(SALES_PER_DAY * 0.6))
+
   const honeymoonRoadmapDefault = [
-    "Step 1 (Day 1–7): Vine Enrollment — Register for Amazon Vine immediately to get your first 15–30 reviews (Social Proof).",
-    `Step 2 (Day 8–20): Aggressive Exact Match — Run PPC on these 3 high-intent keywords: ${highIntentKeywords.join(", ")} to build rank fast.`,
-    "Step 3 (Day 21–30): Conversion Boost — Apply a 15–20% 'Green Coupon' to offset your lack of reviews and steal clicks from incumbents.",
+    `Week 1 (Day 1–7) — Get Your House in Order Before Spending a Dollar: ` +
+    `(1) Title: make sure "${keyword}" appears in your first 5 words. ` +
+    `(2) Main image: white background, product fills 85% of frame — this is your #1 CTR lever. ` +
+    `(3) Bullet points: first bullet = your biggest benefit, not a feature. ` +
+    `(4) Enroll in Amazon Vine ($0 if brand-registered) — this gets you 15–30 honest reviews and is the single highest-ROI action you can take this week. ` +
+    `Do NOT turn on PPC until Vine is enrolled and your listing is complete.`,
+
+    `Week 2 (Day 8–20) — Turn On Ads, But Stay Disciplined: ` +
+    `Launch Exact Match PPC on these 3 keywords only: ${highIntentKeywords.join(", ")}. ` +
+    `Daily budget: $${dailyPpcBudget}. Starting bid: $${startingBid} — raise by $0.25 every 2 days until you start getting clicks. ` +
+    `Check your Search Term Report every single day and add irrelevant terms as negative keywords. ` +
+    `Your target ACoS is under ${targetAcosDisplay}%. If you're above that after Day 14, pause the worst-performing keyword and focus spend on the other two.`,
+
+    `Week 3–4 (Day 21–30) — Convert Clicks into Sales: ` +
+    `Add a 15–20% coupon — the green badge makes buyers click even without reviews. ` +
+    `Once you have 5+ Vine reviews, drop the coupon to 10%. ` +
+    `Check your conversion rate: if it's below 10%, stop increasing ad spend and fix your main image or price first. ` +
+    `If you're moving ${reorderTrigger}+ units per day, place your second order now — running out of stock in month 2 kills your ranking and wastes everything you spent in month 1.`,
   ]
+
   const executionFromAi = aiInsights?.execution_plan?.length ? aiInsights.execution_plan : null
   const honeymoonFromAi = aiInsights?.honeymoon_roadmap?.length ? aiInsights.honeymoon_roadmap : null
-  // Only GO should reuse execution_plan as honeymoon fallback — NO_GO / IMPROVE execution_plan is rejection/conditional, not launch steps.
-  const honeymoonRoadmap =
-    verdict === "GO"
-      ? honeymoonFromAi ?? executionFromAi ?? honeymoonRoadmapDefault
-      : honeymoonFromAi ?? honeymoonRoadmapDefault
-  const highBarrierStep = "High Barrier to Entry detected. Do not launch without a minimum $15,000 launch budget for PPC and Vine reviews."
-  const ppcCannibalizationStep = "PPC Cannibalization Risk: Your ad costs will likely exceed 60% of your revenue during launch. You MUST have a backend funnel or high LTV (Lifetime Value) to survive this."
-  const executionPlanRaw =
-    verdict === "NO_GO"
-      ? (executionFromAi?.length
-          ? executionFromAi
-          : ["Do not launch. Improve margins or choose a narrower keyword niche before re-running analysis."])
-      : verdict === "IMPROVE_BEFORE_LAUNCH"
-        ? (executionFromAi?.length
-            ? executionFromAi
-            : ["Complete margin and differentiation improvements before launching. Re-run analysis when ready."])
-        : (executionFromAi ?? [
-            ...(avgReviews > 10000 ? [highBarrierStep] : []),
-            ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
-            ...honeymoonRoadmap,
-          ])
+
+  const highBarrierStep = `High Review Barrier: avg ${avgReviews.toLocaleString()} reviews in this niche. Do not launch without at least $15,000 total budget (inventory + PPC + Vine).`
+  const ppcCannibalizationStep = `PPC Warning: your launch ACoS will likely hit 60%+ in the first 30 days. Cap your daily budget at $${dailyPpcBudget} and only scale when ACoS drops below ${targetAcosDisplay}%.`
+  const executionPlanRaw = [
+    ...(avgReviews > 10000 ? [highBarrierStep] : []),
+    ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
+    ...honeymoonRoadmapDefault,
+  ]
+
   const execution_plan = executionPlanRaw.map((step: string) =>
     String(step).replace(/\bkeywords:\s*:\s*/gi, "keywords: ")
   )
-  const what_would_make_go = whatWouldFlipFromExecutionPlan(verdict, execution_plan)
+  const what_would_make_go = aiInsights?.what_would_make_go
 
   const estimatedCpcRange = avgReviews >= 2000 ? { min: 1.5, max: 3 } : avgReviews >= 500 ? { min: 0.8, max: 2 } : { min: 0.3, max: 1 }
   const minCpc = Number.isFinite(estimatedCpcRange.min) ? estimatedCpcRange.min : 0.5
@@ -917,7 +852,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
           avgReviews,
           topCompetitors,
           painPoints,
-          marketDensity: (marketDensityHigh ? "high" : "low") as const,
+          marketDensity: marketDensityHigh ? ("high" as const) : ("low" as const),
           acosFloorUsed: acosFloor,
           premiumRiskWarning: premiumRiskWarning ?? undefined,
           marketRealityCheck: marketRealityCheck ?? undefined,
@@ -965,7 +900,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     launch_ad_cost_per_unit: launchAdCostPerUnit,
     differentiation_score: differentiationScore,
     differentiation_gap_tip: gapTip,
-    honeymoon_roadmap: honeymoonRoadmap,
+    honeymoon_roadmap: honeymoonRoadmapDefault,
     market_snapshot: hasRealMarketData
       ? {
           avgPrice,
@@ -992,7 +927,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     alternative_keywords,
     alternative_keywords_with_cost,
     what_would_make_go:
-      (verdict === "NO_GO" || verdict === "IMPROVE_BEFORE_LAUNCH") && what_would_make_go?.length
+      verdict === "NO_GO" && what_would_make_go?.length
         ? what_would_make_go
         : undefined,
     verdict_explanation: aiInsights?.verdict_explanation ?? undefined,
@@ -1002,7 +937,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
     net_profit: Math.round(profitAfterAds * 100) / 100,
     roi: Math.round(roiPct * 10) / 10,
     section_help: sectionHelp,
-    market_reality: marketRealityCheck ?? undefined,
     why_this_decision: ensureArray(why_this_decision_final, []),
     review_intelligence: ensureArray(review_intelligence, []),
     market_trends: ensureArray(market_trends, []),
@@ -1024,8 +958,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
     advisor_implication_opportunity: aiInsights?.advisor_implication_opportunity ?? undefined,
     advisor_implication_early_strategy_guidance: aiInsights?.advisor_implication_early_strategy_guidance ?? undefined,
   }
-  console.log("STEP 3 - REPORT WHY:", report.why_this_decision)
-
   const consultantData: Record<string, unknown> = {
     verdict,
     profitAfterAds,
@@ -1092,11 +1024,11 @@ export async function analyzeProduct(input: AnalyzeInput) {
     launchAdCostPerUnit: launchAdCostPerUnit,
     differentiationScore: differentiationScore,
     differentiationGapTip: gapTip,
-    honeymoonRoadmap: honeymoonRoadmap,
+    honeymoonRoadmap: honeymoonRoadmapDefault,
     alternativeKeywords: report.alternative_keywords,
     alternativeKeywordsWithCost: report.alternative_keywords_with_cost,
     whatWouldMakeGo:
-      (verdict === "NO_GO" || verdict === "IMPROVE_BEFORE_LAUNCH") && what_would_make_go?.length
+      verdict === "NO_GO" && what_would_make_go?.length
         ? what_would_make_go
         : undefined,
     verdictExplanation: aiInsights?.verdict_explanation ?? undefined,

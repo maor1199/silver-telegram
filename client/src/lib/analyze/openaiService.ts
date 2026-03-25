@@ -37,6 +37,8 @@ export type AIInsightsInput = {
   shippingCost?: number
   profitAfterAds: number
   verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
+  /** The exact ACoS used in the profit calculation — use this in early_strategy_guidance, not a recalculated value */
+  assumed_acos?: number
   avgPrice: number
   avgRating: number
   avgReviews: number
@@ -165,12 +167,12 @@ OVERVIEW OUTPUT CONTRACT:
   - Keep it concise and non-generic.
 
 OUTPUT STRUCTURE (keep existing JSON keys; add these behaviors):
-- VERDICT: Must match the input verdict exactly: GO | IMPROVE_BEFORE_LAUNCH | NO_GO (treat CONDITIONAL_GO as IMPROVE_BEFORE_LAUNCH if you use that label internally). Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
+- VERDICT: Must match the input verdict exactly: GO | NO_GO. There are only two verdicts — never write "Conditional GO" or "CONDITIONAL_GO" anywhere in your response.
 - WHY_THIS_VERDICT (why_this_decision): up to 3 concise bullets in DATA → IMPLICATION style, each with concrete metrics and practical consequence.
 - Output format for why_this_decision must be a simple string array: why_this_decision: string[]
 - MARKET_REALITY (entry_reality / expert_insight): up to 2 concise DATA → IMPLICATION sentences, each with concrete metrics on PPC/reviews/price structure.
 - WHAT_MOST_SELLERS_MISS: exactly 1 concise sentence with at least two concrete signals and one failure dynamic.
-- RECOMMENDED_ACTION: Verdict-dependent. If GO: short launch recommendation. If IMPROVE_BEFORE_LAUNCH / CONDITIONAL_GO: one line summarizing the conditional fixes (mirror the core of execution_plan). If NO_GO: one-line rejection + pivot (mirror the final "Better move" line from execution_plan; no soft language).
+- RECOMMENDED_ACTION: Verdict-dependent. If GO: short launch recommendation. If NO_GO: one-line rejection + pivot (mirror the final "Better move" line from execution_plan; no soft language).
 
 EXECUTION_PLAN:
 
@@ -260,7 +262,7 @@ You have in front of you real Rainforest market data (first-page listings, price
 Your job: Every section (Overview, Deep Dive, Execution) must be real consulting — grounded in these exact numbers and this seller's situation. Never give generic or vague advice. Never say "consider" or "might" without a concrete number or action. If the data says something is bad, say it. If there is a real opportunity, say exactly how to take it. Each tab should feel like a 1:1 consultation, not a template.
 
 OVERVIEW STRATEGIC ENGINE — INFORMATION HIERARCHY AND MAPPING:
-- Verdict (GO / IMPROVE_BEFORE_LAUNCH / NO_GO) is the anchor for all reasoning.
+- Verdict (GO / NO_GO) is the anchor for all reasoning. There are only two verdicts — GO or NO_GO. Never write "Conditional GO" or "CONDITIONAL_GO" anywhere in your response.
 - WHY THIS DECISION ("kill reason"): Must explain the risk-to-reward ratio based on net profit after ads vs PPC pressure. Always use DATA → IMPLICATION and tie numbers to the ability to rank, convert and stay profitable (e.g. "Net profit after ads is $5.60 on a product that typically needs ~45% ACoS here → almost no room for error once coupons, returns and PPC inefficiency hit.").
 - MARKET REALITY: Analyze the battlefield. Focus on review moats and PPC saturation, and how customers actually choose in this niche. Use advanced operator language when justified (Net Margin Erosion, PPC Cannibalization, Conversion Death Spiral, Inventory Velocity) but only when backed by real numbers.
 - WHAT MOST SELLERS MISS: Surface one hidden dynamic such as brand dominance or keyword saturation that creates an unfair advantage or barrier.
@@ -306,9 +308,9 @@ CORE RULES
 - Always combine market data (Rainforest + computed metrics) with the seller's own inputs (price, COGS, shipping, differentiation text, target positioning, product type).
 - Mandatory data sources: avgReviews, review_structure_summary, sponsored_top10_count, newSellersInTop10 / newSellersInTop20, keyword_saturation_ratio, price_compression, brand_distribution_summary, calculated ACoS, profitAfterAds (unit profit after ads).
 - Format reasoning as: DATA → INSIGHT → IMPLICATION.
-- DECISION RELEVANCE: Only include insights that clearly affect the final verdict (GO / IMPROVE_BEFORE_LAUNCH / NO_GO) through ranking ability, conversion strength, or sustainable profitability. If a point does not change the decision, omit it.
+- DECISION RELEVANCE: Only include insights that clearly affect the final verdict (GO / NO_GO) through ranking ability, conversion strength, or sustainable profitability. If a point does not change the decision, omit it.
 - CAUSALITY (CRITICAL): Always walk the causal chain when relevant: market signal → impact on ranking → impact on conversion → impact on PPC cost → impact on profit. Never stop at describing the market; always explain what it causes.
-- NO NEUTRAL ANALYSIS: Every statement must implicitly or explicitly push toward GO, IMPROVE_BEFORE_LAUNCH, or NO_GO — no neutral commentary.
+- NO NEUTRAL ANALYSIS: Every statement must implicitly or explicitly push toward GO or NO_GO — no neutral commentary.
 - USER REALITY INTEGRATION: Always connect market data to the user’s actual inputs: price vs market (and its conversion impact), differentiation text (ability to justify price and lift conversion), and cost structure (ability to survive PPC and fees).
 - PROFIT PRESSURE: When estimated margin < 15% or profitAfterAds is low, explicitly state that profitability is at risk and tie it to PPC costs, ranking difficulty, and the verdict.
 - RANKING ECONOMICS: Treat Amazon as a ranking-driven system. Whenever a factor affects ranking (reviews, CPC, sponsored density, keyword saturation, brand dominance), you must explain how that changes traffic and therefore profit.
@@ -382,8 +384,10 @@ Return JSON with these exact keys (include advisor_implication for each section 
 
 OVERVIEW: verdict_explanation (string, one sentence), expert_insight (string), what_most_sellers_miss (string), why_this_decision (array of up to 3 strings, DATA → IMPLICATION), recommended_action (string, verdict-dependent). Omit what_would_make_go (execution lives only in execution_plan).
 DEEP DIVE: competition_reality (array, min 2), opportunity (string), profit_reality (string), entry_reality (string or array), market_domination_analysis (string). End each with implication for new seller.
-EXECUTION: alternative_keywords (array, max 3). execution_plan (array, premium structure per verdict — REQUIRED for GO, IMPROVE_BEFORE_LAUNCH, CONDITIONAL_GO, and NO_GO). Omit pre_launch_improvements. early_strategy_guidance (string).
+EXECUTION: alternative_keywords (array, max 3). execution_plan (array, premium structure per verdict — REQUIRED for GO and NO_GO). Omit pre_launch_improvements. early_strategy_guidance (string).
 LEGACY: decision_conversation, review_intelligence (3), opportunities (3), differentiation (3), risks (3).
+
+CRITICAL KEYWORD RULE — alternative_keywords and any keywords mentioned inside execution_plan MUST be short natural Amazon search terms: 2–4 words maximum (e.g. "pilates kit", "resistance bands set", "home pilates equipment"). NEVER use full product titles or sentences as keywords. NEVER repeat the same keyword phrase with only "premium" or "best" appended — those are not real search terms.
 
 JSON response schema (include these keys; advisor_implication fields are strings with the instructions below):
 why_this_decision, advisor_implication_why_this_decision "REQUIRED — 2-3 sentences using actual numbers. What happens to their money in 60 days. End with one directive.", expert_insight, advisor_implication_expert_insight "REQUIRED — The one insight they could not see alone. Use a specific number.", what_most_sellers_miss, advisor_implication_what_most_sellers_miss "REQUIRED — Direct insight with actual numbers from this analysis.", advisor_implication_market_signals "REQUIRED — Direct insight with actual numbers from this analysis.", entry_reality, advisor_implication_entry_reality "REQUIRED — Direct insight with actual numbers from this analysis.", market_domination_analysis, advisor_implication_market_domination_analysis "REQUIRED — Direct insight with actual numbers from this analysis.", competition_reality, advisor_implication_competition_reality "REQUIRED — Name the 3-4 weak listings to target. Exact action to take against them.", opportunity, advisor_implication_opportunity "REQUIRED — Which differentiator is strongest, where exactly to place it: title/image1/bullet1.", early_strategy_guidance, advisor_implication_early_strategy_guidance "REQUIRED — Week 1 / Week 2 / Week 3-4. One action per week with expected outcome.".
@@ -495,27 +499,61 @@ export function getValidatedDifferentiators(
   differentiation: string,
   topTitles: string[],
   painPoints: string[]
-): { differentiator: string; appearsInTitles: number; appearsInPainPoints: boolean; verdict: "STRONG" | "WEAK" | "TABLE_STAKES" | "PENDING"; marginImpact: number }[] {
+): { differentiator: string; appearsInTitles: number; appearsInPainPoints: boolean; verdict: "STRONG" | "WEAK" | "TABLE_STAKES" | "UNIQUE" | "PENDING"; marginImpact: number }[] {
   return validateDifferentiators(differentiation, topTitles, painPoints)
 }
 
 const validateDifferentiators = (
   differentiation: string,
-  _topTitles: string[],
-  _painPoints: string[]
+  topTitles: string[],
+  painPoints: string[]
 ) => {
   if (!differentiation) return []
   return differentiation
     .split(",")
     .map((d) => d.trim())
     .filter((d) => d.length > 2)
-    .map((d) => ({
-      differentiator: d,
-      appearsInTitles: 0,
-      appearsInPainPoints: false,
-      verdict: "PENDING" as const,
-      marginImpact: 0,
-    }))
+    .map((d) => {
+      const dLower = d.toLowerCase()
+
+      // How many competitor titles contain this differentiator word(s)?
+      const appearsInTitles = topTitles.filter((t) =>
+        dLower.split(" ").every((word) => t.toLowerCase().includes(word))
+      ).length
+
+      // Does this differentiator address a known pain point?
+      const appearsInPainPoints = painPoints.some((p) =>
+        dLower.includes(p.toLowerCase()) || p.toLowerCase().includes(dLower)
+      )
+
+      // TABLE_STAKES: appears in 5+ competitor titles → already common, no edge
+      // STRONG: addresses a pain point AND rare in titles → real differentiator
+      // WEAK: doesn't address pain points and common in titles
+      // UNIQUE: rare in titles but doesn't address a known pain point
+      const verdict =
+        appearsInTitles >= 5
+          ? ("TABLE_STAKES" as const)
+          : appearsInPainPoints && appearsInTitles <= 2
+          ? ("STRONG" as const)
+          : appearsInPainPoints
+          ? ("STRONG" as const)
+          : appearsInTitles <= 1
+          ? ("UNIQUE" as const)
+          : ("WEAK" as const)
+
+      // Margin impact: STRONG differentiator → can support higher threshold (+1%)
+      // TABLE_STAKES → actually lowers threshold (no edge, -1%)
+      const marginImpact =
+        verdict === "STRONG" ? 0.01 : verdict === "TABLE_STAKES" ? -0.01 : 0
+
+      return {
+        differentiator: d,
+        appearsInTitles,
+        appearsInPainPoints,
+        verdict,
+        marginImpact,
+      }
+    })
 }
 
 function buildUserPrompt(input: AIInsightsInput): string {
@@ -536,12 +574,14 @@ function buildUserPrompt(input: AIInsightsInput): string {
     `Differentiation: ${input.differentiation?.trim() || "(none provided)"}`,
     `Validated differentiators: ${JSON.stringify(validatedDiffs)}`,
     `Margin threshold for this analysis: ${marginThreshold * 100}%`,
+    `Margin stress test: ${input.estimated_margin != null && input.estimated_margin >= marginThreshold * 100 ? `PASS — ${input.estimated_margin.toFixed(1)}% is ABOVE the ${(marginThreshold * 100).toFixed(0)}% threshold. Unit economics are viable.` : `FAIL — ${input.estimated_margin?.toFixed(1) ?? "N/A"}% is BELOW the ${(marginThreshold * 100).toFixed(0)}% threshold.`}`,
     `Complexity: ${input.complexity?.trim() || "not specified"}`,
     "",
     "=== UNIT ECONOMICS ===",
     `Profit after ads: $${input.profitAfterAds.toFixed(2)}/unit`,
     `Estimated margin: ${input.estimated_margin != null ? input.estimated_margin.toFixed(1) + "%" : "N/A"} | ROI: ${input.estimated_roi != null ? input.estimated_roi.toFixed(1) + "%" : "N/A"}`,
     `Landed cost: $${input.landed_cost != null ? input.landed_cost.toFixed(2) : "N/A"}`,
+    `ACoS used in this calculation: ${input.assumed_acos != null ? (input.assumed_acos * 100).toFixed(1) + "%" : "N/A"} — this is the exact ACoS applied to compute profit after ads and margin above. Use ONLY this ACoS value in early_strategy_guidance. Do NOT recalculate or override it.`,
     "",
     "Signals:",
     JSON.stringify(input.signals ?? {}, null, 2),
@@ -580,7 +620,12 @@ function buildUserPrompt(input: AIInsightsInput): string {
     )
   }
   if (input.painPoints?.length) {
-    lines.push("", "Inferred pain points from competitor titles (use for review intelligence and differentiation gap):", input.painPoints.join(", "))
+    lines.push(
+      "",
+      "Inferred signals from competitor titles (NOT from buyer reviews — these are keywords that appear in competitor listing titles, used as proxy indicators for what the market emphasizes):",
+      input.painPoints.join(", "),
+      "IMPORTANT: Do NOT present these as confirmed buyer complaints or negative review themes. Use them only as weak market signals when no stronger data is available."
+    )
   }
 
   if (input.product_vs_market) {
