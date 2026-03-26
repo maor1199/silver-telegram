@@ -39,8 +39,20 @@ export default function SignupPage() {
       setError("Passwords do not match.")
       return
     }
-    if (form.password.length < 6) {
-      setError("Password must be at least 6 characters.")
+    if (form.password.length < 8) {
+      setError("Password must be at least 8 characters.")
+      return
+    }
+    if (!/[A-Z]/.test(form.password)) {
+      setError("Password must contain at least one uppercase letter.")
+      return
+    }
+    if (!/[0-9]/.test(form.password)) {
+      setError("Password must contain at least one number.")
+      return
+    }
+    if (!/[^A-Za-z0-9]/.test(form.password)) {
+      setError("Password must contain at least one special character (e.g. !@#$%).")
       return
     }
     if (!form.acceptTerms) {
@@ -170,6 +182,21 @@ export default function SignupPage() {
                 value={form.password}
                 onChange={(e) => updateField("password", e.target.value)}
               />
+              {form.password.length > 0 && (
+                <div className="flex flex-col gap-1 mt-1">
+                  {[
+                    { label: "At least 8 characters", met: form.password.length >= 8 },
+                    { label: "One uppercase letter", met: /[A-Z]/.test(form.password) },
+                    { label: "One number", met: /[0-9]/.test(form.password) },
+                    { label: "One special character (!@#$%...)", met: /[^A-Za-z0-9]/.test(form.password) },
+                  ].map(({ label, met }) => (
+                    <div key={label} className={`flex items-center gap-1.5 text-xs ${met ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+                      <span>{met ? "✓" : "○"}</span>
+                      <span>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
