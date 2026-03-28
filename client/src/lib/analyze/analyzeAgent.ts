@@ -775,10 +775,9 @@ export async function analyzeProduct(input: AnalyzeInput) {
     hasRealMarketData && avgPrice > 0 && sellingPrice > avgPrice
       ? Math.round(((sellingPrice - avgPrice) / avgPrice) * 100)
       : 0
-  const marketRealityCheckFallback =
-    hasRealMarketData && (priceGapPct > 0 || differentiationInput)
-      ? `Market Reality Check: ${priceGapPct > 0 ? `Your price is ${priceGapPct}% higher than the top 5 sellers (avg $${avgPrice.toFixed(2)}). ` : ""}${differentiationInput ? `Your differentiation ("${differentiationInput.slice(0, 80)}${differentiationInput.length > 80 ? "…" : ""}") must justify this gap to maintain a ${marginThresholdPct}% net margin.` : "Your positioning must justify the price to maintain viability."}`
-      : undefined
+  const marketRealityCheckFallback = hasRealMarketData
+    ? `${newSellersInTop20} new sellers appear in the top 20 — this market is ${newSellersInTop20 >= 4 ? "fluid and open to new entrants" : "locked, with incumbents holding position"}. Avg reviews in this niche: ${avgReviews.toLocaleString()} — expect 60–90 days of PPC spend before organic rank contributes meaningful traffic.`
+    : undefined
   const marketRealityCheck = aiInsights?.entry_reality?.trim() ?? marketRealityCheckFallback
 
   const underpricingPct =
@@ -862,23 +861,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
   let opportunity_from_data = aiInsights?.opportunity?.trim() ?? ""
   if (!opportunity_from_data && hasRealMarketData && painPoints.length > 0) {
     const topPain = painPoints[0]
-    const suggestions: Record<string, string> = {
-      durable: "A reinforced design or stress-point warranty could create a clear advantage.",
-      durability: "Highlight materials and construction; show stress tests in images.",
-      quality: "Address quality complaints with specs and close-up proof in the main image.",
-      size: "Offer size clarity (dimensions, comparison) and reduce returns.",
-      sizing: "Clear sizing guide and fit expectations to cut returns and bad reviews.",
-      comfort: "Emphasize comfort features and materials; use lifestyle imagery.",
-      washable: "Lead with washability and care instructions to capture that segment.",
-      sturdy: "Reinforced build and durability claims with visuals.",
-      fit: "Improve fit description and sizing; reduce mismatch returns.",
-      material: "Premium or specific materials as differentiator with proof.",
-      fabric: "Fabric quality and care as a selling point.",
-    }
-    const key = topPain.toLowerCase().replace(/\s+/g, "")
-    opportunity_from_data = suggestions[key] ?? `Reviews in this niche often mention "${topPain}". A product that explicitly solves for ${topPain} (and shows it in bullets and images) can capture buyers who filter by that concern.`
+    const nicheShort = keyword.slice(0, 30)
+    opportunity_from_data = `In the "${nicheShort}" niche, "${topPain}" is a recurring signal in competitor titles. A listing that leads with ${topPain} in bullet 1 and image 2 will stand out from the ${avgReviews > 500 ? "review-heavy" : "crowded"} field — most current competitors don't address it directly.`
   } else if (!opportunity_from_data && hasRealMarketData) {
-    opportunity_from_data = "Enable pain-point extraction (e.g. from titles/reviews) to surface a concrete differentiation opportunity."
+    opportunity_from_data = `No clear pain point detected in competitor titles for "${keyword.slice(0, 30)}". Run analysis with more competitors to surface a data-based opportunity.`
   } else if (!opportunity_from_data) {
     opportunity_from_data = "Live market data required to identify a data-based opportunity."
   }
