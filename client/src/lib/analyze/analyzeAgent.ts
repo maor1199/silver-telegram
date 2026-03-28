@@ -788,7 +788,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const marketRealityCheckFallback = hasRealMarketData
     ? `${newSellersInTop20} sellers in the top 20 have fewer than 200 reviews — this market is ${newSellersInTop20 >= 4 ? "accessible to new entrants" : "dominated by established players"}. Avg reviews in this niche: ${avgReviews.toLocaleString()} — expect 60–90 days of PPC spend before organic rank contributes meaningful traffic.`
     : undefined
-  const marketRealityCheck = aiInsights?.entry_reality?.trim() ?? marketRealityCheckFallback
+  const marketRealityCheck = marketRealityCheckFallback
 
   const underpricingPct =
     hasRealMarketData && avgPrice > 0 && sellingPrice < avgPrice
