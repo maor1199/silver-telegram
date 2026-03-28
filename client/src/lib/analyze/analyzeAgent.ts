@@ -353,13 +353,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
   let verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
   let verdictAdvisory: string | undefined
 
-  console.log("[VerdictEngine] values", {
-    profitAfterAds,
-    netMarginRatioForGate,
-    hasRealProfit,
-    marketLocked,
-    hasWinPath,
-  })
 
   // NO_GO only if clearly bad
   if (!hasRealProfit) {
@@ -378,11 +371,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
     verdict = "GO"
   }
 
-  console.log("marginThreshold received:", input.marginThreshold)
-  console.log("effectiveMarginThreshold:", effectiveMarginThreshold)
-  console.log("netMarginRatio:", netMarginRatio)
-  console.log("passesMarginRule:", passesMarginRule)
-  console.log("decisionEngine: score", score, "verdict", verdict)
 
   const confidence = Math.max(35, Math.min(92, Math.round(55 + (score - 50) * 0.7)))
 
@@ -483,7 +471,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
     signals,
   }
   const aiInsights = await getAIInsights(aiInput)
-  console.log("STEP 1 - RAW AI WHY:", aiInsights?.why_this_decision)
 
   // ─── 1. WHY THIS DECISION: prefer AI (Observation → implication), else fallback ───
   const why_this_decision_raw =
@@ -542,7 +529,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
   }
   const why_this_decision_final =
     why_this_decision.length > 0 ? why_this_decision : whyBullets.length > 0 ? whyBullets : [verdict === "NO_GO" ? "Unit economics and/or market barriers do not support a GO." : verdict === "IMPROVE_BEFORE_LAUNCH" ? "Borderline viability; improve margin or differentiation before launch." : "Economics and market signals support a cautious GO; differentiate and control ACoS."]
-  console.log("STEP 2 - FINAL WHY BEFORE REPORT:", why_this_decision_final)
 
   const review_intelligence = aiInsights?.review_intelligence?.length
     ? aiInsights.review_intelligence
@@ -703,37 +689,57 @@ export async function analyzeProduct(input: AnalyzeInput) {
     .filter(Boolean)
   const highIntentKeywords = [
     keyword,
-    alternative_keywords[0] ?? `${keyword} premium`,
-    alternative_keywords[1] ?? `${keyword} best`,
+    alternative_keywords[0] ?? `${keyword} for beginners`,
+    alternative_keywords[1] ?? `${keyword} set`,
   ].slice(0, 3)
-  const honeymoonRoadmapDefault = [
-    "Step 1 (Day 1–7): Vine Enrollment — Register for Amazon Vine immediately to get your first 15–30 reviews (Social Proof).",
-    `Step 2 (Day 8–20): Aggressive Exact Match — Run PPC on these 3 high-intent keywords: ${highIntentKeywords.join(", ")} to build rank fast.`,
-    "Step 3 (Day 21–30): Conversion Boost — Apply a 15–20% 'Green Coupon' to offset your lack of reviews and steal clicks from incumbents.",
-  ]
+
+  // Computed values for verdict-specific plans
+  const dailyPpcBudget = Math.max(30, Math.round(launchAdCostPerUnit * 5 / 10) * 10)
+  const startingBid = baseCpcFinal > 0 ? baseCpcFinal.toFixed(2) : "0.75"
+  const targetAcosDisplay = Math.round(assumedAcos * 100)
+  const reorderTrigger = Math.max(3, Math.round(SALES_PER_DAY * 0.6))
+  const viableSellingPrice = Math.ceil((cogs + fbaFee + referralFee) / Math.max(0.1, 1 - assumedAcos - 0.15))
+  const viableCogsTarget = Math.max(1, Math.floor(sellingPrice * (1 - assumedAcos - 0.15) - fbaFee - referralFee))
+
+  // GO / IMPROVE_BEFORE_LAUNCH — 3-week launch plan
+  const goWeek1 = `Week 1 (Day 1–7) — Get Your House in Order Before Spending a Dollar: (1) Title: make sure "${keyword}" appears in your first 5 words. (2) Main image: white background, product fills 85% of frame — this is your #1 CTR lever. (3) Bullet points: first bullet = your biggest benefit, not a feature. (4) Enroll in Amazon Vine ($0 if brand-registered) — this gets you 15–30 honest reviews and is the single highest-ROI action you can take this week. Do NOT turn on PPC until Vine is enrolled and your listing is complete.`
+  const goWeek2 = `Week 2 (Day 8–20) — Turn On Ads, But Stay Disciplined: Launch Exact Match PPC on these 3 keywords only: ${highIntentKeywords.join(", ")}. Daily budget: $${dailyPpcBudget}. Starting bid: $${startingBid} — raise by $0.25 every 2 days until you start getting clicks. Check your Search Term Report every single day and add irrelevant terms as negative keywords. Your target ACoS is under ${targetAcosDisplay}%. If you're above that after Day 14, pause the worst-performing keyword and focus spend on the other two.`
+  const goWeek34 = `Week 3–4 (Day 21–30) — Convert Clicks into Sales: Add a 15–20% coupon — the green badge makes buyers click even without reviews. Once you have 5+ Vine reviews, drop the coupon to 10%. Check your conversion rate: if it's below 10%, stop increasing ad spend and fix your main image or price first. If you're moving ${reorderTrigger}+ units per day, place your second order now — running out of stock in month 2 kills your ranking and wastes everything you spent in month 1.`
+
+  // NO_GO — rejection plan with real numbers
+  const noGoStep1 = `❌ Do NOT launch this product as-is.`
+  const noGoStep2 = `Why it fails: Profit after ads is only $${profitAfterAds.toFixed(2)}/unit — no buffer for returns, storage fees, or ranking spend. At ${targetAcosDisplay}% ACoS, PPC alone costs $${(sellingPrice * assumedAcos).toFixed(2)} per sale. Margin is ${estimatedMarginPercent.toFixed(1)}% — minimum viable is 15%.`
+  const noGoStep3 = `What needs to change — pick one: (a) Reduce COGS below $${viableCogsTarget} (currently $${cogs.toFixed(2)}), (b) Raise selling price to at least $${viableSellingPrice} (currently $${sellingPrice.toFixed(2)}), or (c) Target a keyword with avg reviews under 500 to reduce your required ACoS.`
+  const noGoStep4 = `Better move: Fix one of the above and re-run the analysis. The market may have potential — the numbers do not support a launch today.`
+
+  // IMPROVE_BEFORE_LAUNCH — warning + same launch plan
+  const improveWarning = `⚠️ Margin is ${estimatedMarginPercent.toFixed(1)}% — below the 18% healthy threshold. Before launch, fix one of: (a) raise your selling price to at least $${viableSellingPrice}, or (b) reduce COGS below $${viableCogsTarget}. If you proceed as-is, watch your ACoS very closely:`
+
+  const honeymoonRoadmapDefault =
+    verdict === "IMPROVE_BEFORE_LAUNCH"
+      ? [improveWarning, goWeek1, goWeek2, goWeek34]
+      : [goWeek1, goWeek2, goWeek34]
+
   const executionFromAi = aiInsights?.execution_plan?.length ? aiInsights.execution_plan : null
   const honeymoonFromAi = aiInsights?.honeymoon_roadmap?.length ? aiInsights.honeymoon_roadmap : null
-  // Only GO should reuse execution_plan as honeymoon fallback — NO_GO / IMPROVE execution_plan is rejection/conditional, not launch steps.
-  const honeymoonRoadmap =
-    verdict === "GO"
-      ? honeymoonFromAi ?? executionFromAi ?? honeymoonRoadmapDefault
-      : honeymoonFromAi ?? honeymoonRoadmapDefault
+  const honeymoonRoadmap = honeymoonFromAi ?? honeymoonRoadmapDefault
+
   const highBarrierStep = "High Barrier to Entry detected. Do not launch without a minimum $15,000 launch budget for PPC and Vine reviews."
   const ppcCannibalizationStep = "PPC Cannibalization Risk: Your ad costs will likely exceed 60% of your revenue during launch. You MUST have a backend funnel or high LTV (Lifetime Value) to survive this."
+
   const executionPlanRaw =
     verdict === "NO_GO"
-      ? (executionFromAi?.length
-          ? executionFromAi
-          : ["Do not launch. Improve margins or choose a narrower keyword niche before re-running analysis."])
+      ? [noGoStep1, noGoStep2, noGoStep3, noGoStep4]
       : verdict === "IMPROVE_BEFORE_LAUNCH"
-        ? (executionFromAi?.length
-            ? executionFromAi
-            : ["Complete margin and differentiation improvements before launching. Re-run analysis when ready."])
-        : (executionFromAi ?? [
+        ? [improveWarning, goWeek1, goWeek2, goWeek34]
+        : [
             ...(avgReviews > 10000 ? [highBarrierStep] : []),
             ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
-            ...honeymoonRoadmap,
-          ])
+            goWeek1,
+            goWeek2,
+            goWeek34,
+          ]
+
   const execution_plan = executionPlanRaw.map((step: string) =>
     String(step).replace(/\bkeywords:\s*:\s*/gi, "keywords: ")
   )
@@ -1024,7 +1030,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
     advisor_implication_opportunity: aiInsights?.advisor_implication_opportunity ?? undefined,
     advisor_implication_early_strategy_guidance: aiInsights?.advisor_implication_early_strategy_guidance ?? undefined,
   }
-  console.log("STEP 3 - REPORT WHY:", report.why_this_decision)
 
   const consultantData: Record<string, unknown> = {
     verdict,

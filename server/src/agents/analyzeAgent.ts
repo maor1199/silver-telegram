@@ -272,10 +272,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
   score = Math.max(1, Math.min(99, Math.round(score)));
 
   // Verdict: Aggregator rule overrides score. Real-time PPC (ACoS floor) + margin threshold (15% or 20%).
-  console.log("marginThreshold received:", input.marginThreshold);
-  console.log("effectiveMarginThreshold:", effectiveMarginThreshold);
-  console.log("netMarginRatio:", netMarginRatio);
-  console.log("passesMarginRule:", passesMarginRule);
 
   let verdict: "GO" | "NO_GO" = score >= 55 ? "GO" : "NO_GO";
   if (!passesMarginRule) verdict = "NO_GO";
@@ -503,25 +499,52 @@ export async function analyzeProduct(input: AnalyzeInput) {
   // 30-Day Honeymoon Roadmap: prefer OpenAI execution_plan/honeymoon_roadmap when present
   const highIntentKeywords = [
     keyword,
-    alternative_keywords[0] ?? `${keyword} premium`,
-    alternative_keywords[1] ?? `${keyword} best`,
+    alternative_keywords[0] ?? `${keyword} for beginners`,
+    alternative_keywords[1] ?? `${keyword} set`,
   ].slice(0, 3);
-  const honeymoonRoadmapDefault = [
-    "Step 1 (Day 1–7): Vine Enrollment — Register for Amazon Vine immediately to get your first 15–30 reviews (Social Proof).",
-    `Step 2 (Day 8–20): Aggressive Exact Match — Run PPC on these 3 high-intent keywords: ${highIntentKeywords.join(", ")} to build rank fast.`,
-    "Step 3 (Day 21–30): Conversion Boost — Apply a 15–20% 'Green Coupon' to offset your lack of reviews and steal clicks from incumbents.",
-  ];
+
+  // Computed values for verdict-specific plans
+  const dailyPpcBudget = Math.max(30, Math.round(launchAdCostPerUnit * 5 / 10) * 10);
+  const startingBid = baseCpcFinal > 0 ? baseCpcFinal.toFixed(2) : "0.75";
+  const targetAcosDisplay = Math.round(assumedAcos * 100);
+  const reorderTrigger = Math.max(3, Math.round(SALES_PER_DAY * 0.6));
+  const viableSellingPrice = Math.ceil((cogs + fbaFee + referralFee) / Math.max(0.1, 1 - assumedAcos - 0.15));
+  const viableCogsTarget = Math.max(1, Math.floor(sellingPrice * (1 - assumedAcos - 0.15) - fbaFee - referralFee));
+
+  // GO — 3-week launch plan with real numbers
+  const goWeek1 = `Week 1 (Day 1–7) — Get Your House in Order Before Spending a Dollar: (1) Title: make sure "${keyword}" appears in your first 5 words. (2) Main image: white background, product fills 85% of frame — this is your #1 CTR lever. (3) Bullet points: first bullet = your biggest benefit, not a feature. (4) Enroll in Amazon Vine ($0 if brand-registered) — this gets you 15–30 honest reviews and is the single highest-ROI action you can take this week. Do NOT turn on PPC until Vine is enrolled and your listing is complete.`;
+  const goWeek2 = `Week 2 (Day 8–20) — Turn On Ads, But Stay Disciplined: Launch Exact Match PPC on these 3 keywords only: ${highIntentKeywords.join(", ")}. Daily budget: $${dailyPpcBudget}. Starting bid: $${startingBid} — raise by $0.25 every 2 days until you start getting clicks. Check your Search Term Report every single day and add irrelevant terms as negative keywords. Your target ACoS is under ${targetAcosDisplay}%. If you're above that after Day 14, pause the worst-performing keyword and focus spend on the other two.`;
+  const goWeek34 = `Week 3–4 (Day 21–30) — Convert Clicks into Sales: Add a 15–20% coupon — the green badge makes buyers click even without reviews. Once you have 5+ Vine reviews, drop the coupon to 10%. Check your conversion rate: if it's below 10%, stop increasing ad spend and fix your main image or price first. If you're moving ${reorderTrigger}+ units per day, place your second order now — running out of stock in month 2 kills your ranking and wastes everything you spent in month 1.`;
+
+  // NO_GO — rejection plan with real numbers
+  const noGoStep1 = `❌ Do NOT launch this product as-is.`;
+  const noGoStep2 = `Why it fails: Profit after ads is only $${profitAfterAds.toFixed(2)}/unit — no buffer for returns, storage fees, or ranking spend. At ${targetAcosDisplay}% ACoS, PPC alone costs $${(sellingPrice * assumedAcos).toFixed(2)} per sale. Margin is ${estimatedMarginPercent.toFixed(1)}% — minimum viable is 15%.`;
+  const noGoStep3 = `What needs to change — pick one: (a) Reduce COGS below $${viableCogsTarget} (currently $${cogs.toFixed(2)}), (b) Raise selling price to at least $${viableSellingPrice} (currently $${sellingPrice.toFixed(2)}), or (c) Target a keyword with avg reviews under 500 to reduce your required ACoS.`;
+  const noGoStep4 = `Better move: Fix one of the above and re-run the analysis. The market may have potential — the numbers do not support a launch today.`;
+
+  const honeymoonRoadmapDefault =
+    verdict === "NO_GO"
+      ? [noGoStep1, noGoStep2, noGoStep3, noGoStep4]
+      : [goWeek1, goWeek2, goWeek34];
+
   const executionFromAi = aiInsights?.execution_plan?.length ? aiInsights.execution_plan : null;
   const honeymoonFromAi = aiInsights?.honeymoon_roadmap?.length ? aiInsights.honeymoon_roadmap : null;
-  const honeymoonRoadmap = honeymoonFromAi ?? executionFromAi ?? honeymoonRoadmapDefault;
+  const honeymoonRoadmap = honeymoonFromAi ?? honeymoonRoadmapDefault;
+
   const highBarrierStep = "High Barrier to Entry detected. Do not launch without a minimum $15,000 launch budget for PPC and Vine reviews.";
   const ppcCannibalizationStep = "PPC Cannibalization Risk: Your ad costs will likely exceed 60% of your revenue during launch. You MUST have a backend funnel or high LTV (Lifetime Value) to survive this.";
-  const executionPlanRaw = executionFromAi
-    ?? [
-        ...(avgReviews > 10000 ? [highBarrierStep] : []),
-        ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
-        ...honeymoonRoadmap,
-      ];
+
+  const executionPlanRaw =
+    verdict === "NO_GO"
+      ? [noGoStep1, noGoStep2, noGoStep3, noGoStep4]
+      : [
+          ...(avgReviews > 10000 ? [highBarrierStep] : []),
+          ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
+          goWeek1,
+          goWeek2,
+          goWeek34,
+        ];
+
   const execution_plan = executionPlanRaw.map((step: string) =>
     String(step).replace(/\bkeywords:\s*:\s*/gi, "keywords: ")
   );
