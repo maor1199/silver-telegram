@@ -1303,40 +1303,7 @@ export default function WarRoom() {
                 </section>
               )}
 
-              {/* Early Strategy Guidance — one short recommendation (no price warning here) */}
-              <section>
-                <SectionHeader
-                  icon={<Zap className="h-5 w-5 text-primary" />}
-                  title="Early Strategy Guidance"
-                  sub="How to approach this niche"
-                />
-                <div className="rounded-2xl border border-border bg-card p-6">
-                  {(() => {
-                    const guidance = earlyStrategyGuidance
-                      || (typeof fStratIntel === "string" ? fStratIntel : (fStratIntel as string[])?.[0])
-                      || consultantSecret
-                      || fActionPlan[0]
-                      || (fOpportunities[0] ? `Focus on: ${fOpportunities[0]}` : null)
-                    if (guidance) {
-                      const short = String(guidance).split(/[.!?]/).slice(0, 3).join(". ").trim()
-                      return <p className="text-sm text-foreground leading-relaxed">{short}{!short.endsWith(".") ? "." : ""}</p>
-                    }
-                    return <p className="text-sm text-muted-foreground/60 italic">No early strategy guidance available.</p>
-                  })()}
-                  {advisorImplicationEarlyStrategyGuidance && (
-                    <p style={{
-                      fontSize: '13px',
-                      color: 'var(--color-text-secondary)',
-                      borderLeft: '2px solid #f97316',
-                      paddingLeft: '10px',
-                      marginTop: '8px',
-                      lineHeight: '1.5'
-                    }}>
-                      {advisorImplicationEarlyStrategyGuidance}
-                    </p>
-                  )}
-                </div>
-              </section>
+              {/* Early Strategy Guidance — removed, covered by Execution Plan tab */}
             </div>
           )}
 
