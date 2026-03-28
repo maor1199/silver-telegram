@@ -822,7 +822,7 @@ export default function WarRoom() {
               )}
 
               {/* Market Reality — how this market behaves */}
-              {finalMarket && (
+              {(consultantSecret || finalMarket) && (
                 <section>
                   <SectionHeader
                     icon={<Brain className="h-5 w-5 text-amber-600" />}
@@ -832,7 +832,7 @@ export default function WarRoom() {
                   />
                   <div className="rounded-2xl border-2 border-amber-300/60 dark:border-amber-700/40 bg-amber-50/50 dark:bg-amber-950/20 p-6 shadow-sm">
                     <p className="text-sm font-medium text-foreground leading-relaxed" style={{ lineHeight: '1.5' }}>
-                      {finalMarket}
+                      {consultantSecret || finalMarket}
                     </p>
                   </div>
                 </section>
