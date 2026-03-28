@@ -571,19 +571,19 @@ export async function analyzeProduct(input: AnalyzeInput) {
     what_most_sellers_miss = "Enable live market data (Rainforest API) to see what most sellers miss in this niche."
   }
 
-  // ─── 3. MARKET DOMINATION ANALYSIS: prefer AI, else fallback ───
-  let market_domination_analysis = aiInsights?.market_domination_analysis?.trim() ?? ""
-  if (!market_domination_analysis && hasRealMarketData && topCompetitors.length > 0) {
-    if (dominantBrand && dominantBrandNames.length > 0) {
-      const names = dominantBrandNames.slice(0, 3).join(", ")
-      market_domination_analysis = `Market domination detected: ${names} appear repeatedly in the top ${topCompetitors.length} results. New sellers face established brand trust and review moats; winning share requires clear differentiation and sustained PPC, not just a lower price.`
+  // ─── 3. MARKET DOMINATION ANALYSIS: always built from real data ───
+  let market_domination_analysis = ""
+  if (hasRealMarketData && topCompetitors.length > 0) {
+    const uniqueBrands = new Set(topCompetitors.map((c) => (c as { brand?: string }).brand?.toLowerCase()).filter(Boolean)).size
+    if (dominantBrand) {
+      const brandLabel = dominantBrandNames.length > 0 ? dominantBrandNames.slice(0, 2).join(", ") : "one brand"
+      market_domination_analysis = `${brandLabel} controls 40%+ of the top ${topCompetitors.length} results — new sellers face an established review moat and brand trust. Winning share requires clear differentiation and sustained PPC, not just a lower price.`
     } else {
-      const uniqueBrands = new Set(topCompetitors.map((c) => (c as { brand?: string }).brand?.toLowerCase()).filter(Boolean)).size
-      market_domination_analysis = `Top ${topCompetitors.length} results show ${uniqueBrands} distinct brands — no single player dominates. Entry is more feasible; differentiation and execution matter more than overcoming a brand moat.`
+      market_domination_analysis = `Top ${topCompetitors.length} results show ${uniqueBrands} distinct brands — no single player dominates this niche. Entry is feasible; differentiation and execution matter more than overcoming a brand moat.`
     }
-  } else if (!market_domination_analysis && hasRealMarketData) {
-    market_domination_analysis = "Insufficient brand distribution data in this snapshot; run with full Rainforest results for domination analysis."
-  } else if (!market_domination_analysis) {
+  } else if (hasRealMarketData) {
+    market_domination_analysis = "Insufficient brand distribution data in this snapshot."
+  } else {
     market_domination_analysis = "Live market data required to assess brand domination."
   }
 
@@ -786,7 +786,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
       ? Math.round(((sellingPrice - avgPrice) / avgPrice) * 100)
       : 0
   const marketRealityCheckFallback = hasRealMarketData
-    ? `${newSellersInTop20} new sellers appear in the top 20 — this market is ${newSellersInTop20 >= 4 ? "fluid and open to new entrants" : "locked, with incumbents holding position"}. Avg reviews in this niche: ${avgReviews.toLocaleString()} — expect 60–90 days of PPC spend before organic rank contributes meaningful traffic.`
+    ? `${newSellersInTop20} sellers in the top 20 have fewer than 200 reviews — this market is ${newSellersInTop20 >= 4 ? "accessible to new entrants" : "dominated by established players"}. Avg reviews in this niche: ${avgReviews.toLocaleString()} — expect 60–90 days of PPC spend before organic rank contributes meaningful traffic.`
     : undefined
   const marketRealityCheck = aiInsights?.entry_reality?.trim() ?? marketRealityCheckFallback
 
