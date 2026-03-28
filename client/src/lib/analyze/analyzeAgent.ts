@@ -844,7 +844,9 @@ export async function analyzeProduct(input: AnalyzeInput) {
   // ─── 5. EXPERT INSIGHT (consultant secret): prefer AI, else synthesize real signals ───
   const nicheHint = keyword.replace(/\s+/g, " ").slice(0, 30)
   const painHint = painPoints.length > 0 ? painPoints[0] : "quality and fit"
-  let consultantSecret = aiInsights?.expert_insight?.trim() ?? ""
+  const aiExpertInsightRaw = aiInsights?.expert_insight?.trim() ?? ""
+  const aiExpertHasNumbers = /[\d$%]/.test(aiExpertInsightRaw)
+  let consultantSecret = aiExpertHasNumbers ? aiExpertInsightRaw : ""
   if (!consultantSecret && hasRealMarketData) {
     const bits: string[] = []
     bits.push(`${Math.round(sponsoredShare * 100)}% of page 1 is sponsored and avg CPC is ~$${baseCpcFinal.toFixed(2)} — every unit sold in launch costs $${launchAdCostPerUnit.toFixed(2)} in ads before profit.`)
