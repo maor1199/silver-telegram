@@ -920,27 +920,7 @@ export default function WarRoom() {
                 )}
               </section>
 
-              {/* What Would Flip This Decision — only shown for NO-GO verdict */}
-              {verdict === "NO-GO" && (whatWouldMakeGo?.length ?? 0) > 0 && (
-                <section>
-                  <SectionHeader
-                    icon={<Lightbulb className="h-5 w-5 text-primary" />}
-                    title="What Would Flip This Decision"
-                    sub="Conditions that could change a NO-GO into a GO"
-                    helpText={help("whatWouldMakeGo")}
-                  />
-                  <div className="rounded-2xl border border-emerald-200/50 dark:border-emerald-800/30 bg-emerald-50/30 dark:bg-emerald-950/10 p-6">
-                    <ul className="flex flex-col gap-3.5">
-                      {whatWouldMakeGo.slice(0, 3).map((item, i) => (
-                        <li key={i} className="flex items-start gap-3 text-sm text-foreground leading-relaxed">
-                          <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-xs font-bold text-emerald-700 dark:text-emerald-400">{i + 1}</span>
-                          {String(item)}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </section>
-              )}
+              {/* What Would Flip This Decision — hidden for now */}
             </div>
           )}
 
