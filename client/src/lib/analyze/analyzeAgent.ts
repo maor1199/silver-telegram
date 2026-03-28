@@ -932,6 +932,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     has_real_market_data: hasRealMarketData,
     premium_risk_warning: premiumRiskWarning ?? undefined,
     market_reality_check: marketRealityCheck ?? undefined,
+    entry_reality: marketRealityCheck ?? undefined,
     market_reality: consultantSecret || undefined,
     live_market_comparison: liveMarketComparison,
     market_density: marketDensityHigh ? "high" : "low",

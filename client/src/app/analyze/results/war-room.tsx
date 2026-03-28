@@ -1010,7 +1010,7 @@ export default function WarRoom() {
                 />
                 <div className="rounded-2xl border border-border bg-card p-6">
                   {(() => {
-                    const reasoning = typeof fMarketReality === "string" ? fMarketReality : (fMarketReality as string[])?.join(" ") || difficultyScoreDisplay || difficultyLevel
+                    const reasoning = safeStr(R?.entry_reality ?? analysisData?.entry_reality) || (typeof fMarketReality === "string" ? fMarketReality : (fMarketReality as string[])?.join(" ")) || difficultyScoreDisplay || difficultyLevel
                     if (reasoning) {
                       return <p className="text-sm text-foreground leading-relaxed">{reasoning}</p>
                     }
