@@ -153,9 +153,10 @@ OVERVIEW OUTPUT CONTRACT:
 - MARKET_REALITY:
   Write up to 2 focused, decision-grade sentences.
   Rules:
-  - Each sentence must include at least one concrete number/metric.
+  - Each sentence must include at least two concrete numbers/metrics.
   - Focus only on market mechanics: PPC pressure, review barrier, price structure.
   - Use DATA -> IMPLICATION framing (what this mechanism causes in traffic/ranking economics).
+  - Example: "45% of page 1 is sponsored and avg CPC is $0.90 — every sale costs you $9 in ads before profit."
   - No advice language, no storytelling.
 - WHAT_MOST_SELLERS_MISS:
   Write exactly 1 focused sentence.
