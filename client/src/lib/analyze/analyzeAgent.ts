@@ -844,25 +844,19 @@ export async function analyzeProduct(input: AnalyzeInput) {
   // ─── 5. EXPERT INSIGHT (consultant secret): prefer AI, else synthesize real signals ───
   const nicheHint = keyword.replace(/\s+/g, " ").slice(0, 30)
   const painHint = painPoints.length > 0 ? painPoints[0] : "quality and fit"
-  const aiExpertInsightRaw = aiInsights?.expert_insight?.trim() ?? ""
-  const aiExpertHasNumbers = /[\d$%]/.test(aiExpertInsightRaw)
-  let consultantSecret = aiExpertHasNumbers ? aiExpertInsightRaw : ""
-  if (!consultantSecret && hasRealMarketData) {
-    const bits: string[] = []
-    bits.push(`Avg CPC in this niche is ~$${baseCpcFinal.toFixed(2)} — at a 10% conversion rate, every unit sold costs $${launchAdCostPerUnit.toFixed(2)} in ads before profit.`)
-    if (dominantBrand && dominantBrandNames.length > 0) {
-      bits.push(`Brand concentration (${dominantBrandNames[0]} etc.) means you win with differentiation and proof, not price.`)
-    }
-    if (avgReviews >= 2000) {
-      bits.push(`With ${avgReviews.toLocaleString()}+ avg reviews, your main image and first bullet must address "${painHint}" or you'll bleed on returns.`)
-    }
-    if (!differentiationStrong) {
-      bits.push(`Generic positioning in "${nicheHint}" burns margin fast — add a specific differentiator tied to ${painHint}.`)
-    }
-    consultantSecret = bits.join(" ")
-  } else if (!consultantSecret) {
-    consultantSecret = `Run with live market data to get a data-backed expert take for "${nicheHint}".`
+  // Market Reality: always built from real data — never rely on AI for this field
+  const bits: string[] = []
+  bits.push(`Avg CPC in this niche is ~$${baseCpcFinal.toFixed(2)} — at a 10% conversion rate, every unit sold costs $${launchAdCostPerUnit.toFixed(2)} in ads before profit.`)
+  if (dominantBrand && dominantBrandNames.length > 0) {
+    bits.push(`Brand concentration (${dominantBrandNames[0]} etc.) means you win with differentiation and proof, not price.`)
   }
+  if (avgReviews >= 2000) {
+    bits.push(`With ${avgReviews.toLocaleString()}+ avg reviews, your main image and first bullet must address "${painHint}" or you'll bleed on returns.`)
+  }
+  if (!differentiationStrong) {
+    bits.push(`Generic positioning in "${nicheHint}" burns margin fast — add a specific differentiator tied to ${painHint}.`)
+  }
+  const consultantSecret = hasRealMarketData ? bits.join(" ") : `Run with live market data to get a data-backed expert take for "${nicheHint}".`
 
   // ─── 6. OPPORTUNITY: prefer AI, else from real pain points ───
   let opportunity_from_data = aiInsights?.opportunity?.trim() ?? ""
