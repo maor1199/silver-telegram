@@ -849,7 +849,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
   let consultantSecret = aiExpertHasNumbers ? aiExpertInsightRaw : ""
   if (!consultantSecret && hasRealMarketData) {
     const bits: string[] = []
-    bits.push(`${Math.round(sponsoredShare * 100)}% of page 1 is sponsored and avg CPC is ~$${baseCpcFinal.toFixed(2)} — every unit sold in launch costs $${launchAdCostPerUnit.toFixed(2)} in ads before profit.`)
+    bits.push(`Avg CPC in this niche is ~$${baseCpcFinal.toFixed(2)} — at a 10% conversion rate, every unit sold costs $${launchAdCostPerUnit.toFixed(2)} in ads before profit.`)
     if (dominantBrand && dominantBrandNames.length > 0) {
       bits.push(`Brand concentration (${dominantBrandNames[0]} etc.) means you win with differentiation and proof, not price.`)
     }
