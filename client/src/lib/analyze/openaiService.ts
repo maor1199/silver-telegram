@@ -169,7 +169,8 @@ OUTPUT STRUCTURE (keep existing JSON keys; add these behaviors):
 - VERDICT: Must match the input verdict exactly: GO | IMPROVE_BEFORE_LAUNCH | NO_GO (treat CONDITIONAL_GO as IMPROVE_BEFORE_LAUNCH if you use that label internally). Also provide a short one-sentence verdict_explanation (e.g. "Margins are too thin and advertising pressure is too high for a beginner launch.").
 - WHY_THIS_VERDICT (why_this_decision): up to 3 concise bullets in DATA → IMPLICATION style, each with concrete metrics and practical consequence.
 - Output format for why_this_decision must be a simple string array: why_this_decision: string[]
-- MARKET_REALITY (entry_reality / expert_insight): up to 2 concise DATA → IMPLICATION sentences, each with concrete metrics on PPC/reviews/price structure.
+- EXPERT_INSIGHT (expert_insight): 1–2 sentences on PPC pressure and ad economics only. Must include: sponsored page share %, avg CPC $, and cost-per-unit-sold in ads. Example: "40% of page 1 is sponsored and avg CPC is $1.20 — every unit sold costs $12 in ads before profit."
+- ENTRY_REALITY (entry_reality): 1–2 sentences on how hard it is to enter this niche. Must include: number of new sellers in top 20, avg reviews, and estimated time before organic rank contributes traffic. These are DIFFERENT fields — never write the same content for both.
 - WHAT_MOST_SELLERS_MISS: exactly 1 concise sentence with at least two concrete signals and one failure dynamic.
 - RECOMMENDED_ACTION: Verdict-dependent. If GO: short launch recommendation. If IMPROVE_BEFORE_LAUNCH / CONDITIONAL_GO: one line summarizing the conditional fixes (mirror the core of execution_plan). If NO_GO: one-line rejection + pivot (mirror the final "Better move" line from execution_plan; no soft language).
 
