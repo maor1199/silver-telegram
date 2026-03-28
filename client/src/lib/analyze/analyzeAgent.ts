@@ -847,22 +847,17 @@ export async function analyzeProduct(input: AnalyzeInput) {
   let consultantSecret = aiInsights?.expert_insight?.trim() ?? ""
   if (!consultantSecret && hasRealMarketData) {
     const bits: string[] = []
+    bits.push(`${Math.round(sponsoredShare * 100)}% of page 1 is sponsored and avg CPC is ~$${baseCpcFinal.toFixed(2)} — every unit sold in launch costs $${launchAdCostPerUnit.toFixed(2)} in ads before profit.`)
     if (dominantBrand && dominantBrandNames.length > 0) {
       bits.push(`Brand concentration (${dominantBrandNames[0]} etc.) means you win with differentiation and proof, not price.`)
     }
     if (avgReviews >= 2000) {
-      bits.push(`With ${avgReviews.toLocaleString()}+ reviews on top results, your main image and first bullet must answer "${painHint}" or you'll bleed on returns and ads.`)
-    }
-    if (sponsoredShare >= 0.6) {
-      bits.push("Most top slots are paid — expect high CPC; long-tail and exact match are the only way to start.")
-    }
-    if (priceMin != null && priceMax != null && priceMax > 0 && (priceMax - priceMin) / priceMax < 0.25) {
-      bits.push("Prices are compressed; margin comes from conversion and repeat, not undercutting.")
+      bits.push(`With ${avgReviews.toLocaleString()}+ avg reviews, your main image and first bullet must address "${painHint}" or you'll bleed on returns.`)
     }
     if (!differentiationStrong) {
-      bits.push(`Generic positioning in "${nicheHint}" burns 50%+ on PPC; add a clear, specific differentiator (50+ chars) tied to ${painHint}.`)
+      bits.push(`Generic positioning in "${nicheHint}" burns margin fast — add a specific differentiator tied to ${painHint}.`)
     }
-    consultantSecret = bits.length > 0 ? bits.join(" ") : `In ${nicheHint}, focus on ${painHint} in listing and images — that's where this category gets returned and where you can stand out.`
+    consultantSecret = bits.join(" ")
   } else if (!consultantSecret) {
     consultantSecret = `Run with live market data to get a data-backed expert take for "${nicheHint}".`
   }
@@ -937,7 +932,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     has_real_market_data: hasRealMarketData,
     premium_risk_warning: premiumRiskWarning ?? undefined,
     market_reality_check: marketRealityCheck ?? undefined,
-    market_reality: marketRealityCheck ?? undefined,
+    market_reality: consultantSecret || undefined,
     live_market_comparison: liveMarketComparison,
     market_density: marketDensityHigh ? "high" : "low",
     acos_floor_used: acosFloor,
@@ -994,7 +989,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     net_profit: Math.round(profitAfterAds * 100) / 100,
     roi: Math.round(roiPct * 10) / 10,
     section_help: sectionHelp,
-    market_reality: marketRealityCheck ?? undefined,
+    market_reality: consultantSecret || undefined,
     why_this_decision: ensureArray(why_this_decision_final, []),
     review_intelligence: ensureArray(review_intelligence, []),
     market_trends: ensureArray(market_trends, []),
@@ -1061,7 +1056,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     earlyStrategyGuidance: early_strategy_guidance || undefined,
     premiumRiskWarning: premiumRiskWarning,
     marketRealityCheck: marketRealityCheck,
-    marketReality: marketRealityCheck ?? undefined,
+    marketReality: consultantSecret || undefined,
     liveMarketComparison: liveMarketComparison,
     marketDensity: report.market_density,
     acosFloorUsed: report.acos_floor_used,
