@@ -303,7 +303,9 @@ export default function AnalyzePage() {
             </p>
           </div>
         </main>
-        <Footer />
+        <div className="relative z-10">
+          <Footer />
+        </div>
       </div>
     )
   }
