@@ -1315,6 +1315,11 @@ export default function WarRoom() {
               </Button>
             </Link>
           </div>
+
+          {/* ── Disclaimer ────────────────────────────── */}
+          <p className="mt-8 text-center text-xs text-muted-foreground">
+            The goal isn&apos;t to be 100% right — it&apos;s to help you avoid obvious bad decisions. Always do your own research.
+          </p>
         </div>
       </main>
       <Footer />
