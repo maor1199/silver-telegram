@@ -559,7 +559,9 @@ export default function AnalyzePage() {
           </div>
         </div>
       </main>
-      <Footer />
+      <div className="relative z-10 bg-background">
+        <Footer />
+      </div>
     </div>
   )
 }
