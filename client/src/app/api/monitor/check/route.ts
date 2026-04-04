@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import axios from "axios"
 import { createServiceClient } from "@/lib/supabase/server"
 
 const RAINFOREST_API_KEY = process.env.RAINFOREST_API_KEY
@@ -16,16 +15,18 @@ async function fetchProductByAsin(asin: string): Promise<{
 } | null> {
   if (!RAINFOREST_API_KEY) return null
   try {
-    const response = await axios.get("https://api.rainforestapi.com/request", {
-      params: {
-        api_key: RAINFOREST_API_KEY,
-        type: "product",
-        asin,
-        amazon_domain: RAINFOREST_DOMAIN,
-      },
-      timeout: 20000,
+    const params = new URLSearchParams({
+      api_key: RAINFOREST_API_KEY,
+      type: "product",
+      asin,
+      amazon_domain: RAINFOREST_DOMAIN,
     })
-    const product = response.data?.product
+    const res = await fetch(`https://api.rainforestapi.com/request?${params}`, {
+      signal: AbortSignal.timeout(20000),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const product = data?.product
     if (!product) return null
 
     const price =
