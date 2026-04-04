@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Menu, X, LogOut, ChevronDown, Sparkles, BookOpen } from "lucide-react"
+import { Menu, X, LogOut, ChevronDown, Sparkles, BookOpen, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import type { Session } from "@supabase/supabase-js"
@@ -21,6 +21,12 @@ const TOOLS_MENU_ITEMS = [
     href: "/guide",
     description: "9-chapter free course for new Amazon FBA sellers — 2026 edition",
     icon: BookOpen,
+  },
+  {
+    name: "Monitor",
+    href: "/monitor",
+    description: "Track price, rating, and review changes for any ASIN — checked every 12 hours",
+    icon: Activity,
   },
 ]
 
