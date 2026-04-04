@@ -40,7 +40,7 @@ export async function GET(req: Request) {
           .select("*")
           .eq("monitor_id", monitor.id)
           .order("created_at", { ascending: false })
-          .limit(2)
+          .limit(14)
 
         const { data: alerts } = await supabase
           .from("monitor_alerts")
@@ -48,12 +48,13 @@ export async function GET(req: Request) {
           .eq("monitor_id", monitor.id)
           .eq("is_read", false)
           .order("created_at", { ascending: false })
-          .limit(5)
+          .limit(10)
 
         return {
           ...monitor,
           latest_snapshot: snapshots?.[0] ?? null,
           previous_snapshot: snapshots?.[1] ?? null,
+          snapshots: (snapshots ?? []).slice().reverse(),
           unread_alerts: alerts ?? [],
         }
       })
