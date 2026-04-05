@@ -236,6 +236,14 @@ function TabImages({
 
   const generateImage = async (img: ImageStrategyItem) => {
     if (!token) return
+    if (!uploadedFile) {
+      setGenerated(prev => {
+        const exists = prev.find(g => g.slot === img.slot)
+        if (exists) return prev.map(g => g.slot === img.slot ? { ...g, error: "Upload a product photo first." } : g)
+        return [...prev, { slot: img.slot, url: "", title: img.title, type: img.type, error: "Upload a product photo first." }]
+      })
+      return
+    }
 
     setGenerated(prev => {
       const exists = prev.find(g => g.slot === img.slot)
@@ -248,7 +256,7 @@ function TabImages({
       fd.append("prompt", img.prompt)
       fd.append("type", img.type)
       fd.append("style", selectedStyle)
-      if (uploadedFile) fd.append("image", uploadedFile)
+      fd.append("image", uploadedFile)
 
       const res = await fetch("/api/studio/generate", {
         method: "POST",
@@ -284,10 +292,14 @@ function TabImages({
       {/* Upload + Style */}
       <div className="grid sm:grid-cols-2 gap-4">
         {/* Upload */}
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <SectionLabel>Product Photo (Optional)</SectionLabel>
+        <div className={`rounded-2xl border bg-card p-5 ${!uploadedFile ? "border-primary/30 ring-1 ring-primary/10" : "border-border"}`}>
+          <div className="flex items-center justify-between mb-1">
+            <SectionLabel>Product Photo</SectionLabel>
+            <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">Required</span>
+          </div>
           <p className="text-xs text-muted-foreground mb-4">
-            Upload a clean product photo for background replacement. Without it, we&apos;ll generate from scratch.
+            Upload your product photo — CLAID will remove the background and create each listing image.
+            White or plain background gives the best results.
           </p>
           {uploadedPreview ? (
             <div className="relative">
@@ -342,9 +354,11 @@ function TabImages({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-foreground">{images.length} Images to Generate</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Generate individually or all at once</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {uploadedFile ? "Generate individually or all at once" : "Upload your product photo above first"}
+              </p>
             </div>
-            <Button onClick={generateAll} size="sm" className="rounded-xl gap-1.5">
+            <Button onClick={generateAll} size="sm" className="rounded-xl gap-1.5" disabled={!uploadedFile}>
               <Sparkles className="h-3.5 w-3.5" /> Generate All
             </Button>
           </div>
@@ -717,16 +731,16 @@ export default function StudioPage() {
             )}
           </div>
 
-          {/* PRO Note */}
+          {/* Tip */}
           <div className="mt-10 rounded-2xl border border-border bg-card px-6 py-5 flex items-start gap-4">
             <div className="h-9 w-9 shrink-0 rounded-xl bg-yellow-50 border border-yellow-100 flex items-center justify-center">
               <Star className="h-4 w-4 text-yellow-500" />
             </div>
             <div>
-              <p className="text-sm font-bold text-foreground">Image quality improves with your product photo</p>
+              <p className="text-sm font-bold text-foreground">Best results: use a clean product photo</p>
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Upload a clean photo of your product (white background preferred) in the Generate Images tab for best results.
-                All generated images are 1024×1024px — ready for Amazon listing upload.
+                A photo with a white or plain background gives CLAID the cleanest input to work with.
+                Output images are 2000×2000px — ready for Amazon listing upload.
               </p>
             </div>
           </div>

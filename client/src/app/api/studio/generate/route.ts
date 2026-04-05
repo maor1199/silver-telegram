@@ -1,10 +1,74 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
-import OpenAI from "openai"
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const CLAID_API_KEY = process.env.CLAID_API_KEY
+
+// CLAID operations per image type
+function buildClaidOperations(imageType: string, style: string) {
+  switch (imageType) {
+    case "hero":
+      // Pure white background, product centered — Amazon main image standard
+      return [
+        { operation: "background", parameters: { color: "#FFFFFF" } },
+        { operation: "resize", parameters: { width: 2000, height: 2000, fit: "pad", pad_color: "#FFFFFF" } },
+      ]
+
+    case "lifestyle":
+      // Style-based background treatment
+      if (style === "dark") {
+        return [
+          { operation: "background", parameters: { color: "#1a1a1a" } },
+          { operation: "resize", parameters: { width: 2000, height: 2000, fit: "contain", pad_color: "#1a1a1a" } },
+        ]
+      }
+      if (style === "gradient") {
+        return [
+          { operation: "background", parameters: { color: "#f0f4ff" } },
+          { operation: "resize", parameters: { width: 2000, height: 2000, fit: "contain", pad_color: "#f0f4ff" } },
+        ]
+      }
+      // Default lifestyle — soft warm background
+      return [
+        { operation: "background", parameters: { color: "#faf8f5" } },
+        { operation: "resize", parameters: { width: 2000, height: 2000, fit: "contain", pad_color: "#faf8f5" } },
+      ]
+
+    case "feature":
+      // Light accent background to highlight the feature
+      return [
+        { operation: "background", parameters: { color: "#f5f8ff" } },
+        { operation: "resize", parameters: { width: 2000, height: 2000, fit: "pad", pad_color: "#f5f8ff" } },
+      ]
+
+    case "infographic":
+      // Clean white for infographic overlays
+      return [
+        { operation: "background", parameters: { color: "#FFFFFF" } },
+        { operation: "resize", parameters: { width: 2000, height: 2000, fit: "pad", pad_color: "#FFFFFF" } },
+      ]
+
+    case "problem_solution":
+      // Split-tone: soft grey
+      return [
+        { operation: "background", parameters: { color: "#f7f7f7" } },
+        { operation: "resize", parameters: { width: 2000, height: 2000, fit: "contain", pad_color: "#f7f7f7" } },
+      ]
+
+    case "comparison":
+      // Clean neutral
+      return [
+        { operation: "background", parameters: { color: "#FFFFFF" } },
+        { operation: "resize", parameters: { width: 2000, height: 2000, fit: "pad", pad_color: "#FFFFFF" } },
+      ]
+
+    default:
+      return [
+        { operation: "background", parameters: { color: "#FFFFFF" } },
+        { operation: "resize", parameters: { width: 2000, height: 2000, fit: "pad", pad_color: "#FFFFFF" } },
+      ]
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -27,71 +91,55 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid session." }, { status: 401 })
     }
 
+    if (!CLAID_API_KEY) {
+      return NextResponse.json({ error: "Image generation is not configured yet." }, { status: 500 })
+    }
+
     const formData = await req.formData()
     const imageFile = formData.get("image") as File | null
-    const prompt = formData.get("prompt") as string
-    const imageType = formData.get("type") as string // hero | lifestyle | feature | infographic
-    const style = formData.get("style") as string // clean | lifestyle | dark | gradient
+    const imageType = (formData.get("type") as string) || "hero"
+    const style = (formData.get("style") as string) || "clean"
 
-    if (!prompt) {
-      return NextResponse.json({ error: "Prompt is required." }, { status: 400 })
+    if (!imageFile) {
+      return NextResponse.json({
+        error: "Please upload a product photo to generate images.",
+        code: "NO_IMAGE",
+      }, { status: 400 })
     }
 
-    // If CLAID key exists and image file provided → use CLAID for background replacement
-    // Otherwise → use DALL-E 3 for generation
-    if (CLAID_API_KEY && imageFile && imageType === "hero") {
-      // CLAID: Background removal + replacement
-      const claidFormData = new FormData()
-      claidFormData.append("image", imageFile)
-      claidFormData.append("output", JSON.stringify({
-        format: { type: "jpeg", quality: 95 },
-        operations: [
-          { operation: "background", parameters: { color: "#FFFFFF" } },
-          { operation: "resize", parameters: { width: 2000, height: 2000, fit: "pad", pad_color: "#FFFFFF" } },
-        ],
-      }))
+    const operations = buildClaidOperations(imageType, style)
 
-      const claidRes = await fetch("https://api.claid.ai/v1-beta1/image/edit/upload", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${CLAID_API_KEY}` },
-        body: claidFormData,
-      })
+    const claidFormData = new FormData()
+    claidFormData.append("image", imageFile)
+    claidFormData.append("output", JSON.stringify({
+      format: { type: "jpeg", quality: 95 },
+      operations,
+    }))
 
-      if (!claidRes.ok) {
-        const err = await claidRes.text()
-        return NextResponse.json({ error: `CLAID error: ${err}` }, { status: 500 })
-      }
-
-      const claidData = await claidRes.json()
-      const imageUrl = claidData?.data?.output?.tmp_url ?? claidData?.output?.url
-
-      return NextResponse.json({ ok: true, url: imageUrl, source: "claid" })
-    }
-
-    // DALL-E 3 generation
-    const styleModifiers: Record<string, string> = {
-      clean: "pure white background, professional product photography, studio lighting, 8K resolution, sharp focus",
-      lifestyle: "realistic lifestyle setting, natural lighting, aspirational atmosphere, professional photography",
-      dark: "dark moody background, dramatic studio lighting, premium luxury feel, high contrast",
-      gradient: "soft gradient background, modern minimalist, clean product shot, professional e-commerce photography",
-    }
-
-    const fullPrompt = `${prompt}. Style: ${styleModifiers[style] ?? styleModifiers.clean}. Amazon listing image, conversion-optimized, no text overlays, photorealistic.`
-
-    const response = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: fullPrompt,
-      size: "1024x1024",
-      quality: "hd",
-      n: 1,
+    const claidRes = await fetch("https://api.claid.ai/v1-beta1/image/edit/upload", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${CLAID_API_KEY}` },
+      body: claidFormData,
+      signal: AbortSignal.timeout(30000),
     })
 
-    const url = response.data[0]?.url
-    if (!url) {
-      return NextResponse.json({ error: "Image generation failed." }, { status: 500 })
+    if (!claidRes.ok) {
+      const errText = await claidRes.text()
+      return NextResponse.json({ error: `Image processing failed: ${errText.slice(0, 200)}` }, { status: 500 })
     }
 
-    return NextResponse.json({ ok: true, url, source: "dalle3" })
+    const claidData = await claidRes.json()
+    const imageUrl =
+      claidData?.data?.output?.tmp_url ??
+      claidData?.data?.output?.url ??
+      claidData?.output?.tmp_url ??
+      claidData?.output?.url
+
+    if (!imageUrl) {
+      return NextResponse.json({ error: "CLAID did not return an image URL. Check the API response." }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true, url: imageUrl, source: "claid", type: imageType })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ error: msg }, { status: 500 })
