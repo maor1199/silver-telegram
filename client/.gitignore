@@ -38,3 +38,4 @@ lerna-debug.log*
 __v0_runtime_loader.js
 __v0_devtools.tsx
 __v0_jsx-dev-runtime.ts
+.vercel
