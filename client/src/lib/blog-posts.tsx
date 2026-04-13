@@ -11,6 +11,7 @@ export type ContentBlock =
   | { type: "cta"; title: string; text: string; buttonText: string; buttonHref: string }
   | { type: "divider" }
   | { type: "takeaways"; items: string[] }
+  | { type: "faq"; items: { question: string; answer: string }[] }
 
 export type BlogPost = {
   slug: string
@@ -23,6 +24,7 @@ export type BlogPost = {
   coverImage: string
   featured: boolean
   tags: string[]
+  faqSchema: { question: string; answer: string }[]
   tocItems: { id: string; text: string; level: number }[]
   content: ContentBlock[]
 }
@@ -42,6 +44,12 @@ export const POSTS: BlogPost[] = [
     coverImage: "https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=1200&q=80",
     featured: true,
     tags: ["product research", "amazon fba", "product validation", "go no-go"],
+    faqSchema: [
+      { question: "How do you validate an Amazon product before buying inventory?", answer: "Use the 4-signal framework: check for real demand (BSR under 50,000, 200+ monthly sales for top sellers), winnable competition (top sellers under 500 reviews with obvious listing weaknesses), healthy margin (minimum 25–30% net after all Amazon fees and PPC), and a clear differentiation angle. All 4 signals must be green before you order." },
+      { question: "How much demand does an Amazon product need to be worth selling?", answer: "The top 3–5 products in your target niche should each be generating at least 200 sales per month. A BSR under 50,000 in most categories indicates meaningful sales volume. If the market leader only moves 50–80 units per month, the niche is too small to build a sustainable business." },
+      { question: "What is the minimum profit margin for Amazon FBA?", answer: "Target at least 25–30% net margin after all costs — Amazon referral fees (15%), FBA fulfillment fees, cost of goods, shipping to Amazon, and PPC spend. Many sellers fail because they calculate gross margin and ignore the full cost stack. Run the complete margin math before talking to any supplier." },
+      { question: "How do I know if Amazon competition is too high to enter?", answer: "Competition becomes unwinnable when: every top-10 listing has 3,000+ reviews, Amazon itself is selling the product, the category has patents on core features, or the niche is dominated by established brands with loyal followings. Winnable competition looks like top sellers with 50–500 reviews and clear weaknesses in their listings." },
+    ],
     tocItems: [
       { id: "the-real-reason", text: "The Real Reason Most First Products Fail", level: 2 },
       { id: "signal-1", text: "Signal 1: Real Demand", level: 2 },
@@ -255,6 +263,12 @@ export const POSTS: BlogPost[] = [
     coverImage: "https://images.unsplash.com/photo-1585435557343-3b092031a831?w=1200&q=80",
     featured: false,
     tags: ["listing images", "product photography", "amazon listing", "conversion rate optimization"],
+    faqSchema: [
+      { question: "How many images should an Amazon listing have?", answer: "Use all 7 available image slots. Amazon allows up to 9 images but 7 is the standard maximum that appears in most categories. Listings that use all slots convert 20–40% better than listings with 1–3 images, according to Amazon's own A/B testing data." },
+      { question: "What is required for an Amazon main listing image?", answer: "The main image (hero image) must have a pure white background (#FFFFFF), the product must fill at least 85% of the frame, there can be no text, watermarks, props, or lifestyle elements, and the minimum size is 1000px on the shortest side (2000px recommended to enable zoom). Violations result in automatic listing suppression." },
+      { question: "What types of images should I use for my Amazon listing?", answer: "The 7 slots should cover: (1) Hero — white background product shot, (2) Lifestyle — product in use by target audience, (3) Feature highlight — your strongest differentiator, (4) Infographic — top 3–5 benefits visually, (5) Problem/solution — pain on the left, your product solving it on the right, (6) Comparison — you vs. generic alternatives, (7) Trust builder — guarantee, reviews, or what's in the box." },
+      { question: "Do Amazon listing images really affect conversion rates?", answer: "Yes — significantly. Images are the first thing buyers see in search results and on the listing page. Buyers make purchase decisions in under 3 seconds based primarily on images. Optimized image sets (correct types, correct order) consistently outperform generic photo sets by 20–40% in conversion rate." },
+    ],
     tocItems: [
       { id: "3-seconds", text: "The 3-Second Rule That Determines Everything", level: 2 },
       { id: "slot-1", text: "Slot 1 — The Hero Image (Your #1 Job)", level: 2 },
@@ -453,6 +467,12 @@ export const POSTS: BlogPost[] = [
     coverImage: "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=1200&q=80",
     featured: false,
     tags: ["listing copywriting", "amazon bullets", "listing optimization", "amazon conversion"],
+    faqSchema: [
+      { question: "How do you write Amazon bullet points that convert?", answer: "Use the Outcome → Feature → Proof formula. Start each bullet with the OUTCOME in capital letters (what changes for the buyer), then name the feature that delivers it, then add a specific number or detail that makes the claim believable. Avoid listing product specs — buyers want to know what their life looks like after they buy, not what the product is made of." },
+      { question: "How long should Amazon bullet points be?", answer: "Each bullet should be 1–2 sentences, ideally 150–250 characters. Long enough to include the outcome, feature, and proof — short enough to be scanned in under 5 seconds. Amazon truncates bullets in mobile view, so front-load your most important information." },
+      { question: "Where should keywords go in an Amazon listing?", answer: "Priority order: (1) Title — highest algorithm weight, (2) First bullet point — strong weight, (3) Remaining 4 bullets — include naturally, (4) Product description — good for long-tail variations, (5) Backend search terms — everything that didn't fit above. Do not repeat keywords across title and backend terms — Amazon indexes both separately." },
+      { question: "What is the best Amazon listing title formula?", answer: "Primary keyword + Your clearest differentiator + Secondary use case or compatibility + Pack size if relevant. Keep it under 200 characters and readable in 5 seconds. Example: 'Self-Cleaning Dog Brush for Shedding — Removes 95% of Loose Fur — Works on Short & Long Hair, All Breeds.' Lead with what people are searching for, then immediately show why yours is better." },
+    ],
     tocItems: [
       { id: "the-real-problem", text: "Why 90% of Amazon Bullets Don't Convert", level: 2 },
       { id: "title-formula", text: "The Title Formula That Ranks and Converts", level: 2 },
