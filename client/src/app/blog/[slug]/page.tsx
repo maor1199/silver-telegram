@@ -275,13 +275,14 @@ export default function BlogPostPage() {
 
                 {/* Mini CTA */}
                 <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/[0.04] p-5">
-                  <p className="text-xs font-bold text-foreground mb-1">Try SellerMentor free</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">Try it free</p>
+                  <p className="text-xs font-bold text-foreground mb-1 leading-snug">GO / NO-GO on any product. 60 seconds.</p>
                   <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">
-                    Analyze any Amazon product and get a GO / NO-GO in 60 seconds.
+                    Real Amazon data. No guesswork. No signup required to try.
                   </p>
                   <Link href="/analyze"
-                    className="flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors">
-                    Analyze Free <ArrowRight className="h-3 w-3" />
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors">
+                    Analyze My Product <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
               </div>

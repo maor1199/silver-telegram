@@ -38,12 +38,12 @@ export default function BlogPage() {
                 <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                 <span className="text-[11px] font-semibold uppercase tracking-widest text-primary">Amazon FBA Knowledge Base</span>
               </div>
-              <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-5xl">
-                Learn to sell smarter<br />
-                <span className="text-primary">on Amazon</span>
+              <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-5xl leading-tight">
+                Stop guessing.<br />
+                <span className="text-primary">Start selling.</span>
               </h1>
               <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-                Practical guides on product research, listing optimization, and FBA strategy — written for sellers who want to win, not just learn.
+                Every article here answers one question: how do I sell more on Amazon? No fluff, no theory — just the frameworks, formulas, and decisions that separate profitable sellers from everyone else.
               </p>
             </div>
           </div>
@@ -132,15 +132,22 @@ export default function BlogPage() {
           </div>
 
           {/* ── CTA Banner ─────────────────────────────────────────────── */}
-          <div className="mt-16 rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/[0.06] to-transparent p-10 text-center">
-            <h2 className="text-2xl font-bold text-foreground">Ready to analyze your first product?</h2>
-            <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-              Stop reading — start doing. SellerMentor gives you a GO / NO-GO decision on any Amazon product in under 60 seconds.
+          <div className="mt-16 rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/[0.06] via-background to-background p-10 text-center">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-primary mb-3">Done reading? Time to act.</p>
+            <h2 className="text-2xl font-bold text-foreground">Get a GO / NO-GO on your product idea in 60 seconds</h2>
+            <p className="mt-3 text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+              SellerMentor analyzes real Amazon data and tells you exactly whether your product is worth pursuing — demand score, competition rating, opportunity analysis. Free.
             </p>
-            <Link href="/analyze"
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-colors">
-              Analyze a Product Free <ArrowRight className="h-4 w-4" />
-            </Link>
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link href="/analyze"
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-7 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
+                Analyze My Product Now <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/signup"
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-7 py-3 text-sm font-semibold text-foreground hover:bg-muted/50 transition-colors">
+                Create Free Account
+              </Link>
+            </div>
           </div>
 
         </div>
