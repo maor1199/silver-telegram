@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Menu, X, LogOut, ChevronDown, Sparkles, BookOpen, ImagePlay, Newspaper } from "lucide-react"
+import { Menu, X, LogOut, ChevronDown, Sparkles, ClipboardList, ImagePlay } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import type { Session } from "@supabase/supabase-js"
@@ -21,6 +21,12 @@ const TOOLS_MENU_ITEMS = [
     href: "/studio",
     description: "AI-powered product images, lifestyle photos & A+ content for your listing",
     icon: ImagePlay,
+  },
+  {
+    name: "Product Research Guide",
+    href: "/research-guide",
+    description: "The 9-step framework professionals use before committing to any product",
+    icon: ClipboardList,
   },
 ]
 
