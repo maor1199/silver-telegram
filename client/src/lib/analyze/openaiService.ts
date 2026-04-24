@@ -80,6 +80,12 @@ export type AIInsightsInput = {
   keepa_out_of_stock_pct30?: number
   keepa_seller_count_trend?: "growing" | "shrinking" | "stable"
   keepa_real_fba_fee?: number
+  keepa_fba_seller_count?: number
+  keepa_size_tier?: string
+  keepa_storage_per_unit_monthly?: number
+  keepa_peak_sales_months?: string
+  keepa_trough_sales_months?: string
+  painPointSource?: "reviews" | "titles"
 }
 
 export type AIInsights = {
@@ -753,6 +759,34 @@ function buildUserPrompt(input: AIInsightsInput): string {
       lines.push(`Actual FBA fee for this product: $${input.keepa_real_fba_fee.toFixed(2)} (used in profit calculation)`)
     }
 
+    // Size tier & storage
+    if (input.keepa_size_tier) {
+      lines.push(`Product size tier: ${input.keepa_size_tier}`)
+    }
+    if (input.keepa_storage_per_unit_monthly != null) {
+      lines.push(`Monthly storage fee per unit: $${input.keepa_storage_per_unit_monthly.toFixed(3)} — mention in launch capital context for inventory sitting 3+ months`)
+    }
+
+    // FBA seller count
+    if (input.keepa_fba_seller_count != null) {
+      lines.push(`Active FBA sellers (csv[7]): ${input.keepa_fba_seller_count} — ${input.keepa_fba_seller_count >= 8 ? "HIGH competition from established FBA sellers, mention in risks" : input.keepa_fba_seller_count >= 4 ? "moderate FBA competition" : "low FBA seller count — opportunity signal"}`)
+    }
+
+    // Seasonal calendar
+    if (input.keepa_peak_sales_months) {
+      lines.push(`Peak demand months: ${input.keepa_peak_sales_months} — inventory must arrive 10–12 weeks before. Mention in execution plan.`)
+    }
+    if (input.keepa_trough_sales_months) {
+      lines.push(`Slowest months: ${input.keepa_trough_sales_months} — avoid heavy stock entering these periods.`)
+    }
+
+    // Pain point source note
+    if (input.painPointSource === "reviews") {
+      lines.push(`Pain points above are extracted from REAL 1–2 star reviews of the top competitor. These are verified customer complaints — lead with them in differentiation section.`)
+    } else if (input.painPointSource === "titles") {
+      lines.push(`Pain points are inferred from listing titles (no review data available). Treat as signals, not verified complaints.`)
+    }
+
     lines.push(
       "",
       "MANDATORY — HOW TO USE KEEPA DATA:",
@@ -760,8 +794,10 @@ function buildUserPrompt(input: AIInsightsInput): string {
       "- IMPROVING BSR: highlight as key GO signal with market size numbers.",
       "- AMAZON SELLING: lead with this in expert_insight — it changes the competitive reality entirely.",
       "- OOS SHORTAGE: mention as a concrete opportunity (unmet demand = faster ranking).",
-      "- RATING DECLINING: mention competitor weakness that the seller can exploit in differentiation.",
       "- SELLER COUNT GROWING: mention commoditization risk in risks section.",
+      "- HIGH FBA SELLER COUNT (≥8): call out explicitly in risks — this means the page is full of FBA-backed listings.",
+      "- PEAK MONTHS: name them in execution_plan and early_strategy_guidance — timing inventory is make-or-break.",
+      "- REVIEW-BASED PAIN POINTS: if source is 'reviews', lead differentiation with these as verified product failures competitors haven't fixed.",
       "- Ground every market size claim with the actual sales number from Keepa.",
     )
   }

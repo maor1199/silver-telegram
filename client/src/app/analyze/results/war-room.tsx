@@ -28,6 +28,7 @@ import {
   HelpCircle,
   BarChart3,
   Calendar,
+  CalendarDays,
   Zap,
   Eye,
   Crosshair,
@@ -42,6 +43,8 @@ import {
 } from "lucide-react"
 import {
   LineChart,
+  BarChart,
+  Bar,
   Line,
   XAxis,
   YAxis,
@@ -49,6 +52,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  Cell,
 } from "recharts"
 import type { KeepaProductData } from "@/lib/keepa/keepaService"
 import { getAnalysisResult, setAnalysisResult } from "@/lib/analysis-store"
@@ -1546,6 +1550,31 @@ export default function WarRoom() {
                           </p>
                         </div>
                       )}
+                      {keepaData.fbaSellerCount != null && (
+                        <div className={cn("rounded-2xl border bg-card p-4 text-center",
+                          keepaData.fbaSellerCount >= 8 ? "border-amber-400/60 bg-amber-50/50 dark:bg-amber-950/20" : "border-border"
+                        )}>
+                          <p className={cn("text-xl font-black",
+                            keepaData.fbaSellerCount >= 8 ? "text-amber-600 dark:text-amber-400" : "text-foreground"
+                          )}>{keepaData.fbaSellerCount}</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">FBA Sellers</p>
+                          <p className={cn("text-[10px] mt-0.5 font-medium",
+                            keepaData.fbaSellerCount >= 8 ? "text-amber-600 dark:text-amber-400" :
+                            keepaData.fbaSellerCount <= 3 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                          )}>
+                            {keepaData.fbaSellerCount >= 8 ? "⚠ heavy FBA competition" : keepaData.fbaSellerCount <= 3 ? "✓ low FBA density" : "moderate"}
+                          </p>
+                        </div>
+                      )}
+                      {keepaData.estimatedMonthlyStoragePerUnit != null && (
+                        <div className="rounded-2xl border border-border bg-card p-4 text-center">
+                          <p className="text-xl font-black text-foreground">${keepaData.estimatedMonthlyStoragePerUnit.toFixed(3)}</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">Storage/Unit/Mo</p>
+                          <p className="text-[10px] mt-0.5 text-muted-foreground">
+                            {keepaData.sizeTier ?? "standard"} tier
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </section>
 
@@ -1683,6 +1712,57 @@ export default function WarRoom() {
                               strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
                           </LineChart>
                         </ResponsiveContainer>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Seasonal Demand Calendar */}
+                  {keepaData.seasonalCalendar && keepaData.seasonalCalendar.length > 0 && (
+                    <section>
+                      <div className="mb-4">
+                        <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                          <CalendarDays className="h-4 w-4 text-primary" />
+                          Seasonal Demand Calendar
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Relative demand by month (1.0 = average).
+                          {keepaData.peakSalesMonths && keepaData.peakSalesMonths.length > 0 && (
+                            <span className="ml-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                              🔥 Peak: {keepaData.peakSalesMonths.join(", ")}
+                            </span>
+                          )}
+                          {keepaData.troughSalesMonths && keepaData.troughSalesMonths.length > 0 && (
+                            <span className="ml-2 font-semibold text-muted-foreground">
+                              ❄️ Slow: {keepaData.troughSalesMonths.join(", ")}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-border bg-card p-4">
+                        <ResponsiveContainer width="100%" height={160}>
+                          <BarChart data={keepaData.seasonalCalendar} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                            <XAxis dataKey="month" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                            <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} width={30}
+                              tickFormatter={(v: number) => v.toFixed(1)} domain={[0, "auto"]} />
+                            <Tooltip
+                              contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                              formatter={(v: number) => [`${v.toFixed(2)}×`, "Demand Index"]}
+                            />
+                            <ReferenceLine y={1} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
+                            <Bar dataKey="relativeVolume" radius={[4, 4, 0, 0]}>
+                              {keepaData.seasonalCalendar.map((entry) => (
+                                <Cell
+                                  key={entry.month}
+                                  fill={entry.relativeVolume >= 1.2 ? "#10b981" : entry.relativeVolume <= 0.8 ? "#94a3b8" : "#6366f1"}
+                                />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                        <p className="text-[11px] text-muted-foreground mt-2 text-center">
+                          Green = peak months (≥1.2×) · Purple = average · Grey = slow months (≤0.8×). Source inventory 10–12 weeks before green bars.
+                        </p>
                       </div>
                     </section>
                   )}

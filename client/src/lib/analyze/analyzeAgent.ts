@@ -27,12 +27,17 @@ type AnalyzeInput = {
     topPrices?: number[]
     topCompetitors?: { position: number; title: string; price: number; ratingsTotal: number; rating?: number; brand?: string; sponsored?: boolean }[]
     painPoints?: string[]
+    /** Pain points from real 1-2★ competitor reviews */
+    reviewBasedPainPoints?: string[]
+    /** "reviews" = sourced from real Amazon reviews; "titles" = inferred from product titles */
+    painPointSource?: "reviews" | "titles"
     competitorsWithOver1000Reviews?: number
     priceMin?: number
     priceMax?: number
     sponsoredShare?: number
     brandCounts?: Record<string, number>
     dominantBrandNames?: string[]
+    topAsins?: string[]
     review_structure_summary?: string
     new_seller_presence?: "high" | "moderate" | "low"
     keyword_saturation_ratio?: string
@@ -150,7 +155,11 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const unitCost = asNumber(input.unitCost, 4)
   const shippingCost = asNumber(input.shippingCost, 2)
   // Use Keepa's actual FBA fee when available — replaces size-tier estimate with real number
-  const fbaFee = asNumber(input.fbaFee, 0) || (input.keepaData?.realFbaFee ?? estimateFbaFee(sellingPrice))
+  // FBA fee hierarchy: user override → Keepa pickAndPackFee → dimension-based calc → price-tier estimate
+  const fbaFee = asNumber(input.fbaFee, 0)
+    || input.keepaData?.realFbaFee
+    || input.keepaData?.fbaFeeFromDimensions
+    || estimateFbaFee(sellingPrice)
   const complexity = (input.complexity ?? "").toString().toLowerCase()
   const differentiationInput = asString(input.differentiation, "").trim()
 
@@ -168,7 +177,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const sponsoredTop10Count = market?.sponsored_top10_count ?? 0
   const hasRealMarketData = Boolean(market?.success)
   const competitorsWithOver1000Reviews = market?.competitorsWithOver1000Reviews ?? 0
-  const painPoints = Array.isArray(market?.painPoints) ? market.painPoints : []
+  // Prefer real review-based pain points over title-inferred ones
+  const painPoints = Array.isArray(market?.reviewBasedPainPoints) && (market.reviewBasedPainPoints?.length ?? 0) > 0
+    ? market.reviewBasedPainPoints!
+    : Array.isArray(market?.painPoints) ? market.painPoints : []
   const topCompetitors = market?.topCompetitors ?? []
   const priceMin = market?.priceMin
   const priceMax = market?.priceMax
@@ -235,11 +247,16 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const VINE_AND_MISC = 500
   const launchInventoryCost = (unitCost + shippingCost) * FIRST_ORDER_UNITS
   const launchPpcBurn = launchAdCostPerUnit * SALES_PER_DAY * LAUNCH_DAYS
-  const launchCapitalRequired = launchInventoryCost + launchPpcBurn + VINE_AND_MISC
+  // Storage buffer: 3 months of storage cost on first inventory order
+  const storageCostBuffer = _keepaForCapital?.estimatedMonthlyStoragePerUnit
+    ? Math.round(_keepaForCapital.estimatedMonthlyStoragePerUnit * FIRST_ORDER_UNITS * 3 * 100) / 100
+    : 0
+  const launchCapitalRequired = launchInventoryCost + launchPpcBurn + VINE_AND_MISC + storageCostBuffer
   const launchCapitalBreakdown = {
     inventory: launchInventoryCost,
     ppcMarketing: launchPpcBurn,
     vineAndMisc: VINE_AND_MISC,
+    storage: storageCostBuffer > 0 ? storageCostBuffer : undefined,
     total: launchCapitalRequired,
   }
 
@@ -406,6 +423,11 @@ export async function analyzeProduct(input: AnalyzeInput) {
     if (keepa.sellerCountTrend === "growing") {
       score -= 6
       scoreBreakdown.keepaSellers = "-6 (Keepa: seller count rising — commoditization risk)"
+    }
+    // FBA-specific competition: many FBA sellers = stiffer Prime-eligible competition
+    if (keepa.fbaSellerCount != null && keepa.fbaSellerCount >= 8) {
+      score -= 5
+      scoreBreakdown.keepaFbaSellers = `-5 (Keepa: ${keepa.fbaSellerCount} active FBA sellers — high direct competition in Prime search)`
     }
   }
 
@@ -622,6 +644,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
       sponsored: "sponsored" in c ? (c as { sponsored?: boolean }).sponsored : undefined,
     })),
     painPoints: painPoints.length > 0 ? painPoints : undefined,
+    painPointSource: market?.painPointSource ?? "titles",
     product_name: keyword,
     review_structure_summary: market?.review_structure_summary,
     new_seller_presence: market?.new_seller_presence,
@@ -646,7 +669,12 @@ export async function analyzeProduct(input: AnalyzeInput) {
     keepa_amazon_is_selling: keepa?.amazonIsSelling,
     keepa_out_of_stock_pct30: keepa?.outOfStockPct30,
     keepa_seller_count_trend: keepa?.sellerCountTrend,
-    keepa_real_fba_fee: keepa?.realFbaFee,
+    keepa_real_fba_fee: keepa?.realFbaFee ?? keepa?.fbaFeeFromDimensions,
+    keepa_size_tier: keepa?.sizeTier,
+    keepa_storage_per_unit_monthly: keepa?.estimatedMonthlyStoragePerUnit,
+    keepa_fba_seller_count: keepa?.fbaSellerCount,
+    keepa_peak_sales_months: keepa?.peakSalesMonths?.join(", "),
+    keepa_trough_sales_months: keepa?.troughSalesMonths?.join(", "),
   }
   const aiInsights = await getAIInsights(aiInput)
   console.log("STEP 1 - RAW AI WHY:", aiInsights?.why_this_decision)
@@ -855,6 +883,9 @@ export async function analyzeProduct(input: AnalyzeInput) {
     `Expected launch ACoS: ${launchAcosMin}–${launchAcosMax}% for the first 30–60 days. This is calibrated to ${categoryLabel} competition depth (${avgReviews.toLocaleString()} avg competitor reviews, ${sponsoredTop10Count} sponsored slots on page 1). ⚠ This is a model estimate — your actual ACoS depends on real auction CPCs.`,
     `Estimated CPC: ${cpcLabel} — derived from category benchmarks + review depth. Real CPCs vary 30–50% from model. How to find the real number: run a $50 auto campaign for 72 hours and check your Search Term Report, or use Helium 10 Cerebro / Jungle Scout Keyword Scout before launch.`,
     `PPC execution: (1) Exact Match only for 30 days — no broad match until conversion is proven. (2) Add negatives daily from the Search Term Report. (3) Scale budget only when ACoS drops below ${launchAcosMin}%. (4) Never run ads to a listing with fewer than 5 reviews.`,
+    ...(input.keepaData?.peakSalesMonths?.length
+      ? [`📅 Demand calendar: peak sales in ${input.keepaData.peakSalesMonths.join(" & ")}; slowest in ${(input.keepaData.troughSalesMonths ?? []).join(" & ")}. Source your inventory 10–12 weeks before your peak month — running out of stock during peak kills your ranking.`]
+      : []),
   ]
 
   const risks = aiInsights?.risks?.length
@@ -960,8 +991,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
   }
 
   const fbaFeeNote = input.keepaData?.realFbaFee
-    ? `$${fbaFee.toFixed(2)} (real Keepa data for this product)`
-    : `$${fbaFee.toFixed(2)} (estimated by price tier — use Amazon FBA Revenue Calculator for your exact size/weight)`
+    ? `$${fbaFee.toFixed(2)} (real Keepa data — actual fee for this product)`
+    : input.keepaData?.fbaFeeFromDimensions
+      ? `$${fbaFee.toFixed(2)} (computed from product dimensions — ${input.keepaData.sizeTier ?? "standard"} tier, ${input.keepaData.packageWeightOz?.toFixed(1) ?? "?"}oz)`
+      : `$${fbaFee.toFixed(2)} (estimated by price tier — provide an ASIN for the exact fee based on real dimensions)`
 
   const profitExplanation =
     `Your selling price is $${sellingPrice.toFixed(2)}. Amazon takes: (1) Referral fee — ${(referralFeeRate * 100).toFixed(0)}% = $${referralFee.toFixed(2)} on every sale, no exceptions. ` +
