@@ -5,8 +5,8 @@
  * CSV indices used (Keepa internal enum):
  *  [1]  = New price (cents)
  *  [3]  = Sales rank (BSR)
- *  [11] = Count of new offers (competing sellers)
- *  [15] = Rating (×10, so 43 → 4.3★)
+ *  [7]  = FBA offer count (sellers using FBA specifically)
+ *  [11] = Count of new offers (all competing sellers)
  *  [16] = Review count
  */
 
@@ -18,7 +18,8 @@ export type KeepaMonthlyPoint = {
   bsr?: number         // Sales rank (lower = better)
   price?: number       // New price in USD
   reviews?: number     // Cumulative review count
-  sellerCount?: number // Number of competing sellers
+  sellerCount?: number // Number of competing sellers (all)
+  fbaSellerCount?: number // Sellers using FBA specifically (csv[7])
 }
 
 export type KeepaProductData = {
@@ -61,6 +62,26 @@ export type KeepaProductData = {
   // Financials
   /** Actual FBA pick+pack fee from Keepa product data (dollars). Replaces our size-tier estimate. */
   realFbaFee?: number
+  /** FBA fee computed from product dimensions + 2025 Amazon size-tier table (fallback if pickAndPackFee=0) */
+  fbaFeeFromDimensions?: number
+  /** Amazon size tier (Small Standard, Large Standard, Small Oversize, etc.) */
+  sizeTier?: string
+  packageWeightOz?: number
+  dimensionsIn?: { length: number; width: number; height: number }
+  /** Monthly storage cost per unit (Q1-Q3 rate: $0.78/cu-ft). Use to estimate 90-day storage buffer. */
+  estimatedMonthlyStoragePerUnit?: number
+
+  // FBA-specific competition (more relevant than total sellers for FBA entrants)
+  /** Number of sellers using FBA fulfillment — from csv[7]. This is your real FBA competition. */
+  fbaSellerCount?: number
+
+  // Seasonal demand calendar (derived from 12 months of BSR data)
+  /** Relative demand per month: 1.0 = average, >1 = above average, <1 = slow period */
+  seasonalCalendar?: { month: string; relativeVolume: number }[]
+  /** Top 2 highest-demand months — best launch window and reorder timing */
+  peakSalesMonths?: string[]
+  /** Bottom 2 lowest-demand months — avoid launching or over-ordering here */
+  troughSalesMonths?: string[]
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -185,6 +206,85 @@ function calcPriceWar(pricePoints: { value: number }[]): { isWarning: boolean; n
   return { isWarning: false, note: `Price stable: $${min.toFixed(2)}–$${max.toFixed(2)} over 12 months.` }
 }
 
+// ─── FBA Size Tier & Fee (2025 Amazon rates) ─────────────────────────────────
+// Keepa stores packageWeight in grams×10, dimensions in mm×10.
+
+function extractPhysicalDimensions(product: Record<string, unknown>): {
+  weightOz: number; heightIn: number; widthIn: number; lengthIn: number
+} | null {
+  const rawW  = typeof product.packageWeight === "number" ? (product.packageWeight as number) : -1
+  const rawH  = typeof product.packageHeight === "number" ? (product.packageHeight as number) : -1
+  const rawWd = typeof product.packageWidth  === "number" ? (product.packageWidth  as number) : -1
+  const rawL  = typeof product.packageLength === "number" ? (product.packageLength as number) : -1
+  if (rawW < 0 || rawH < 0 || rawWd < 0 || rawL < 0) return null
+  return {
+    weightOz: (rawW  * 0.1) / 28.3495,
+    heightIn: (rawH  * 0.1) / 25.4,
+    widthIn:  (rawWd * 0.1) / 25.4,
+    lengthIn: (rawL  * 0.1) / 25.4,
+  }
+}
+
+function calcFbaSizeTier(d: { weightOz: number; heightIn: number; widthIn: number; lengthIn: number }): string {
+  const sides   = [d.heightIn, d.widthIn, d.lengthIn].sort((a, b) => b - a)
+  const longest = sides[0]!, med = sides[1]!, shortest = sides[2]!
+  if (d.weightOz <= 15 && longest <= 15 && med <= 12 && shortest <= 0.75)  return "Small Standard"
+  if (d.weightOz <= 320 && longest <= 18 && med <= 14 && shortest <= 8)    return "Large Standard"
+  if (d.weightOz <= 1120 && longest <= 60 && med <= 30)                    return "Small Oversize"
+  const girth = 2 * (med + shortest)
+  if (d.weightOz <= 2400 && longest + girth <= 130 && longest <= 108)      return "Medium Oversize"
+  return "Large Oversize"
+}
+
+/** Amazon 2025 FBA fee from size tier + weight */
+function calcFbaFeeFromDimensions(d: { weightOz: number; heightIn: number; widthIn: number; lengthIn: number }): number {
+  const tier = calcFbaSizeTier(d)
+  const weightLb = d.weightOz / 16
+  if (tier === "Small Standard") return 3.22
+  if (tier === "Large Standard") {
+    if (d.weightOz <= 4)  return 4.75
+    if (d.weightOz <= 8)  return 5.40
+    if (d.weightOz <= 12) return 6.08
+    if (d.weightOz <= 16) return 6.49
+    if (weightLb <= 1.5)  return 7.03
+    if (weightLb <= 2)    return 7.57
+    if (weightLb <= 3)    return 8.54
+    return Math.round((8.54 + Math.ceil((weightLb - 3) / 0.5) * 0.38) * 100) / 100
+  }
+  if (tier === "Small Oversize")  return Math.round((9.73  + Math.max(0, weightLb - 1) * 0.42) * 100) / 100
+  if (tier === "Medium Oversize") return Math.round((19.05 + Math.max(0, weightLb - 1) * 0.42) * 100) / 100
+  return Math.round((89.98 + Math.max(0, weightLb - 90) * 0.83) * 100) / 100
+}
+
+/** Per-unit monthly storage cost (Q1–Q3 rate: $0.78/cu-ft). Q4 surges to $2.40. */
+function calcMonthlyStorageFee(d: { heightIn: number; widthIn: number; lengthIn: number }): number {
+  const volCuFt = (d.lengthIn * d.widthIn * d.heightIn) / 1728
+  return Math.round(volCuFt * 0.78 * 1000) / 1000
+}
+
+// ─── Seasonal Calendar ───────────────────────────────────────────────────────
+
+function calcSeasonalCalendar(bsrPoints: { key: string; value: number }[]): {
+  calendar: { month: string; relativeVolume: number }[]
+  peakMonths: string[]
+  troughMonths: string[]
+} {
+  const valid = bsrPoints.filter(p => p.value > 0)
+  if (valid.length < 3) return { calendar: [], peakMonths: [], troughMonths: [] }
+  const entries = valid.map(p => ({ month: fmtMonthKey(p.key), rawVol: 1 / p.value }))
+  const avgVol  = entries.reduce((s, e) => s + e.rawVol, 0) / entries.length
+  const calendar = entries.map(e => ({
+    month:          e.month,
+    relativeVolume: Math.round((e.rawVol / avgVol) * 100) / 100,
+  }))
+  const sorted = [...calendar].sort((a, b) => b.relativeVolume - a.relativeVolume)
+  return {
+    calendar,
+    peakMonths:    sorted.slice(0, 2).map(v => v.month),
+    troughMonths:  sorted.slice(-2).map(v => v.month),
+  }
+}
+
 /** BSR-formula sales estimate — fallback when salesRankDrops not available */
 function estimateMonthlySalesByBsr(bsr: number): number {
   if (bsr <= 0) return 0
@@ -239,15 +339,17 @@ export async function getKeepaData(asin: string): Promise<KeepaProductData | nul
     // csv[16] = Review count              — available on some plans/products
     // csv[11] = New offer count (sellers) — available for most products
     // Note: csv[15] (rating ×10) not reliably available on standard plan
-    const bsrRaw         = parseCsvToMonthly(csv?.[3]  ?? null)
-    const priceRaw       = parseCsvToMonthly(csv?.[1]  ?? null)
-    const reviewRaw      = parseCsvToMonthly(csv?.[16] ?? null)
-    const sellerCountRaw = parseCsvToMonthly(csv?.[11] ?? null)
+    const bsrRaw            = parseCsvToMonthly(csv?.[3]  ?? null)
+    const priceRaw          = parseCsvToMonthly(csv?.[1]  ?? null)
+    const reviewRaw         = parseCsvToMonthly(csv?.[16] ?? null)
+    const sellerCountRaw    = parseCsvToMonthly(csv?.[11] ?? null)
+    const fbaSellerRaw      = parseCsvToMonthly(csv?.[7]  ?? null)   // FBA offer count
 
-    const bsrMonthly         = monthlyArray(bsrRaw, 1)
-    const priceMonthly       = monthlyArray(priceRaw, 100)    // cents → dollars
-    const reviewMonthly      = monthlyArray(reviewRaw, 1)
-    const sellerCountMonthly = monthlyArray(sellerCountRaw, 1)
+    const bsrMonthly            = monthlyArray(bsrRaw, 1)
+    const priceMonthly          = monthlyArray(priceRaw, 100)   // cents → dollars
+    const reviewMonthly         = monthlyArray(reviewRaw, 1)
+    const sellerCountMonthly    = monthlyArray(sellerCountRaw, 1)
+    const fbaSellerMonthly      = monthlyArray(fbaSellerRaw, 1)
 
     // ── Merge into unified monthly history ────────────────────────────
     const allKeys = Array.from(new Set([
@@ -255,19 +357,22 @@ export async function getKeepaData(asin: string): Promise<KeepaProductData | nul
       ...priceMonthly.map(p => p.key),
       ...reviewMonthly.map(p => p.key),
       ...sellerCountMonthly.map(p => p.key),
+      ...fbaSellerMonthly.map(p => p.key),
     ])).sort()
 
     const bsrMap         = new Map(bsrMonthly.map(p         => [p.key, p.value]))
     const priceMap       = new Map(priceMonthly.map(p       => [p.key, p.value]))
     const reviewMap      = new Map(reviewMonthly.map(p      => [p.key, p.value]))
     const sellerCountMap = new Map(sellerCountMonthly.map(p => [p.key, p.value]))
+    const fbaSellerMap   = new Map(fbaSellerMonthly.map(p   => [p.key, p.value]))
 
     const monthlyHistory: KeepaMonthlyPoint[] = allKeys.map(key => ({
-      month:       fmtMonthKey(key),
-      bsr:         bsrMap.get(key),
-      price:       priceMap.get(key),
-      reviews:     reviewMap.get(key),
-      sellerCount: sellerCountMap.get(key),
+      month:          fmtMonthKey(key),
+      bsr:            bsrMap.get(key),
+      price:          priceMap.get(key),
+      reviews:        reviewMap.get(key),
+      sellerCount:    sellerCountMap.get(key),
+      fbaSellerCount: fbaSellerMap.get(key),
     }))
 
     // ── Stats object (from stats=365 param) ───────────────────────────
@@ -282,6 +387,24 @@ export async function getKeepaData(asin: string): Promise<KeepaProductData | nul
       ? (stats.totalOfferCount as number)
       : undefined
     const currentSellerCount = statsSellerCount ?? sellerCountMonthly.at(-1)?.value
+
+    // FBA-specific seller count (csv[7]) — more relevant for FBA competition analysis
+    const currentFbaSellerCount = fbaSellerMonthly.at(-1)?.value
+
+    // ── Physical dimensions → real FBA size tier + fee ────────────────
+    const dims = extractPhysicalDimensions(product)
+    const sizeTier                    = dims ? calcFbaSizeTier(dims)           : undefined
+    const fbaFeeFromDimensions        = dims ? calcFbaFeeFromDimensions(dims)  : undefined
+    const estimatedMonthlyStoragePerUnit = dims ? calcMonthlyStorageFee(dims)  : undefined
+    const packageWeightOz             = dims ? Math.round(dims.weightOz * 10) / 10 : undefined
+    const dimensionsIn                = dims ? {
+      length: Math.round(dims.lengthIn * 10) / 10,
+      width:  Math.round(dims.widthIn  * 10) / 10,
+      height: Math.round(dims.heightIn * 10) / 10,
+    } : undefined
+
+    // ── Seasonal demand calendar (from BSR monthly data) ─────────────
+    const seasonalData = calcSeasonalCalendar(bsrMonthly)
 
     // salesRankDrops: Keepa returns -1 when no data — filter those out
     const rawDrops30 =
@@ -325,7 +448,7 @@ export async function getKeepaData(asin: string): Promise<KeepaProductData | nul
           ? estimateMonthlySalesByBsr(currentBsr)
           : undefined
 
-    console.log(`[Keepa] ASIN ${asin}: BSR ${currentBsr} | drops/30d ${salesDrops30 ?? "n/a"} → est. ${estimatedMonthlySales}/mo | sellers ${currentSellerCount} (${sellerCountTrend}) | FBA $${realFbaFee ?? "est"} | Amazon Buy Box: ${amazonIsSelling}`)
+    console.log(`[Keepa] ASIN ${asin}: BSR ${currentBsr} | drops/30d ${salesDrops30 ?? "n/a"} → est. ${estimatedMonthlySales}/mo | FBA sellers ${currentFbaSellerCount ?? "n/a"} | size tier ${sizeTier ?? "unknown"} | FBA fee $${fbaFeeFromDimensions ?? realFbaFee ?? "est"} | storage ~$${estimatedMonthlyStoragePerUnit?.toFixed(3) ?? "?"}/mo | peak: ${seasonalData.peakMonths.join(",")||"n/a"} | Amazon Buy Box: ${amazonIsSelling}`)
 
     return {
       asin,
@@ -347,6 +470,15 @@ export async function getKeepaData(asin: string): Promise<KeepaProductData | nul
       salesDrops90,
       reviewVelocityMonthly,
       realFbaFee,
+      fbaFeeFromDimensions,
+      sizeTier,
+      packageWeightOz,
+      dimensionsIn,
+      estimatedMonthlyStoragePerUnit,
+      fbaSellerCount: currentFbaSellerCount,
+      seasonalCalendar: seasonalData.calendar.length > 0 ? seasonalData.calendar : undefined,
+      peakSalesMonths:  seasonalData.peakMonths.length  > 0 ? seasonalData.peakMonths  : undefined,
+      troughSalesMonths: seasonalData.troughMonths.length > 0 ? seasonalData.troughMonths : undefined,
     }
   } catch (err) {
     console.error("[Keepa] Error fetching data:", err)

@@ -22,23 +22,12 @@ const TOOLS_MENU_ITEMS = [
     description: "AI-powered product images, lifestyle photos & A+ content for your listing",
     icon: ImagePlay,
   },
-  {
-    name: "Amazon FBA Seller's Guide",
-    href: "/guide",
-    description: "9-chapter free course for new Amazon FBA sellers — 2026 edition",
-    icon: BookOpen,
-  },
-  {
-    name: "Blog",
-    href: "/blog",
-    description: "Expert guides on product research, listing optimization & FBA strategy",
-    icon: Newspaper,
-  },
 ]
 
 const navigation = [
   { name: "Home", href: "/" },
   { name: "Analyze", href: "/analyze" },
+  { name: "Blog", href: "/blog" },
   { name: "Pricing", href: "/pricing" },
   { name: "About", href: "/about" },
 ]

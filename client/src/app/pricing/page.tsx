@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
@@ -5,6 +6,17 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Check, Minus } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: "Pricing",
+  description: "Start free with 5 analyses. Upgrade to SellerMentor PRO for unlimited Amazon product research, Keepa intelligence, and expert GO / NO-GO verdicts.",
+  alternates: { canonical: "/pricing" },
+  openGraph: {
+    title: "Pricing — SellerMentor",
+    description: "Start free with 5 analyses. Upgrade to PRO for unlimited Amazon product research and expert verdicts.",
+    url: "/pricing",
+  },
+}
 
 const plans = [
   {

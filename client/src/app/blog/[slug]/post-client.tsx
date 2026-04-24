@@ -6,7 +6,7 @@ import { type BlogPost, type ContentBlock } from "@/lib/blog-posts"
 import {
   ArrowRight, Clock, Calendar, ArrowLeft,
   CheckCircle2, AlertTriangle, Lightbulb, BarChart3,
-  Zap, ChevronDown,
+  Zap, ChevronDown, Mail, X,
 } from "lucide-react"
 
 function formatDate(dateStr: string) {
@@ -67,6 +67,87 @@ export function TableOfContents({ post }: { post: BlogPost }) {
         </a>
       ))}
     </nav>
+  )
+}
+
+// ─── Sticky Mobile CTA ────────────────────────────────────────────────
+export function StickyMobileCTA() {
+  const [visible, setVisible] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (!dismissed) setVisible(window.scrollY > 300)
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [dismissed])
+
+  if (!visible || dismissed) return null
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
+      <div className="bg-background/95 backdrop-blur-sm border-t border-border px-4 py-3 flex items-center gap-3 shadow-lg">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-foreground leading-tight">GO / NO-GO on your product</p>
+          <p className="text-[11px] text-muted-foreground">60 seconds. Real Amazon data.</p>
+        </div>
+        <Link
+          href="/analyze"
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors">
+          Analyze Free <ArrowRight className="h-3 w-3" />
+        </Link>
+        <button
+          onClick={() => { setDismissed(true); setVisible(false) }}
+          className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Email Capture Box ─────────────────────────────────────────────────
+export function EmailCapture() {
+  const [email, setEmail] = useState("")
+  const [submitted, setSubmitted] = useState(false)
+
+  return (
+    <div className="my-10 rounded-2xl border border-border bg-gradient-to-br from-primary/[0.05] to-transparent p-6">
+      <div className="flex items-start gap-4">
+        <div className="h-10 w-10 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Mail className="h-5 w-5 text-primary" />
+        </div>
+        <div className="flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Weekly Amazon Tips</p>
+          <p className="text-base font-bold text-foreground leading-snug">Get the edge. Every week.</p>
+          <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+            Actionable FBA strategies, product research frameworks, and market signals — straight to your inbox.
+          </p>
+          {submitted ? (
+            <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-primary">
+              <CheckCircle2 className="h-4 w-4" /> You&apos;re on the list — we&apos;ll be in touch soon!
+            </div>
+          ) : (
+            <div className="mt-4 flex gap-2">
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="flex-1 min-w-0 rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
+              />
+              <button
+                onClick={() => { if (email.includes("@")) setSubmitted(true) }}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-colors">
+                Subscribe
+              </button>
+            </div>
+          )}
+          <p className="mt-2 text-[11px] text-muted-foreground">No spam. Unsubscribe any time.</p>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -187,6 +268,7 @@ export function PostClient({ post, related }: { post: BlogPost; related: BlogPos
   return (
     <>
       <ReadingProgress />
+      <StickyMobileCTA />
 
       {/* Article Header */}
       <div className="border-b border-border bg-gradient-to-b from-muted/30 to-background">
@@ -227,7 +309,12 @@ export function PostClient({ post, related }: { post: BlogPost; related: BlogPos
 
           {/* Article */}
           <article className="flex-1 min-w-0">
-            {post.content.map((block, i) => <Block key={i} block={block} />)}
+            {post.content.map((block, i) => (
+              <div key={i}>
+                <Block block={block} />
+                {i === 3 && <EmailCapture />}
+              </div>
+            ))}
 
             {/* FAQ Accordion */}
             <FaqAccordion items={post.faqSchema} />

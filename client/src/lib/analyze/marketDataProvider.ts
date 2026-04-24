@@ -32,6 +32,10 @@ export type MarketDataResult = {
   newSellersInTop20: number
   topCompetitors?: TopCompetitor[]
   painPoints?: string[]
+  /** Pain points from real 1-2★ competitor reviews — far more accurate than title inference */
+  reviewBasedPainPoints?: string[]
+  /** "reviews" = sourced from real Amazon reviews; "titles" = inferred from product titles */
+  painPointSource?: "reviews" | "titles"
   competitorsWithOver1000Reviews?: number
   priceMin?: number
   priceMax?: number
@@ -108,6 +112,52 @@ function countKeywordInTitles(titles: string[], keyword: string): number {
     const t = title.toLowerCase()
     return words.every((w) => t.includes(w))
   }).length
+}
+
+// ─── Real pain points from competitor negative reviews ────────────────────────
+
+function extractPainPointsFromReviews(reviewTexts: string[]): string[] {
+  const allText = reviewTexts.join(" ").toLowerCase()
+  const phrases: [string, string][] = [
+    ["breaks easily / poor durability",    "break|broke|broken|falls apart|snap|snapped|cracked|fell apart"],
+    ["cheap materials / flimsy build",     "cheap|flimsy|thin|feels cheap|low quality|poor quality|bad quality|poor material"],
+    ["wrong size / sizing issues",         "too small|too large|too big|doesn't fit|size issue|sizing|narrow|too wide"],
+    ["smell / odor problems",              "smell|odor|stinks|stink|chemical smell|plastic smell"],
+    ["difficult assembly or setup",        "hard to assemble|hard to install|confusing|difficult to|instructions"],
+    ["not as described / misleading",      "not as described|misleading|false advertising|nothing like|different from picture"],
+    ["stops working quickly",              "stopped working|doesn't work|doesn't last|broke after|failed after|lasted only"],
+    ["comfort / ergonomics issues",        "uncomfortable|hurts|painful|too stiff|too hard|too soft"],
+    ["poor stitching / weak seams",        "stitching|seam|stitch|zipper broke|unraveling|thread|fraying"],
+    ["poor packaging / arrived damaged",   "arrived broken|arrived damaged|poorly packaged|crushed|missing part"],
+  ]
+  return phrases
+    .filter(([, pattern]) => new RegExp(pattern).test(allText))
+    .slice(0, 5)
+    .map(([label]) => label)
+}
+
+async function fetchCompetitorReviewPainPoints(
+  asin: string, apiKey: string, domain: string
+): Promise<string[]> {
+  try {
+    const url = new URL(RAINFOREST_BASE)
+    url.searchParams.set("api_key",          apiKey)
+    url.searchParams.set("type",             "reviews")
+    url.searchParams.set("amazon_domain",    domain)
+    url.searchParams.set("asin",             asin)
+    url.searchParams.set("filter_by_star",   "one_star,two_star")
+    url.searchParams.set("sort_by",          "most_recent")
+    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(10000) })
+    if (!res.ok) return []
+    const data = await res.json() as { reviews?: { body?: string; title?: string }[] }
+    const texts = (data?.reviews ?? [])
+      .slice(0, 15)
+      .map(r => `${r.title ?? ""} ${r.body ?? ""}`.trim())
+      .filter(Boolean)
+    return extractPainPointsFromReviews(texts)
+  } catch {
+    return []
+  }
 }
 
 function extractPainPointsFromTitles(titles: string[]): string[] {
@@ -304,6 +354,17 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
       .slice(0, 3)
       .map(c => c.asin!)
 
+    // Fetch real pain points from top competitor's negative reviews (1-2★)
+    // Runs after SERP so we have a top ASIN. Costs 1 extra credit but gives real data.
+    let reviewBasedPainPoints: string[] = []
+    if (topAsins[0]) {
+      try {
+        reviewBasedPainPoints = await fetchCompetitorReviewPainPoints(topAsins[0], apiKey, domain)
+      } catch {
+        // Optional — title-based fallback used if this fails
+      }
+    }
+
     return {
       success: true,
       avgPrice,
@@ -323,6 +384,8 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
       brandCounts: Object.keys(brandCounts).length > 0 ? brandCounts : undefined,
       dominantBrandNames: dominantBrandNames.length > 0 ? dominantBrandNames : undefined,
       topAsins: topAsins.length > 0 ? topAsins : undefined,
+      reviewBasedPainPoints: reviewBasedPainPoints.length > 0 ? reviewBasedPainPoints : undefined,
+      painPointSource: reviewBasedPainPoints.length > 0 ? "reviews" : "titles",
       review_structure_summary,
       new_seller_presence,
       keyword_saturation_ratio,

@@ -41,7 +41,7 @@ export function HeroSection() {
               </Link>
             </Button>
             <Button size="lg" variant="outline" className="h-12 rounded-xl px-8 text-base font-semibold" asChild>
-              <Link href="/guide">Amazon FBA Seller&apos;s Guide</Link>
+              <Link href="/studio">Listing Studio</Link>
             </Button>
           </div>
 

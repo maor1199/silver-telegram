@@ -1,5 +1,17 @@
+import type { Metadata } from "next"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
+
+export const metadata: Metadata = {
+  title: "About",
+  description: "SellerMentor is an AI-powered Amazon product analysis tool built to give new FBA sellers the same intelligence as a professional sourcing advisor — before they invest a dollar.",
+  alternates: { canonical: "/about" },
+  openGraph: {
+    title: "About SellerMentor",
+    description: "AI-powered Amazon product analysis built for new FBA sellers. Real economics, competition signals, and expert verdicts.",
+    url: "/about",
+  },
+}
 
 export default function AboutPage() {
   return (

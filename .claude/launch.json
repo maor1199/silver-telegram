@@ -12,6 +12,12 @@
       "runtimeExecutable": "cmd",
       "runtimeArgs": ["/c", "npm", "--prefix", "server", "run", "dev"],
       "port": 3001
+    },
+    {
+      "name": "carcheck-ai",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "npm", "--prefix", "../carcheck-ai", "run", "dev", "--", "-p", "3002"],
+      "port": 3002
     }
   ]
 }
