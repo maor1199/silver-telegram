@@ -65,6 +65,8 @@ export async function POST(req: Request) {
     const sellingPrice = Number(body.sellingPrice ?? body.price ?? 44) || 44
     const unitCost = Number(body.unitCost ?? body.cost ?? 4) || 4
     const shippingCost = Number(body.shippingCost ?? body.shipping ?? 2) || 2
+    // ASIN override: if user provides a specific ASIN, use it for Keepa (more accurate than SERP top result)
+    const userAsin = typeof body.asin === "string" && /^[A-Z0-9]{10}$/.test(body.asin.trim()) ? body.asin.trim() : null
 
     const marketData = await getMarketData(typeof keyword === "string" ? keyword : "cat cave")
     if (!marketData.success) {
@@ -77,13 +79,14 @@ export async function POST(req: Request) {
       marketData?.painPoints ?? []
     )
 
-    // Fetch Keepa BEFORE analysis so it feeds into the verdict + AI prompt
-    const topAsin = marketData?.topAsins?.[0]
+    // Fetch Keepa BEFORE analysis so it feeds into the verdict + AI prompt.
+    // Priority: user-provided ASIN > top ASIN from SERP results.
+    const keepaAsin = userAsin ?? marketData?.topAsins?.[0]
     let keepaData = null
-    if (topAsin) {
+    if (keepaAsin) {
       try {
-        keepaData = await getKeepaData(topAsin)
-        console.log(`[Keepa] Fetched data for ASIN ${topAsin}:`, keepaData ? `BSR trend: ${keepaData.bsrTrend}, est. sales: ${keepaData.estimatedMonthlySales}` : "null")
+        keepaData = await getKeepaData(keepaAsin)
+        console.log(`[Keepa] Fetched data for ASIN ${keepaAsin}${userAsin ? " (user-provided)" : " (SERP top)"}:`, keepaData ? `BSR trend: ${keepaData.bsrTrend}, est. sales: ${keepaData.estimatedMonthlySales}` : "null")
       } catch (e) {
         console.warn("[Keepa] Fetch failed (analysis continues without it):", e)
       }

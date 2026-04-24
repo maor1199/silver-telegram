@@ -211,6 +211,12 @@ export async function analyzeProduct(input: AnalyzeInput) {
     1.0
   const baseCpcFinal = baseCpcDollars * categoryWeight
 
+  // CPC range — declared here so it's available to both the advertising card and alternative_keywords_with_cost.
+  // Uses baseCpcFinal (category × review-depth calibrated) as midpoint; ±40% spread reflects real auction variance.
+  const estimatedMinCpc = Math.max(0.15, Math.round(baseCpcFinal * 0.60 * 100) / 100)
+  const estimatedMaxCpc = Math.round(baseCpcFinal * 1.60 * 100) / 100
+  const cpcLabel = `$${estimatedMinCpc.toFixed(2)}–$${estimatedMaxCpc.toFixed(2)}/click (est.)`
+
   const launchAdCostPerUnit = baseCpcFinal / LAUNCH_CVR
   // CPC-based ACoS on day 1 (before reviews improve CVR) — used to trigger the PPC cannibalization warning
   const cpcBasedLaunchAcos = sellingPrice > 0 ? launchAdCostPerUnit / sellingPrice : 0
@@ -810,15 +816,12 @@ export async function analyzeProduct(input: AnalyzeInput) {
     /\b(sport|fitness|gym|yoga|outdoor|hiking)\b/.test(keywordLower) ? "sports & fitness" :
     /\b(kitchen|cooking|baking|coffee|cookware)\b/.test(keywordLower) ? "kitchen" :
     "home & lifestyle"
-  const cpcRangeLabel = avgReviews >= 5000
-    ? "$1.8–$3.8" : avgReviews >= 1000
-    ? "$1.0–$2.5" : "$0.5–$1.4"
   const launchAcosMin = Math.round(assumedAcos * 100)
   const launchAcosMax = Math.min(75, launchAcosMin + 20)
   const advertising = [
-    `Launch ACoS assumption: ${launchAcosMin}–${launchAcosMax}% for the first 30–60 days (market-calibrated for this niche).`,
-    `Typical CPC in ${categoryLabel}: ${cpcRangeLabel}/click — based on ${avgReviews.toLocaleString()} avg competitor reviews and current ad density.`,
-    "PPC plan: start exact/phrase long-tail, add negatives daily, cap broad until conversion is proven.",
+    `Expected launch ACoS: ${launchAcosMin}–${launchAcosMax}% for the first 30–60 days. This is calibrated to ${categoryLabel} competition depth (${avgReviews.toLocaleString()} avg competitor reviews, ${sponsoredTop10Count} sponsored slots on page 1). ⚠ This is a model estimate — your actual ACoS depends on real auction CPCs.`,
+    `Estimated CPC: ${cpcLabel} — derived from category benchmarks + review depth. Real CPCs vary 30–50% from model. How to find the real number: run a $50 auto campaign for 72 hours and check your Search Term Report, or use Helium 10 Cerebro / Jungle Scout Keyword Scout before launch.`,
+    `PPC execution: (1) Exact Match only for 30 days — no broad match until conversion is proven. (2) Add negatives daily from the Search Term Report. (3) Scale budget only when ACoS drops below ${launchAcosMin}%. (4) Never run ads to a listing with fewer than 5 reviews.`,
   ]
 
   const risks = aiInsights?.risks?.length
@@ -902,10 +905,6 @@ export async function analyzeProduct(input: AnalyzeInput) {
   )
   const what_would_make_go = whatWouldFlipFromExecutionPlan(verdict, execution_plan)
 
-  const estimatedCpcRange = avgReviews >= 2000 ? { min: 1.5, max: 3 } : avgReviews >= 500 ? { min: 0.8, max: 2 } : { min: 0.3, max: 1 }
-  const minCpc = Number.isFinite(estimatedCpcRange.min) ? estimatedCpcRange.min : 0.5
-  const maxCpc = Number.isFinite(estimatedCpcRange.max) ? estimatedCpcRange.max : 2
-  const cpcLabel = `$${minCpc.toFixed(1)}–$${maxCpc.toFixed(1)}/click`
   const alternative_keywords_with_cost = alternative_keywords.map((kw) => ({
     keyword: String(kw).trim(),
     estimatedCpc: cpcLabel,
@@ -922,15 +921,23 @@ export async function analyzeProduct(input: AnalyzeInput) {
     cogs,
     ppcCostPerUnit: Math.round(ppcCostPerUnit * 100) / 100,
     assumedAcosPercent: Math.round(assumedAcos * 100),
+    acosRangePercent: `${launchAcosMin}–${launchAcosMax}%`,
+    estimatedCpcRange: cpcLabel,
     profitAfterAds: Math.round(profitAfterAds * 100) / 100,
   }
 
+  const fbaFeeNote = input.keepaData?.realFbaFee
+    ? `$${fbaFee.toFixed(2)} (real Keepa data for this product)`
+    : `$${fbaFee.toFixed(2)} (estimated by price tier — use Amazon FBA Revenue Calculator for your exact size/weight)`
+
   const profitExplanation =
-    `We start with your selling price. We subtract: (1) Amazon referral fee — ${(referralFeeRate * 100).toFixed(0)}% of selling price for this category, paid to Amazon on every sale. ` +
-    `(2) FBA fulfillment fee — $${fbaFee.toFixed(2)} estimated for this price tier (pick, pack, ship, and customer service; provide your exact FBA fee for a more precise calculation). ` +
-    "(3) COGS — your unit cost plus shipping to FBA. " +
-    "(4) PPC cost per unit — estimated as ACoS × selling price (ACoS = ad spend as % of sales; launch is often 45–65% for new listings, optimized 25–35%). " +
-    "What remains is profit after ads. Returns, coupons, and storage can reduce this by 10–25% in practice."
+    `Your selling price is $${sellingPrice.toFixed(2)}. Amazon takes: (1) Referral fee — ${(referralFeeRate * 100).toFixed(0)}% = $${referralFee.toFixed(2)} on every sale, no exceptions. ` +
+    `(2) FBA fee — ${fbaFeeNote}. ` +
+    `(3) COGS — $${cogs.toFixed(2)} (unit + shipping to FBA). ` +
+    `(4) PPC cost — modeled at ${Math.round(assumedAcos * 100)}% ACoS = $${ppcCostPerUnit.toFixed(2)}/unit. ` +
+    `⚠ PPC is an estimate. Real ACoS during launch is typically ${launchAcosMin}–${launchAcosMax}% — it depends on your actual CPC, which you can only know from live campaign data. ` +
+    `Estimated CPC in this niche: ${cpcLabel}. Verify with Helium 10 Cerebro or Jungle Scout Keyword Scout before you launch. ` +
+    `After all deductions: $${profitAfterAds.toFixed(2)} profit per unit. Returns (3–8%), storage, and coupons can cut this by another 10–25%.`
 
   const financialStressTest =
     `Net margin: ${estimatedMarginPercent.toFixed(1)}%. Threshold: ${marginThresholdPct}%${isHighComplexity ? " (high-complexity product)." : "."} ` +

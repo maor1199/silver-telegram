@@ -937,7 +937,12 @@ export default function WarRoom() {
                           <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">−${(Number(pb.cogs) || 0).toFixed(2)}</td>
                         </tr>
                         <tr className="border-b border-border">
-                          <td className="py-2 pl-4 text-muted-foreground">− PPC cost ({Number(pb.assumedAcosPercent) || 0}% ACoS)</td>
+                          <td className="py-2 pl-4 text-muted-foreground">
+                            − PPC cost
+                            <span className="ml-1 text-xs opacity-70">
+                              ({String(pb.acosRangePercent ?? `${Number(pb.assumedAcosPercent) || 0}%`)} ACoS est.)
+                            </span>
+                          </td>
                           <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">−${(Number(pb.ppcCostPerUnit) || 0).toFixed(2)}</td>
                         </tr>
                         <tr className="bg-muted/30">
@@ -946,6 +951,13 @@ export default function WarRoom() {
                         </tr>
                       </tbody>
                     </table>
+                    {pb.estimatedCpcRange != null && (
+                      <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed px-1">
+                        ⚠ PPC is estimated — actual ACoS depends on real CPC from live auction data.
+                        Est. CPC: <strong>{String(pb.estimatedCpcRange)}</strong>.
+                        Verify with Helium 10 Cerebro or Jungle Scout before launch.
+                      </p>
+                    )}
                   </div>
                 )}
               </section>

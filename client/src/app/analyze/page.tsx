@@ -31,6 +31,7 @@ export default function AnalyzePage() {
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
     product: "",
+    asin: "",
     manufacturingCost: "",
     shippingCost: "",
     sellingPrice: "",
@@ -133,6 +134,7 @@ export default function AnalyzePage() {
           shippingCost: Number(formData.shippingCost) || 0,
           differentiation: formData.advantage || undefined,
           complexity: formData.complexity || undefined,
+          asin: formData.asin || undefined,
         },
         { accessToken: accessToken || undefined }
       )
@@ -390,18 +392,32 @@ export default function AnalyzePage() {
             {step === 1 && (
               <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                 <h2 className="text-2xl font-bold text-foreground mb-2">
-                  What product are you thinking about?
+                  What product are you considering?
                 </h2>
-                <p className="text-muted-foreground mb-8 leading-relaxed">
-                  Enter the product keyword or name you{"'"}re considering selling on Amazon.
+                <p className="text-muted-foreground mb-6 leading-relaxed">
+                  Enter the product keyword you want to sell on Amazon. Optionally, add a specific ASIN to get Keepa data for that exact product.
                 </p>
-                <Input
-                  placeholder="e.g. stainless steel water bottle"
-                  value={formData.product}
-                  onChange={(e) => updateField("product", e.target.value)}
-                  className="h-12 rounded-xl border-border bg-card text-base placeholder:text-muted-foreground/50 focus-visible:ring-primary/30"
-                  autoFocus
-                />
+                <div className="flex flex-col gap-3">
+                  <Input
+                    placeholder="e.g. stainless steel water bottle"
+                    value={formData.product}
+                    onChange={(e) => updateField("product", e.target.value)}
+                    className="h-12 rounded-xl border-border bg-card text-base placeholder:text-muted-foreground/50 focus-visible:ring-primary/30"
+                    autoFocus
+                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="ASIN (optional) — e.g. B08N5WRWNW"
+                      value={formData.asin}
+                      onChange={(e) => updateField("asin", e.target.value.trim().toUpperCase())}
+                      className="h-10 rounded-xl border-border bg-card text-sm placeholder:text-muted-foreground/40 focus-visible:ring-primary/30 font-mono tracking-wider"
+                      maxLength={10}
+                    />
+                    <span className="shrink-0 text-xs text-muted-foreground whitespace-nowrap">
+                      Improves Keepa accuracy
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
 

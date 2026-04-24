@@ -5,6 +5,8 @@ export interface RunAnalysisParams {
   shippingCost: number
   differentiation?: string
   complexity?: string
+  /** Optional: provide a specific ASIN to fetch real Keepa data instead of top SERP result */
+  asin?: string
 }
 
 export interface RunAnalysisOptions {
@@ -51,6 +53,7 @@ export async function runAnalysis(
       shippingCost: params.shippingCost,
       ...(params.differentiation != null && { differentiation: params.differentiation }),
       ...(params.complexity != null && { complexity: params.complexity }),
+      ...(params.asin?.trim() && { asin: params.asin.trim().toUpperCase() }),
     }),
   })
 
