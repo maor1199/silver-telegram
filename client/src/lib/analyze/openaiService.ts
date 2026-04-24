@@ -65,6 +65,21 @@ export type AIInsightsInput = {
   sponsored_top10_count?: number
   sponsored_total_count?: number
   signals?: AISignalsInput
+  // Keepa 12-month real market intelligence
+  keepa_bsr_trend?: "improving" | "declining" | "stable"
+  keepa_current_bsr?: number
+  keepa_estimated_monthly_sales?: number
+  keepa_sales_drops_30?: number
+  keepa_is_seasonal?: boolean
+  keepa_seasonality_note?: string
+  keepa_is_price_war?: boolean
+  keepa_price_war_note?: string
+  keepa_review_velocity_monthly?: number
+  keepa_current_price?: number
+  keepa_amazon_is_selling?: boolean
+  keepa_out_of_stock_pct30?: number
+  keepa_seller_count_trend?: "growing" | "shrinking" | "stable"
+  keepa_real_fba_fee?: number
 }
 
 export type AIInsights = {
@@ -304,6 +319,14 @@ Rules:
 - If the market is bad — say it directly
 - If there is a real opportunity — say exactly how to take it
 - Your client is paying for your honest judgment — give it to them
+
+KEEPA INTELLIGENCE RULES (when Keepa data is present — this is real Amazon historical data):
+- BSR DECLINING: This means real demand is shrinking. Mention in why_this_decision. Use phrase: "Keepa 12-month BSR shows demand declining — this market is contracting." Never launch into a declining market without strong differentiation and pricing advantage.
+- BSR IMPROVING: Demand is growing. Use as a GO signal. Mention in expert_insight: "Keepa shows BSR improving over 12 months — demand is real and growing."
+- ESTIMATED MONTHLY SALES: Use this number to ground your market size claims. Example: "Top competitor sells ~450 units/month — at your target price that's a $X market opportunity."
+- SEASONAL WARNING: Mention in early_strategy_guidance. Frame timing risk: "Keepa shows demand peaks X months from now — order now, launch then, or wait for next cycle."
+- PRICE WAR: Factor into profit_reality. Example: "Keepa shows 35% price range over 12 months — this market has price war dynamics. Your margin of $X could compress further."
+- REVIEW VELOCITY: Use in entry_reality. Example: "Top competitor gains ~150 reviews/month — at that rate you'd need 8 months of Vine + organic reviews to match their social proof."
 
 CORE RULES
 - Use real market signals: review tiers, advertising pressure, price band, keyword saturation, brand structure, new seller presence, market maturity.
@@ -666,6 +689,80 @@ function buildUserPrompt(input: AIInsightsInput): string {
         (c) =>
           `#${c.position} $${c.price.toFixed(2)} | ${c.ratingsTotal} reviews | ${c.brand ?? "—"} ${c.sponsored ? "sponsored" : "organic"} | ${(c.title || "").slice(0, 50)}…`
       )
+    )
+  }
+
+  // Keepa 12-month historical intelligence — all signals in one block
+  if (input.keepa_bsr_trend) {
+    const trendLabel =
+      input.keepa_bsr_trend === "improving" ? "📈 IMPROVING (BSR dropping = sales rising)"
+      : input.keepa_bsr_trend === "declining" ? "📉 DECLINING (BSR rising = sales falling)"
+      : "➡️ STABLE"
+
+    lines.push(
+      "",
+      "=== KEEPA 12-MONTH MARKET INTELLIGENCE (real competitor data) ===",
+      `Demand trend (BSR): ${trendLabel}`,
+    )
+
+    // Sales velocity — prefer salesDrops (actual events) over BSR formula
+    if (input.keepa_sales_drops_30 != null) {
+      lines.push(`Sales rank drops last 30d: ${input.keepa_sales_drops_30} (each drop ≈ 1 sale → ~${Math.round(input.keepa_sales_drops_30 * 1.2)} units/month)`)
+    } else if (input.keepa_estimated_monthly_sales) {
+      lines.push(`Est. monthly sales (BSR formula): ~${input.keepa_estimated_monthly_sales.toLocaleString()} units/month`)
+    }
+    if (input.keepa_current_bsr)  lines.push(`Current BSR: #${input.keepa_current_bsr.toLocaleString()}`)
+    if (input.keepa_current_price) lines.push(`Current market price: $${input.keepa_current_price.toFixed(2)}`)
+
+    // Review velocity
+    if (input.keepa_review_velocity_monthly) {
+      lines.push(`Review velocity: ~${input.keepa_review_velocity_monthly} new reviews/month`)
+    }
+
+    // Amazon selling flag — CRITICAL signal
+    if (input.keepa_amazon_is_selling) {
+      lines.push(`🚨 AMAZON IS SELLING THIS PRODUCT — Buy Box is near-impossible for 3P sellers. Mention this prominently in expert_insight.`)
+    }
+
+    // Out-of-stock opportunity
+    if (input.keepa_out_of_stock_pct30 != null && input.keepa_out_of_stock_pct30 > 25) {
+      lines.push(`📦 SUPPLY SHORTAGE: top seller was OOS ${input.keepa_out_of_stock_pct30.toFixed(0)}% of the last 30 days — unmet demand. Mention as opportunity.`)
+    }
+
+    // Seller count trend
+    if (input.keepa_seller_count_trend === "growing") {
+      lines.push(`⚠️ SELLER COUNT RISING: more competitors entering — commoditization risk. Mention in risks.`)
+    } else if (input.keepa_seller_count_trend === "shrinking") {
+      lines.push(`📉 SELLER COUNT SHRINKING: competitors leaving — possible opportunity OR market dying. Contextualize with BSR trend.`)
+    }
+
+    // Price stability / price war
+    if (input.keepa_is_price_war) {
+      lines.push(`⚠️ PRICE WAR: ${input.keepa_price_war_note}`)
+    } else {
+      lines.push(`Price stability: stable over 12 months`)
+    }
+
+    // Seasonality
+    if (input.keepa_is_seasonal) {
+      lines.push(`⚠️ SEASONAL WARNING: ${input.keepa_seasonality_note}`)
+    }
+
+    // Real FBA fee
+    if (input.keepa_real_fba_fee != null) {
+      lines.push(`Actual FBA fee for this product: $${input.keepa_real_fba_fee.toFixed(2)} (used in profit calculation)`)
+    }
+
+    lines.push(
+      "",
+      "MANDATORY — HOW TO USE KEEPA DATA:",
+      "- DECLINING BSR: warn explicitly in why_this_decision + expert_insight with the actual trend.",
+      "- IMPROVING BSR: highlight as key GO signal with market size numbers.",
+      "- AMAZON SELLING: lead with this in expert_insight — it changes the competitive reality entirely.",
+      "- OOS SHORTAGE: mention as a concrete opportunity (unmet demand = faster ranking).",
+      "- RATING DECLINING: mention competitor weakness that the seller can exploit in differentiation.",
+      "- SELLER COUNT GROWING: mention commoditization risk in risks section.",
+      "- Ground every market size claim with the actual sales number from Keepa.",
     )
   }
 

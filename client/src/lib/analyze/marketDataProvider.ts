@@ -8,6 +8,7 @@ const SERP_SIZE = 30
 
 export type TopCompetitor = {
   position: number
+  asin?: string
   title: string
   price: number
   ratingsTotal: number
@@ -37,6 +38,8 @@ export type MarketDataResult = {
   sponsoredShare?: number
   brandCounts?: Record<string, number>
   dominantBrandNames?: string[]
+  /** Top organic (non-sponsored) ASINs for Keepa lookup */
+  topAsins?: string[]
   /** Same signals as server (full first page, up to 30) */
   review_structure_summary?: string
   new_seller_presence?: NewSellerPresence
@@ -197,6 +200,7 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
     for (let i = 0; i < limit; i++) {
       const r = results[i] as Record<string, unknown>
       const title = typeof r?.title === "string" ? r.title.trim() : ""
+      const asin = typeof r?.asin === "string" ? r.asin.trim() : undefined
       const priceVal = (r?.price as { value?: number })?.value ?? (Array.isArray((r?.prices as { value?: number }[])) ? (r.prices as { value?: number }[])[0]?.value : undefined) ?? 0
       const price = parsePrice(priceVal)
       const ratingsTotal = typeof r?.ratings_total === "number" ? r.ratings_total : 0
@@ -208,6 +212,7 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
 
       topCompetitors.push({
         position: i + 1,
+        asin: asin || undefined,
         title: title || `Competitor ${i + 1}`,
         price,
         ratingsTotal,
@@ -293,6 +298,12 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
     const brandEntries = Object.entries(brandCounts).sort((a, b) => b[1] - a[1])
     const dominantBrandNames = dominantBrand ? brandEntries.filter(([, c]) => c >= 2).map(([name]) => name) : []
 
+    // Top organic ASINs for Keepa lookup (skip sponsored)
+    const topAsins = topCompetitors
+      .filter(c => !c.sponsored && c.asin)
+      .slice(0, 3)
+      .map(c => c.asin!)
+
     return {
       success: true,
       avgPrice,
@@ -311,6 +322,7 @@ export async function getMarketData(keyword: string): Promise<MarketDataResult> 
       sponsoredShare,
       brandCounts: Object.keys(brandCounts).length > 0 ? brandCounts : undefined,
       dominantBrandNames: dominantBrandNames.length > 0 ? dominantBrandNames : undefined,
+      topAsins: topAsins.length > 0 ? topAsins : undefined,
       review_structure_summary,
       new_seller_presence,
       keyword_saturation_ratio,

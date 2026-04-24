@@ -36,7 +36,21 @@ import {
   ChevronRight,
   Flame,
   Save,
+  TrendingUp as TrendUp,
+  Search,
+  Info,
 } from "lucide-react"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+} from "recharts"
+import type { KeepaProductData } from "@/lib/keepa/keepaService"
 import { getAnalysisResult, setAnalysisResult } from "@/lib/analysis-store"
 import { normalizeAnalysisResponse } from "@/lib/analysisApi"
 import { createClient } from "@/lib/supabase/client"
@@ -308,7 +322,11 @@ export default function WarRoom() {
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const [activeTab, setActiveTab] = useState<"overview" | "deep-dive" | "execution">("overview")
+  const [activeTab, setActiveTab] = useState<"overview" | "deep-dive" | "execution" | "market-history">("overview")
+  const [asinInput, setAsinInput] = useState("")
+  const [asinLoading, setAsinLoading] = useState(false)
+  const [asinError, setAsinError] = useState<string | null>(null)
+  const [keepaData, setKeepaData] = useState<KeepaProductData | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -346,7 +364,12 @@ export default function WarRoom() {
             setError(typeof raw.error === "string" ? raw.error : "The analysis engine returned an error.")
           } else {
             const normalized = normalizeAnalysisResponse(raw)
-            setData(normalized ? (normalized as unknown as Record<string, unknown>) : raw)
+            const finalData = normalized ? (normalized as unknown as Record<string, unknown>) : raw
+            setData(finalData)
+            // Extract keepaData if present
+            if (finalData?.keepaData && typeof finalData.keepaData === "object") {
+              setKeepaData(finalData.keepaData as KeepaProductData)
+            }
           }
         }
       } catch (e) {
@@ -472,7 +495,9 @@ export default function WarRoom() {
   const marketRealityOverview =
     safeStr(R?.market_reality ?? analysisData?.market_reality) ||
     safeStr(R?.advisor_implication_expert_insight ?? analysisData?.advisor_implication_expert_insight)
-  const marketRealityText = marketRealityOverview || advisorImplicationExpertInsight
+  const marketRealityText = marketRealityOverview ||
+    safeStr(R?.expert_insight ?? analysisData?.expert_insight) ||
+    safeStr(R?.advisorImplicationExpertInsight ?? analysisData?.advisorImplicationExpertInsight ?? R?.advisor_implication_expert_insight)
   const sentences = marketRealityText
     ?.split(/[.?!]/)
     .map((s) => s.trim())
@@ -724,19 +749,24 @@ export default function WarRoom() {
               </div>
 
               {/* Navigation Tabs */}
-              <div className="mt-8 flex items-center justify-center gap-1 rounded-xl bg-secondary/50 p-1 w-fit mx-auto">
-                {(["overview", "deep-dive", "execution"] as const).map((tab) => (
+              <div className="mt-8 flex items-center justify-center gap-1 rounded-xl bg-secondary/50 p-1 w-fit mx-auto flex-wrap">
+                {([
+                  { id: "overview",        label: "Overview" },
+                  { id: "deep-dive",       label: "Deep Dive" },
+                  { id: "execution",       label: "Execution Plan" },
+                  { id: "market-history",  label: keepaData ? "📈 Market History" : "Market History" },
+                ] as const).map((tab) => (
                   <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      "rounded-lg px-5 py-2 text-xs font-bold transition-all capitalize",
-                      activeTab === tab
+                      "rounded-lg px-4 py-2 text-xs font-bold transition-all",
+                      activeTab === tab.id
                         ? "bg-card text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    {tab === "deep-dive" ? "Deep Dive" : tab === "execution" ? "Execution Plan" : "Overview"}
+                    {tab.label}
                   </button>
                 ))}
               </div>
@@ -1340,6 +1370,326 @@ export default function WarRoom() {
                   )}
                 </div>
               </section>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════
+              SECTION 4 — MARKET HISTORY (Keepa Data)
+              BSR 12 months, Price History, Review Growth, Risk Flags
+              ═══════════════════════════════════════════════ */}
+          {activeTab === "market-history" && (
+            <div className="mt-10 flex flex-col gap-8 animate-in fade-in duration-300">
+
+              {/* If no keepa data — show ASIN search */}
+              {!keepaData ? (
+                <section>
+                  <div className="rounded-2xl border border-border bg-card p-8 text-center">
+                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                      <BarChart3 className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="text-base font-bold text-foreground">Market History Not Available</h3>
+                    <p className="mt-2 text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
+                      No ASIN was found in search results. Enter a competitor ASIN to fetch 12 months of BSR, price, and review history.
+                    </p>
+                    <div className="mt-6 flex items-center justify-center gap-2 max-w-xs mx-auto">
+                      <input
+                        type="text"
+                        value={asinInput}
+                        onChange={e => setAsinInput(e.target.value.toUpperCase())}
+                        placeholder="e.g. B08N5WRWNW"
+                        maxLength={10}
+                        className="flex-1 h-10 rounded-xl border border-border bg-background px-4 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                      <button
+                        disabled={asinInput.length !== 10 || asinLoading}
+                        onClick={async () => {
+                          setAsinLoading(true)
+                          setAsinError(null)
+                          try {
+                            const res = await fetch(`/api/keepa/product?asin=${asinInput}`)
+                            const json = await res.json()
+                            if (!res.ok) throw new Error(json.error ?? "Failed")
+                            setKeepaData(json as KeepaProductData)
+                          } catch (e) {
+                            setAsinError(e instanceof Error ? e.message : "Failed to fetch data")
+                          } finally {
+                            setAsinLoading(false)
+                          }
+                        }}
+                        className="h-10 px-4 rounded-xl bg-primary text-xs font-bold text-primary-foreground disabled:opacity-50 hover:bg-primary/90 transition-colors"
+                      >
+                        {asinLoading ? "Loading..." : "Fetch"}
+                      </button>
+                    </div>
+                    {asinError && <p className="mt-3 text-xs text-destructive">{asinError}</p>}
+                    <p className="mt-3 text-[11px] text-muted-foreground">Find an ASIN in the competitor&apos;s Amazon URL: amazon.com/dp/<strong>B08N5WRWNW</strong></p>
+                  </div>
+                </section>
+              ) : (
+                <>
+                  {/* Risk & Opportunity Flags */}
+                  {(keepaData.amazonIsSelling || keepaData.isSeasonalWarning || keepaData.isPriceWarWarning || keepaData.sellerCountTrend === "growing" || (keepaData.outOfStockPct30 != null && keepaData.outOfStockPct30 > 25)) && (
+                    <section>
+                      <div className="flex flex-col gap-3">
+                        {keepaData.amazonIsSelling && (
+                          <div className="flex items-start gap-3 rounded-2xl border border-red-400/60 dark:border-red-700/40 bg-red-50/60 dark:bg-red-950/25 p-4">
+                            <XCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-bold text-red-700 dark:text-red-400">Amazon Sells This Product Directly</p>
+                              <p className="mt-0.5 text-sm text-red-600/80 dark:text-red-400/80">Amazon.com holds the Buy Box. As a 3P seller you will almost never win it — you need a true private-label differentiation to justify entering this market.</p>
+                            </div>
+                          </div>
+                        )}
+                        {keepaData.outOfStockPct30 != null && keepaData.outOfStockPct30 > 25 && (
+                          <div className="flex items-start gap-3 rounded-2xl border border-emerald-300/60 dark:border-emerald-700/40 bg-emerald-50/50 dark:bg-emerald-950/20 p-4">
+                            <Package className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Supply Shortage — Unmet Demand</p>
+                              <p className="mt-0.5 text-sm text-emerald-600/80 dark:text-emerald-400/80">Top competitor was out of stock <strong>{keepaData.outOfStockPct30.toFixed(0)}%</strong> of the last 30 days. Demand exceeds supply — a well-stocked new seller can capture ranking quickly.</p>
+                            </div>
+                          </div>
+                        )}
+                        {keepaData.sellerCountTrend === "growing" && (
+                          <div className="flex items-start gap-3 rounded-2xl border border-amber-300/60 dark:border-amber-700/40 bg-amber-50/50 dark:bg-amber-950/20 p-4">
+                            <Users className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Rising Seller Count — Commoditization Risk</p>
+                              <p className="mt-0.5 text-sm text-amber-700/80 dark:text-amber-400/80">The number of sellers listing this product is trending up. Price pressure will increase — differentiation is mandatory to avoid a race to the bottom.</p>
+                            </div>
+                          </div>
+                        )}
+                        {keepaData.isSeasonalWarning && (
+                          <div className="flex items-start gap-3 rounded-2xl border border-amber-300/60 dark:border-amber-700/40 bg-amber-50/50 dark:bg-amber-950/20 p-4">
+                            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Seasonal Product Warning</p>
+                              <p className="mt-0.5 text-sm text-amber-700/80 dark:text-amber-400/80">{keepaData.seasonalityNote}</p>
+                            </div>
+                          </div>
+                        )}
+                        {keepaData.isPriceWarWarning && (
+                          <div className="flex items-start gap-3 rounded-2xl border border-red-300/60 dark:border-red-700/40 bg-red-50/50 dark:bg-red-950/20 p-4">
+                            <TrendingDown className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-bold text-red-700 dark:text-red-400">Price War Detected</p>
+                              <p className="mt-0.5 text-sm text-red-600/80 dark:text-red-400/80">{keepaData.priceWarNote}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Key Metrics Strip */}
+                  <section>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      {keepaData.currentBsr != null && (
+                        <div className="rounded-2xl border border-border bg-card p-4 text-center">
+                          <p className="text-xl font-black text-foreground">#{keepaData.currentBsr.toLocaleString()}</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">BSR</p>
+                          <p className={cn("text-[10px] mt-0.5 font-medium",
+                            keepaData.bsrTrend === "improving" ? "text-emerald-600 dark:text-emerald-400" :
+                            keepaData.bsrTrend === "declining" ? "text-red-500" : "text-muted-foreground"
+                          )}>
+                            {keepaData.bsrTrend === "improving" ? "↑ growing" : keepaData.bsrTrend === "declining" ? "↓ declining" : "→ stable"}
+                          </p>
+                        </div>
+                      )}
+                      {keepaData.estimatedMonthlySales != null && (
+                        <div className="rounded-2xl border border-border bg-card p-4 text-center">
+                          <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">~{keepaData.estimatedMonthlySales.toLocaleString()}</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">Est. Sales/Mo</p>
+                          {keepaData.salesDrops30 != null && (
+                            <p className="text-[10px] mt-0.5 text-muted-foreground">{keepaData.salesDrops30} rank drops/30d</p>
+                          )}
+                        </div>
+                      )}
+                      {keepaData.currentPrice != null && (
+                        <div className="rounded-2xl border border-border bg-card p-4 text-center">
+                          <p className="text-xl font-black text-foreground">${keepaData.currentPrice.toFixed(2)}</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">Current Price</p>
+                          {keepaData.realFbaFee != null && (
+                            <p className="text-[10px] mt-0.5 text-muted-foreground">FBA fee: ${keepaData.realFbaFee.toFixed(2)}</p>
+                          )}
+                        </div>
+                      )}
+                      {keepaData.currentReviewCount != null && (
+                        <div className="rounded-2xl border border-border bg-card p-4 text-center">
+                          <p className="text-xl font-black text-foreground">{keepaData.currentReviewCount.toLocaleString()}</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">Total Reviews</p>
+                          {keepaData.reviewVelocityMonthly > 0 && (
+                            <p className="text-[10px] mt-0.5 text-muted-foreground">+{keepaData.reviewVelocityMonthly}/mo</p>
+                          )}
+                        </div>
+                      )}
+                      {keepaData.currentSellerCount != null && (
+                        <div className="rounded-2xl border border-border bg-card p-4 text-center">
+                          <p className="text-xl font-black text-foreground">{keepaData.currentSellerCount}</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">Competing Sellers</p>
+                          <p className={cn("text-[10px] mt-0.5 font-medium",
+                            keepaData.sellerCountTrend === "growing" ? "text-amber-500" :
+                            keepaData.sellerCountTrend === "shrinking" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                          )}>
+                            {keepaData.sellerCountTrend === "growing" ? "↑ commoditizing" : keepaData.sellerCountTrend === "shrinking" ? "↓ consolidating" : "→ stable"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  {/* BSR History Chart */}
+                  {keepaData.monthlyHistory.some(p => p.bsr != null) && (
+                    <section>
+                      <div className="mb-4 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4 text-primary" />
+                            Sales Rank (BSR) — 12 Months
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Lower = more sales.{" "}
+                            <span className={cn(
+                              "font-semibold",
+                              keepaData.bsrTrend === "improving" ? "text-emerald-600" :
+                              keepaData.bsrTrend === "declining" ? "text-red-500" : "text-muted-foreground"
+                            )}>
+                              Trend: {keepaData.bsrTrend === "improving" ? "📈 Improving (demand growing)" :
+                                       keepaData.bsrTrend === "declining" ? "📉 Declining (demand falling)" :
+                                       "➡️ Stable"}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-border bg-card p-4">
+                        <ResponsiveContainer width="100%" height={220}>
+                          <LineChart data={keepaData.monthlyHistory.filter(p => p.bsr != null)} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="month" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" />
+                            <YAxis reversed tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} width={55}
+                              tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
+                            <Tooltip
+                              contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                              formatter={(v: number) => [`#${v.toLocaleString()}`, "BSR"]}
+                            />
+                            <Line type="monotone" dataKey="bsr" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                        <p className="text-[11px] text-muted-foreground mt-2 text-center">Y-axis inverted: higher on chart = lower BSR = more sales</p>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Price History Chart */}
+                  {keepaData.monthlyHistory.some(p => p.price != null) && (
+                    <section>
+                      <div className="mb-4">
+                        <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-primary" />
+                          Price History — 12 Months
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">{keepaData.priceWarNote}</p>
+                      </div>
+                      <div className="rounded-2xl border border-border bg-card p-4">
+                        <ResponsiveContainer width="100%" height={200}>
+                          <LineChart data={keepaData.monthlyHistory.filter(p => p.price != null)} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="month" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" />
+                            <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} width={45}
+                              tickFormatter={v => `$${v}`} />
+                            <Tooltip
+                              contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                              formatter={(v: number) => [`$${v.toFixed(2)}`, "Price"]}
+                            />
+                            <Line type="monotone" dataKey="price"
+                              stroke={keepaData.isPriceWarWarning ? "#ef4444" : "#10b981"}
+                              strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Review Growth */}
+                  {keepaData.monthlyHistory.some(p => p.reviews != null) && (
+                    <section>
+                      <div className="mb-4">
+                        <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                          <Star className="h-4 w-4 text-amber-500" />
+                          Review Count Growth — 12 Months
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Avg new reviews/month: <strong className="text-foreground">~{keepaData.reviewVelocityMonthly.toLocaleString()}/mo</strong>
+                          {keepaData.reviewVelocityMonthly > 0 && keepaData.currentReviewCount && (
+                            <span> — to reach this level starting at 0: ~{Math.ceil(keepaData.currentReviewCount / Math.max(keepaData.reviewVelocityMonthly, 1))} months</span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-border bg-card p-4">
+                        <ResponsiveContainer width="100%" height={180}>
+                          <LineChart data={keepaData.monthlyHistory.filter(p => p.reviews != null)} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="month" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" />
+                            <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} width={50}
+                              tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : String(v)} />
+                            <Tooltip
+                              contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                              formatter={(v: number) => [v.toLocaleString(), "Reviews"]}
+                            />
+                            <Line type="monotone" dataKey="reviews" stroke="#f59e0b" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Seller Count Chart */}
+                  {keepaData.monthlyHistory.some(p => p.sellerCount != null) && (
+                    <section>
+                      <div className="mb-4">
+                        <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                          <Users className="h-4 w-4 text-primary" />
+                          Competing Sellers — 12 Months
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Current: <strong className="text-foreground">{keepaData.currentSellerCount ?? "—"} sellers</strong>
+                          {keepaData.sellerCountTrend === "growing" && <span className="ml-2 text-amber-500 font-semibold">↑ Commoditizing — price war risk</span>}
+                          {keepaData.sellerCountTrend === "shrinking" && <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-semibold">↓ Consolidating</span>}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-border bg-card p-4">
+                        <ResponsiveContainer width="100%" height={140}>
+                          <LineChart data={keepaData.monthlyHistory.filter(p => p.sellerCount != null)} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="month" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" />
+                            <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} width={30} />
+                            <Tooltip
+                              contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                              formatter={(v: number) => [v, "Sellers"]}
+                            />
+                            <Line type="monotone" dataKey="sellerCount"
+                              stroke={keepaData.sellerCountTrend === "growing" ? "#f59e0b" : "#6366f1"}
+                              strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Manual ASIN override */}
+                  <section>
+                    <div className="rounded-2xl border border-border bg-card/50 p-4 flex items-center gap-3">
+                      <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <p className="text-xs text-muted-foreground flex-1">Showing data for ASIN: <strong className="font-mono text-foreground">{keepaData.asin}</strong>. Want to check a different competitor?</p>
+                      <button
+                        onClick={() => setKeepaData(null)}
+                        className="text-xs font-semibold text-primary hover:underline"
+                      >
+                        Change ASIN
+                      </button>
+                    </div>
+                  </section>
+                </>
+              )}
             </div>
           )}
 

@@ -5,6 +5,7 @@ import { createClient, createClientWithToken } from "@/lib/supabase/server"
 import { analyzeProduct } from "@/lib/analyze/analyzeAgent"
 import { getMarginThreshold } from "@/lib/analyze/openaiService"
 import { getMarketData } from "@/lib/analyze/marketDataProvider"
+import { getKeepaData } from "@/lib/keepa/keepaService"
 
 const FREE_TIER_ANALYSIS_LIMIT = 5
 /** Emails that bypass the free-tier limit (unlimited analyses). */
@@ -76,7 +77,20 @@ export async function POST(req: Request) {
       marketData?.painPoints ?? []
     )
 
-    const result = await analyzeProduct({
+    // Fetch Keepa BEFORE analysis so it feeds into the verdict + AI prompt
+    const topAsin = marketData?.topAsins?.[0]
+    let keepaData = null
+    if (topAsin) {
+      try {
+        keepaData = await getKeepaData(topAsin)
+        console.log(`[Keepa] Fetched data for ASIN ${topAsin}:`, keepaData ? `BSR trend: ${keepaData.bsrTrend}, est. sales: ${keepaData.estimatedMonthlySales}` : "null")
+      } catch (e) {
+        console.warn("[Keepa] Fetch failed (analysis continues without it):", e)
+      }
+    }
+
+    const [result, _unused] = await Promise.allSettled([
+      analyzeProduct({
       keyword: typeof keyword === "string" ? keyword : "cat cave",
       sellingPrice,
       unitCost,
@@ -88,10 +102,19 @@ export async function POST(req: Request) {
       differentiation: body.differentiation,
       marketData,
       marginThreshold,
-    })
+      keepaData,
+    }),
+      Promise.resolve(null), // placeholder to keep destructuring
+    ])
+
+    // Unwrap the analyzeProduct result from Promise.allSettled
+    if (result.status === "rejected") {
+      throw result.reason instanceof Error ? result.reason : new Error(String(result.reason))
+    }
+    const analysisResult = result.value
 
     // Log advisor_implication_why_this_decision from analyze result (before normalize)
-    const resultObj = (result && typeof result === "object" ? result : {}) as Record<string, unknown>
+    const resultObj = (analysisResult && typeof analysisResult === "object" ? analysisResult : {}) as Record<string, unknown>
     const advisorWhyFromResult = resultObj.advisorImplicationWhyThisDecision ?? resultObj.advisor_implication_why_this_decision ?? (resultObj.report as Record<string, unknown>)?.advisor_implication_why_this_decision
     console.log("[Analyze API] advisor_implication_why_this_decision present:", advisorWhyFromResult != null)
     console.log("[Analyze API] advisor_implication_why_this_decision value:", advisorWhyFromResult === undefined || advisorWhyFromResult === null ? String(advisorWhyFromResult) : String(advisorWhyFromResult).slice(0, 200))
@@ -127,7 +150,12 @@ export async function POST(req: Request) {
       if (error) console.error("Failed to save analysis to Supabase:", error.message)
     })
 
-    return NextResponse.json(analysisData)
+    // Merge keepaData into response
+    const finalResponse = keepaData
+      ? { ...(analysisData as Record<string, unknown>), keepaData }
+      : analysisData
+
+    return NextResponse.json(finalResponse)
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error))
     const msg = err.message

@@ -1,5 +1,6 @@
 import { getAIInsights, getConsultantInsights, getMarginThreshold, getValidatedDifferentiators, type ConsultantInsights } from "./openaiService"
 import { buildSignals } from "./signals"
+import type { KeepaProductData } from "../keepa/keepaService"
 
 type AnalyzeInput = {
   keyword?: string
@@ -12,6 +13,8 @@ type AnalyzeInput = {
   complexity?: string
   differentiation?: string
   marginThreshold?: number
+  /** Keepa 12-month market intelligence for top competitor ASIN */
+  keepaData?: KeepaProductData | null
   marketData?: {
     success?: boolean
     avgPrice?: number
@@ -113,15 +116,41 @@ function ensureArray(v: unknown, fallback: string[]): string[] {
   return fallback
 }
 
-const REFERRAL_FEE_RATE = 0.15
-const DEFAULT_FBA_FEE = 6.50
+/**
+ * Estimate FBA fulfillment fee by selling price as a size-tier proxy.
+ * Real fees depend on dimensions + weight; this is a conservative estimate.
+ * Small Standard < $10 → $3.22 | Light Large $10-20 → $4.75
+ * Large Standard $20-40 → $6.50 | $40-75 → $8.50 | $75-150 → $11.50 | $150+ → $15.00
+ */
+function estimateFbaFee(price: number): number {
+  if (price < 10) return 3.22
+  if (price < 20) return 4.75
+  if (price < 40) return 6.50
+  if (price < 75) return 8.50
+  if (price < 150) return 11.50
+  return 15.00
+}
+
+/**
+ * Amazon referral fee rate by category, inferred from keyword.
+ * Electronics/Computers → 8% | Clothing/Shoes → 17% | Jewelry → 20%
+ * Everything else (Home, Pet, Sports, Kitchen, Beauty, Toy, etc.) → 15%
+ */
+function estimateReferralFeeRate(keyword: string): number {
+  const kw = keyword.toLowerCase()
+  if (/\b(electronic|laptop|computer|desktop|phone|smartphone|tablet|camera|headphone|headset|speaker|monitor|tv|television|printer|keyboard|mouse|drone|robot|projector|smartwatch)\b/.test(kw)) return 0.08
+  if (/\b(cloth|clothing|shirt|t-shirt|dress|shoes?|sneaker|boot|apparel|fashion|jacket|coat|jeans?|pants|hoodie|legging|swimsuit|sportswear)\b/.test(kw)) return 0.17
+  if (/\b(jewelry|jewellery|necklace|bracelet|ring|earring|pendant|brooch|anklet)\b/.test(kw)) return 0.20
+  return 0.15  // Home, Pet, Sports, Kitchen, Beauty, Toy, Baby, Books, etc.
+}
 
 export async function analyzeProduct(input: AnalyzeInput) {
   const keyword = asString(input.keyword, "cat cave").trim() || "cat cave"
   const sellingPrice = asNumber(input.sellingPrice, 44)
   const unitCost = asNumber(input.unitCost, 4)
   const shippingCost = asNumber(input.shippingCost, 2)
-  const fbaFee = asNumber(input.fbaFee, DEFAULT_FBA_FEE)
+  // Use Keepa's actual FBA fee when available — replaces size-tier estimate with real number
+  const fbaFee = asNumber(input.fbaFee, 0) || (input.keepaData?.realFbaFee ?? estimateFbaFee(sellingPrice))
   const complexity = (input.complexity ?? "").toString().toLowerCase()
   const differentiationInput = asString(input.differentiation, "").trim()
 
@@ -159,24 +188,43 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   const marketDensityHigh = competitorsWithOver1000Reviews >= 3
   let acosFloor = marketDensityHigh ? 0.45 : 0.25
-  const differentiationStrong = differentiationInput.length >= 50
+  // Aligned with the Differentiation Score card — weak text (<100 chars or no pain-point mention)
+  // means the seller has no real edge → ACoS floor rises (more PPC needed to compensate)
+  const differentiationStrong = differentiationInput.length >= 100 && mentionsPainPoint
   if (!differentiationStrong) acosFloor = Math.max(acosFloor, 0.5)
 
-  const LAUNCH_CVR = 0.1
+  // 6.5% is realistic for a new listing with 0–10 reviews; 10% is after Vine reviews + listing polish
+  const LAUNCH_CVR = 0.065
   let baseCpcDollars: number
   if (avgReviews > 20000) baseCpcDollars = 3.25
   else if (avgReviews >= 5000) baseCpcDollars = 2.1
   else if (avgReviews >= 1000) baseCpcDollars = 1.45
   else baseCpcDollars = 0.9
   const keywordLower = keyword.toLowerCase()
-  const categoryWeight = /electric|supplements|beauty/.test(keywordLower) ? 1.2 : 1
+  const categoryWeight =
+    /\b(electronic|laptop|computer|phone|tablet|camera|drone|robot|gadget|smartwatch)\b/.test(keywordLower) ? 1.3 :
+    /\b(supplement|vitamin|protein|probiotic|collagen|omega|creatine|whey)\b/.test(keywordLower) ? 1.25 :
+    /\b(beauty|skincare|makeup|cosmetic|serum|face cream|anti.aging|moisturizer)\b/.test(keywordLower) ? 1.2 :
+    /\b(power tool|drill|saw|grinder|hardware|automotive|mechanic)\b/.test(keywordLower) ? 1.15 :
+    /\b(toy|game|puzzle|kids|children|baby product)\b/.test(keywordLower) ? 1.1 :
+    /\b(clothing|apparel|fashion|shirt|shoes|sneaker|jacket|dress)\b/.test(keywordLower) ? 1.1 :
+    1.0
   const baseCpcFinal = baseCpcDollars * categoryWeight
 
   const launchAdCostPerUnit = baseCpcFinal / LAUNCH_CVR
-  const effectiveLaunchAcos = sellingPrice > 0 ? launchAdCostPerUnit / sellingPrice : 0
+  // CPC-based ACoS on day 1 (before reviews improve CVR) — used to trigger the PPC cannibalization warning
+  const cpcBasedLaunchAcos = sellingPrice > 0 ? launchAdCostPerUnit / sellingPrice : 0
 
-  const FIRST_ORDER_UNITS = 300
-  const SALES_PER_DAY = 7
+  // Use Keepa estimated sales velocity when available — far more accurate than hardcoded defaults.
+  // SALES_PER_DAY: Keepa monthly ÷ 30, floored at 1, capped at 100 (no fantasy numbers).
+  // FIRST_ORDER_UNITS: 2 months of velocity — enough to survive launch without over-committing.
+  const _keepaForCapital = input.keepaData ?? null
+  const SALES_PER_DAY = _keepaForCapital?.estimatedMonthlySales
+    ? Math.min(100, Math.max(1, Math.round(_keepaForCapital.estimatedMonthlySales / 30)))
+    : 7
+  const FIRST_ORDER_UNITS = _keepaForCapital?.estimatedMonthlySales
+    ? Math.min(500, Math.max(150, Math.round(SALES_PER_DAY * 60)))  // 2 months, capped 150–500
+    : 300
   const LAUNCH_DAYS = 30
   const VINE_AND_MISC = 500
   const launchInventoryCost = (unitCost + shippingCost) * FIRST_ORDER_UNITS
@@ -218,17 +266,13 @@ export async function analyzeProduct(input: AnalyzeInput) {
     marketDataForAcos != null ? calculateDynamicACoS(marketDataForAcos) : undefined
 
   const stage = input.stage === "launch" || input.stage === "optimized" ? input.stage : "optimized"
-  const launchAcosValue =
-    dynamicAcosForMarket != null ? dynamicAcosForMarket : 0.5
-  const assumedAcosRaw = Number.isFinite(Number(input.assumedAcos))
-    ? asNumber(input.assumedAcos, 0.35)
-    : stage === "launch"
-      ? launchAcosValue
-      : 0.35
   const baseAcos = hasRealMarketData ? (dynamicAcosForMarket ?? 0.35) : 0.35
-  const assumedAcos = Math.min(0.45, Math.max(0.25, Math.max(baseAcos, acosFloor)))
+  // Cap raised to 0.65 — hard markets genuinely have 50-65% launch ACoS; capping at 0.45 was
+  // artificially inflating profit projections and producing false GO verdicts.
+  const assumedAcos = Math.min(0.65, Math.max(0.25, Math.max(baseAcos, acosFloor)))
 
-  const referralFee = sellingPrice * REFERRAL_FEE_RATE
+  const referralFeeRate = estimateReferralFeeRate(keyword)
+  const referralFee = sellingPrice * referralFeeRate
   const ppcCostPerUnit = sellingPrice * assumedAcos
   const cogs = effectiveUnitCost + shippingCost
   const totalCost = cogs + referralFee + fbaFee
@@ -258,10 +302,9 @@ export async function analyzeProduct(input: AnalyzeInput) {
       ? `Premium Risk: Your price ($${sellingPrice.toFixed(2)}) is ${(((sellingPrice - avgPrice) / avgPrice) * 100).toFixed(1)}% higher than the top-5 market average ($${avgPrice.toFixed(2)}). Differentiation must justify this gap to maintain viability.`
       : undefined
 
-  // ─── Decision engine: 4‑Layer Verdict Model ───
+  // ─── Decision engine: 5‑Layer Verdict Model ───
   // Layer 1 — Economic Floor (Kill Switch)
   const netMarginRatioForGate = sellingPrice > 0 ? profitAfterAds / sellingPrice : 0
-  const economicFloorFails = profitAfterAds < 6 || netMarginRatioForGate < 0.15
 
   // Base score before market/differentiation layers
   let score = 50
@@ -322,6 +365,44 @@ export async function analyzeProduct(input: AnalyzeInput) {
     scoreBreakdown.differentiation = "-10 (weak/generic differentiation)"
   }
 
+  // Layer 5 — Keepa Market Intelligence (12-month real data)
+  const keepa = input.keepaData ?? null
+  if (keepa) {
+    // BSR trend — demand direction
+    if (keepa.bsrTrend === "improving") {
+      score += 12
+      scoreBreakdown.keepaTrend = "+12 (Keepa: BSR improving — real demand growing over 12 months)"
+    } else if (keepa.bsrTrend === "declining") {
+      score -= 18
+      scoreBreakdown.keepaTrend = "-18 (Keepa: BSR declining — market demand shrinking)"
+    }
+    // Price war
+    if (keepa.isPriceWarWarning) {
+      score -= 10
+      scoreBreakdown.keepaPriceWar = "-10 (Keepa: price war in last 12 months — margin compression risk)"
+    }
+    // Seasonality
+    if (keepa.isSeasonalWarning) {
+      score -= 6
+      scoreBreakdown.keepaSeasonality = "-6 (Keepa: seasonal demand pattern detected — timing risk)"
+    }
+    // Amazon selling → Buy Box locked
+    if (keepa.amazonIsSelling) {
+      score -= 15
+      scoreBreakdown.keepaAmazon = "-15 (Keepa: Amazon.com sells this product — Buy Box near-impossible)"
+    }
+    // OOS opportunity: top competitor often out of stock → unmet demand
+    if (keepa.outOfStockPct30 != null && keepa.outOfStockPct30 > 35) {
+      score += 8
+      scoreBreakdown.keepaOOS = `+8 (Keepa: competitor OOS ${keepa.outOfStockPct30.toFixed(0)}% of last 30 days — unmet demand)`
+    }
+    // Seller count growing → market commoditizing, price war risk
+    if (keepa.sellerCountTrend === "growing") {
+      score -= 6
+      scoreBreakdown.keepaSellers = "-6 (Keepa: seller count rising — commoditization risk)"
+    }
+  }
+
   // Clamp final score (UI only — verdict is logic‑based below)
   score = Math.max(1, Math.min(99, Math.round(score)))
 
@@ -338,13 +419,15 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const brandShareTop3 = dominantBrand ? 0.6 : 0.2
   const hasDominantBrand = dominantBrand
 
-  const marketLocked = avgTop10Reviews > 500 && hasDominantBrand
+  // 2000+ avg reviews + dominant brand = true lock; 500 was far too low and killed viable markets
+  const marketLocked = avgTop10Reviews > 2000 && hasDominantBrand
 
   // 4. WIN PATH — any way to compete
   const avgPriceForVerdict = market?.avgPrice ?? sellingPrice
   const pricePosition = avgPriceForVerdict > 0 ? sellingPrice / avgPriceForVerdict : 1
 
-  const canCompeteOnPrice = pricePosition <= 0.95
+  // 15% below market average = meaningful price advantage; 5% (0.95) was too weak to matter
+  const canCompeteOnPrice = pricePosition <= 0.85
   const hasRealDifferentiation = hasStrongVisualDiff
 
   const hasWinPath = hasRealDifferentiation || canCompeteOnPrice
@@ -368,6 +451,55 @@ export async function analyzeProduct(input: AnalyzeInput) {
   // GO only for strong cases
   else {
     verdict = "GO"
+  }
+
+  // ─── Keepa Verdict Override ───────────────────────────────────────
+  // Apply AFTER base verdict — Keepa adds real 12-month reality check
+  if (keepa) {
+    // Declining market demand → downgrade GO to IMPROVE (market is shrinking)
+    if (keepa.bsrTrend === "declining" && verdict === "GO") {
+      verdict = "IMPROVE_BEFORE_LAUNCH"
+      verdictAdvisory = `Keepa BSR trend shows declining demand over 12 months. ${keepa.seasonalityNote || "Verify timing before launch."}`
+    }
+    // Price war + thin margin → downgrade GO to IMPROVE
+    if (keepa.isPriceWarWarning && profitAfterAds < 12 && verdict === "GO") {
+      verdict = "IMPROVE_BEFORE_LAUNCH"
+      verdictAdvisory = `Price war detected (${keepa.priceWarNote}). Margin too thin to survive. Fix COGS or raise price before launching.`
+    }
+    // Severe decline + already borderline → push to NO_GO
+    if (keepa.bsrTrend === "declining" && verdict === "IMPROVE_BEFORE_LAUNCH" && !hasHealthyProfit) {
+      verdict = "NO_GO"
+      verdictAdvisory = `Keepa confirms declining demand AND thin margins — both risks compound. High probability of loss.`
+    }
+    // Tiny market + shrinking → not worth building a business on regardless of margins
+    if (
+      keepa.estimatedMonthlySales != null &&
+      keepa.estimatedMonthlySales < 120 &&
+      keepa.bsrTrend === "declining" &&
+      verdict !== "NO_GO"
+    ) {
+      verdict = "NO_GO"
+      verdictAdvisory = `Keepa: top competitor sells only ~${keepa.estimatedMonthlySales} units/month AND the market is shrinking. Total addressable volume is too small to build a business on — even a perfect launch won't move the needle.`
+    }
+    // Extreme review velocity = widening moat — competitors are entrenching faster than you can enter
+    if (
+      keepa.reviewVelocityMonthly > 100 &&
+      (keepa.currentReviewCount ?? 0) > 1500 &&
+      verdict === "GO"
+    ) {
+      verdict = "IMPROVE_BEFORE_LAUNCH"
+      verdictAdvisory = `Keepa shows top competitor gaining ${keepa.reviewVelocityMonthly} reviews/month with ${keepa.currentReviewCount?.toLocaleString()} total. The review gap compounds every month you wait — you need a strong niche keyword or differentiation angle before entering.`
+    }
+    // Amazon selling this product → Buy Box is nearly impossible to win
+    if (keepa.amazonIsSelling) {
+      if (verdict === "GO") {
+        verdict = "IMPROVE_BEFORE_LAUNCH"
+        verdictAdvisory = "Keepa confirms Amazon.com sells this product directly. Winning the Buy Box against Amazon requires a genuine private-label differentiation — a me-too product will be buried."
+      } else if (verdict === "IMPROVE_BEFORE_LAUNCH" && !hasHealthyProfit) {
+        verdict = "NO_GO"
+        verdictAdvisory = "Amazon.com sells this product AND margins are thin. Two compounding risks: no Buy Box path + no profit buffer. Do not enter this product as-is."
+      }
+    }
   }
 
   const confidence = Math.max(35, Math.min(92, Math.round(55 + (score - 50) * 0.7)))
@@ -467,6 +599,21 @@ export async function analyzeProduct(input: AnalyzeInput) {
     sponsored_top10_count: market?.sponsored_top10_count,
     sponsored_total_count: market?.sponsored_total_count,
     signals,
+    // Keepa 12-month market intelligence
+    keepa_bsr_trend: keepa?.bsrTrend,
+    keepa_current_bsr: keepa?.currentBsr,
+    keepa_estimated_monthly_sales: keepa?.estimatedMonthlySales,
+    keepa_sales_drops_30: keepa?.salesDrops30,
+    keepa_is_seasonal: keepa?.isSeasonalWarning,
+    keepa_seasonality_note: keepa?.seasonalityNote,
+    keepa_is_price_war: keepa?.isPriceWarWarning,
+    keepa_price_war_note: keepa?.priceWarNote,
+    keepa_review_velocity_monthly: keepa?.reviewVelocityMonthly,
+    keepa_current_price: keepa?.currentPrice,
+    keepa_amazon_is_selling: keepa?.amazonIsSelling,
+    keepa_out_of_stock_pct30: keepa?.outOfStockPct30,
+    keepa_seller_count_trend: keepa?.sellerCountTrend,
+    keepa_real_fba_fee: keepa?.realFbaFee,
   }
   const aiInsights = await getAIInsights(aiInput)
   console.log("STEP 1 - RAW AI WHY:", aiInsights?.why_this_decision)
@@ -541,12 +688,18 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const market_trends = hasRealMarketData
     ? [
         `Real Amazon data: avg price $${avgPrice.toFixed(2)} | avg rating ${avgRating}★ | avg reviews ${avgReviews.toLocaleString()} for "${keyword}".`,
-        "Seasonality often improves in colder months and Q4 gifting.",
-        "Saturation risk is real — winners differentiate on materials, size niche, or bundle value.",
+        keepa?.estimatedMonthlySales
+          ? `Keepa BSR data: top competitor sells ~${keepa.estimatedMonthlySales.toLocaleString()} units/month — market demand ${keepa.bsrTrend === "improving" ? "growing" : keepa.bsrTrend === "declining" ? "declining" : "stable"} over 12 months.`
+          : "Seasonality often improves in colder months and Q4 gifting.",
+        keepa?.isSeasonalWarning
+          ? `Seasonality warning: ${keepa.seasonalityNote}`
+          : "Saturation risk is real — winners differentiate on materials, size niche, or bundle value.",
       ]
     : [
         `Demand for "${keyword}" is stable; growth is mostly premium-positioning driven.`,
-        "Seasonality often improves in colder months and Q4 gifting.",
+        keepa?.estimatedMonthlySales
+          ? `Keepa BSR: top competitor ~${keepa.estimatedMonthlySales.toLocaleString()} units/month, trend: ${keepa.bsrTrend}.`
+          : "Seasonality often improves in colder months and Q4 gifting.",
         "Saturation risk is real — winners differentiate on materials, size niche, or bundle value.",
       ]
 
@@ -638,18 +791,34 @@ export async function analyzeProduct(input: AnalyzeInput) {
   })()
 
   const profitabilityBase = [
-    `Assumed economics: price $${sellingPrice.toFixed(2)} | COGS $${cogs.toFixed(2)} | referral $${referralFee.toFixed(2)} | FBA $${fbaFee.toFixed(2)} | ads $${ppcCostPerUnit.toFixed(2)} (ACoS ${(assumedAcos * 100).toFixed(1)}%) ⇒ profit after ads $${profitAfterAds.toFixed(2)}.`,
-    "Reality check: returns/coupons/storage can compress profit 10–25%. Keep a buffer.",
-    "If conversion drops, PPC costs inflate and profits collapse.",
+    `Assumed economics: price $${sellingPrice.toFixed(2)} | COGS $${cogs.toFixed(2)} | referral $${referralFee.toFixed(2)} (${(referralFeeRate * 100).toFixed(0)}%) | FBA $${fbaFee.toFixed(2)} | ads $${ppcCostPerUnit.toFixed(2)} (ACoS ${(assumedAcos * 100).toFixed(1)}%) ⇒ profit after ads $${profitAfterAds.toFixed(2)}.`,
+    `Reality check: returns/coupons/storage can compress profit 10–25%. At ${(LAUNCH_CVR * 100).toFixed(1)}% CVR (new listing baseline), expect your real ACoS to be higher than the model until you accumulate reviews.`,
+    "If conversion drops, PPC costs inflate and profits collapse. Keep 3+ months of capital buffer.",
   ]
   const profitability = aiInsights?.profit_reality?.trim()
     ? [aiInsights.profit_reality.trim(), ...profitabilityBase]
     : profitabilityBase
 
+  // Dynamic advertising card — category-aware CPC range and ACoS
+  const categoryLabel =
+    /\b(electronic|laptop|computer|phone|tablet|camera|drone|gadget|smartwatch)\b/.test(keywordLower) ? "electronics" :
+    /\b(supplement|vitamin|protein|probiotic|collagen|omega|creatine|whey)\b/.test(keywordLower) ? "supplements" :
+    /\b(beauty|skincare|makeup|cosmetic|serum|moisturizer)\b/.test(keywordLower) ? "beauty" :
+    /\b(toy|game|puzzle|kids|children)\b/.test(keywordLower) ? "toys & kids" :
+    /\b(cloth|shirt|shoes?|sneaker|apparel|jacket|dress)\b/.test(keywordLower) ? "clothing & apparel" :
+    /\b(pet|dog|cat|bird|fish|hamster)\b/.test(keywordLower) ? "pet" :
+    /\b(sport|fitness|gym|yoga|outdoor|hiking)\b/.test(keywordLower) ? "sports & fitness" :
+    /\b(kitchen|cooking|baking|coffee|cookware)\b/.test(keywordLower) ? "kitchen" :
+    "home & lifestyle"
+  const cpcRangeLabel = avgReviews >= 5000
+    ? "$1.8–$3.8" : avgReviews >= 1000
+    ? "$1.0–$2.5" : "$0.5–$1.4"
+  const launchAcosMin = Math.round(assumedAcos * 100)
+  const launchAcosMax = Math.min(75, launchAcosMin + 20)
   const advertising = [
-    "Launch ACoS assumption: 40–60% for the first 30–60 days.",
-    "Typical CPC range in competitive pet niches can be $1.2–$2.8 depending on keyword intent.",
-    "PPC plan: start exact/phrase long-tail, add negatives daily, cap broad until conversion proven.",
+    `Launch ACoS assumption: ${launchAcosMin}–${launchAcosMax}% for the first 30–60 days (market-calibrated for this niche).`,
+    `Typical CPC in ${categoryLabel}: ${cpcRangeLabel}/click — based on ${avgReviews.toLocaleString()} avg competitor reviews and current ad density.`,
+    "PPC plan: start exact/phrase long-tail, add negatives daily, cap broad until conversion is proven.",
   ]
 
   const risks = aiInsights?.risks?.length
@@ -719,15 +888,13 @@ export async function analyzeProduct(input: AnalyzeInput) {
     `If you're moving ${reorderTrigger}+ units per day, place your second order now — running out of stock in month 2 kills your ranking and wastes everything you spent in month 1.`,
   ]
 
-  const executionFromAi = aiInsights?.execution_plan?.length ? aiInsights.execution_plan : null
-  const honeymoonFromAi = aiInsights?.honeymoon_roadmap?.length ? aiInsights.honeymoon_roadmap : null
   const honeymoonRoadmap = honeymoonRoadmapDefault
 
   const highBarrierStep = `High Review Barrier: avg ${avgReviews.toLocaleString()} reviews in this niche. Do not launch without at least $15,000 total budget (inventory + PPC + Vine).`
   const ppcCannibalizationStep = `PPC Warning: your launch ACoS will likely hit 60%+ in the first 30 days. Cap your daily budget at $${dailyPpcBudget} and only scale when ACoS drops below ${targetAcosDisplay}%.`
   const executionPlanRaw = [
     ...(avgReviews > 10000 ? [highBarrierStep] : []),
-    ...(effectiveLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
+    ...(cpcBasedLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
     ...honeymoonRoadmapDefault,
   ]
   const execution_plan = executionPlanRaw.map((step: string) =>
@@ -759,10 +926,10 @@ export async function analyzeProduct(input: AnalyzeInput) {
   }
 
   const profitExplanation =
-    "We start with your selling price. We subtract: (1) Amazon referral fee — 15% of selling price, paid to Amazon on every sale. " +
-    "(2) FBA fulfillment fee — pick, pack, ship, and customer service (we use a standard-size estimate unless you provide your FBA fee). " +
+    `We start with your selling price. We subtract: (1) Amazon referral fee — ${(referralFeeRate * 100).toFixed(0)}% of selling price for this category, paid to Amazon on every sale. ` +
+    `(2) FBA fulfillment fee — $${fbaFee.toFixed(2)} estimated for this price tier (pick, pack, ship, and customer service; provide your exact FBA fee for a more precise calculation). ` +
     "(3) COGS — your unit cost plus shipping to FBA. " +
-    "(4) PPC cost per unit — we estimate it as ACoS × selling price (ACoS = ad spend as % of sales; launch is often 40–60%, optimized 25–35%). " +
+    "(4) PPC cost per unit — estimated as ACoS × selling price (ACoS = ad spend as % of sales; launch is often 45–65% for new listings, optimized 25–35%). " +
     "What remains is profit after ads. Returns, coupons, and storage can reduce this by 10–25% in practice."
 
   const financialStressTest =
@@ -825,7 +992,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
   if (early_strategy_guidance) {
     strategicIntelligenceParts.push(early_strategy_guidance)
   }
-  const ppcRealityAudit = `PPC Reality Audit: In this niche, the average CPC is approximately $${baseCpcFinal.toFixed(2)}. At a 10% conversion rate, your launch ad cost per unit will be $${launchAdCostPerUnit.toFixed(2)}. This requires a daily budget of at least $100 to gain any traction.`
+  const ppcRealityAudit = `PPC Reality Audit: In this niche, the average CPC is approximately $${baseCpcFinal.toFixed(2)}. At a ${(LAUNCH_CVR * 100).toFixed(1)}% conversion rate (realistic for a new listing with no reviews), your launch ad cost per unit will be $${launchAdCostPerUnit.toFixed(2)}. This requires a daily budget of at least $${Math.max(50, Math.round(launchAdCostPerUnit * 5 / 10) * 10)} to gain any traction.`
   strategicIntelligenceParts.push(ppcRealityAudit)
   const launchCapitalConsultantInsight = `To hit page 1 in this niche, you need roughly $${launchCapitalRequired.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} for your first 30 days. Don't start with less.`
   strategicIntelligenceParts.push(`Launch Capital Required: $${launchCapitalRequired.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}. ${launchCapitalConsultantInsight}`)
