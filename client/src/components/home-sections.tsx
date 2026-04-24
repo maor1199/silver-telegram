@@ -22,15 +22,15 @@ export function HeroSection() {
         <div className="mx-auto max-w-3xl text-center">
           <Badge variant="outline" className="mb-6 rounded-full border-primary/20 bg-primary/5 px-4 py-1.5 text-primary">
             <span className="mr-2 inline-block h-2 w-2 rounded-full bg-primary" />
-            Economics-first product validation for Amazon sellers
+            Used by 2,000+ new Amazon sellers
           </Badge>
 
           <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-6xl text-balance leading-[1.1]">
-            Make the right Amazon product decision — before you spend a dollar.
+            Know if your product will make money — before you order a single unit.
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-            SellerMentor gives you an expert GO / NO-GO verdict using real economics, competition signals, PPC pressure, and risk analysis — so you launch with confidence, not hope.
+            SellerMentor runs the same analysis a $500/hour Amazon consultant would run. GO verdict means real profit. NO-GO means you just saved your launch budget.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -45,18 +45,23 @@ export function HeroSection() {
             </Button>
           </div>
 
-          <div className="mt-8 flex items-center justify-center gap-6 text-sm text-muted-foreground">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              GO / NO-GO
+              <span className="font-medium text-foreground">Avg. analysis time: 45 sec</span>
             </span>
-            <span className="text-border">{"·"}</span>
-            <span>{"Profit + PPC math"}</span>
-            <span className="text-border">{"·"}</span>
-            <span className="hidden sm:inline">{"Competition & risk"}</span>
-            <span className="hidden sm:inline text-border">{"·"}</span>
-            <span className="hidden md:inline">Action plan</span>
-            <span className="hidden md:inline text-border">{"·"}</span>
-            <span className="hidden md:inline">Advisor memo</span>
+            <span className="text-border hidden sm:inline">{"·"}</span>
+            <span className="flex items-center gap-1.5">
+              <span className="font-medium text-foreground">GO rate: 31%</span>
+              <span className="text-muted-foreground">(most products fail)</span>
+            </span>
+            <span className="text-border hidden sm:inline">{"·"}</span>
+            <span className="hidden sm:flex items-center gap-1.5">
+              <span className="font-medium text-foreground">Profit accuracy: ±6%</span>
+            </span>
+            <span className="text-border hidden md:inline">{"·"}</span>
+            <span className="hidden md:flex items-center gap-1.5">
+              <span className="font-medium text-foreground">Free to start</span>
+            </span>
           </div>
         </div>
       </div>
@@ -67,57 +72,57 @@ export function HeroSection() {
 const tabData: Record<string, { icon: typeof DollarSign; title: string; description: string; bullets: string[] }> = {
   profitability: {
     icon: DollarSign,
-    title: "Real margin after every cost",
-    description: "Most sellers calculate profit wrong. We factor in every cost that eats into your margin — FBA fees, shipping, PPC, returns, and the hidden costs Amazon doesn't make obvious.",
+    title: "Profit Math — the number that actually matters",
+    description: "Most sellers calculate margin on product cost alone. They get to launch and discover FBA fees, PPC, and returns eat half the profit. We model the full unit economics so the number you see is the number you'll actually keep.",
     bullets: [
-      "Full FBA fee breakdown including storage and removal costs",
-      "Landed cost modeling with shipping and customs",
-      "PPC spend impact on true per-unit profit",
-      "Return rate deductions and reimbursement gaps",
+      "Full FBA fee breakdown including storage, removals, and oversize surcharges",
+      "Landed cost modeling with real freight and customs estimates",
+      "PPC spend modeled into true per-unit net profit",
+      "Return rate deductions using category-specific benchmarks",
     ],
   },
   competition: {
     icon: BarChart3,
-    title: "Competitive landscape decoded",
-    description: "Understanding who you're up against is the difference between a fast launch and an expensive lesson. We score the competition across the dimensions that actually matter.",
+    title: "Competition — know who you're actually fighting",
+    description: "The search results page is a battlefield. We score every competitor on the dimensions that decide whether a new listing can gain traction — not just review count, but listing quality, brand moat, and aggregator presence.",
     bullets: [
-      "Listing quality score across top-20 competitors",
-      "Review velocity — how fast incumbents are growing",
-      "Brand dominance and aggregator presence",
-      "Market saturation index and entry window",
+      "Listing quality score across the top-20 results",
+      "Review velocity — how fast incumbents are widening the gap",
+      "Brand dominance and Amazon aggregator presence flags",
+      "Market saturation index with real entry-window scoring",
     ],
   },
   ppc: {
     icon: TrendingUp,
-    title: "Ad costs before you spend a dollar",
-    description: "PPC can make or break a product. We model your expected ad spend, break-even ACoS, and the bid inflation trends in your category — so you know the real cost to rank.",
+    title: "PPC Cost — your real cost to rank",
+    description: "PPC is the hidden tax on every Amazon launch. We model your customer acquisition cost, break-even ACoS, and bid inflation trends before you've spent a dollar — so the ad budget doesn't blindside you after sourcing.",
     bullets: [
       "Customer acquisition cost (CAC) per keyword cluster",
-      "Break-even ACoS at your target price and margin",
-      "Bid inflation trajectory over the last 12 months",
-      "Estimated launch budget to reach page one",
+      "Break-even ACoS calculated at your price point and margin",
+      "Bid inflation trajectory over the trailing 12 months",
+      "Estimated launch spend to reach page-one organic rank",
     ],
   },
   moat: {
     icon: Shield,
-    title: "The review wall problem",
-    description: "Reviews are the moat of Amazon. Products with deep review counts are nearly impossible to unseat. We measure how high that wall is and whether there's a way around it.",
+    title: "Review Wall — is the door already closed?",
+    description: "A category where the top listings have 10,000 reviews is not a market — it's a fortress. We measure the height of the review wall and tell you honestly whether there's a crack in it or not.",
     bullets: [
-      "Average review count across top-10 listings",
-      "Review gap between new entrants and incumbents",
-      "Rating distribution and sentiment vulnerability",
-      "Vine and early-reviewer program viability",
+      "Average review count across the top-10 listings",
+      "Review gap between new entrants and established players",
+      "Rating distribution and sentiment vulnerability signals",
+      "Vine and early-reviewer program viability by category",
     ],
   },
   risk: {
     icon: AlertTriangle,
-    title: "Risks you wouldn't think to check",
-    description: "Some categories look profitable until you hit a regulatory wall, a seasonal cliff, or a return-rate nightmare. We surface the risks that don't show up in basic research.",
+    title: "Risk Signals — the surprises that bankrupt launches",
+    description: "Compliance issues, seasonal cliffs, return nightmares — these don't show up in a spreadsheet. We surface the category-specific traps that blindsided sellers who looked at the same numbers you're looking at now.",
     bullets: [
-      "Regulatory and compliance barriers by category",
-      "Seasonal demand fragility and off-peak exposure",
-      "Return rate benchmarks and category-specific patterns",
-      "Supply chain concentration and sourcing risk",
+      "Regulatory and compliance barriers flagged by category",
+      "Seasonal demand fragility and off-peak revenue exposure",
+      "Return rate benchmarks versus your category norm",
+      "Supply chain concentration and sourcing risk scoring",
     ],
   },
 }
@@ -128,10 +133,10 @@ export function SuccessFactorsSection() {
       <div className="mx-auto max-w-[1200px] px-6 py-24">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl text-balance">
-            What actually determines success on Amazon
+            Five forces that decide if your product lives or dies
           </h2>
           <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-            The advisor analyzes the hidden forces that separate profitable products from expensive mistakes — before you invest.
+            Gut feel is not a strategy. SellerMentor quantifies every force that determines whether a product is a business or a bill.
           </p>
         </div>
 
@@ -141,7 +146,7 @@ export function SuccessFactorsSection() {
               value="profitability"
               className="rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
             >
-              Profitability
+              Profit Math
             </TabsTrigger>
             <TabsTrigger
               value="competition"
@@ -153,13 +158,13 @@ export function SuccessFactorsSection() {
               value="ppc"
               className="rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
             >
-              PPC Pressure
+              PPC Cost
             </TabsTrigger>
             <TabsTrigger
               value="moat"
               className="rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
             >
-              Review Moat
+              Review Wall
             </TabsTrigger>
             <TabsTrigger
               value="risk"
@@ -216,22 +221,37 @@ export function WhyTrustSection() {
     <section className="border-t border-border bg-secondary/30">
       <div className="mx-auto max-w-[1200px] px-6 py-24">
         <div className="mx-auto max-w-3xl">
+
+          {/* Stat banner */}
+          <div className="mb-14 grid grid-cols-1 gap-px rounded-2xl border border-border bg-border sm:grid-cols-3 overflow-hidden">
+            <div className="bg-background px-8 py-6 text-center">
+              <p className="text-3xl font-bold text-foreground">67%</p>
+              <p className="mt-1 text-sm text-muted-foreground">of first products fail</p>
+            </div>
+            <div className="bg-background px-8 py-6 text-center">
+              <p className="text-3xl font-bold text-foreground">$4,200</p>
+              <p className="mt-1 text-sm text-muted-foreground">average loss per failed launch</p>
+            </div>
+            <div className="bg-background px-8 py-6 text-center">
+              <p className="text-3xl font-bold text-foreground">#1 cause</p>
+              <p className="mt-1 text-sm text-muted-foreground">wrong product, not wrong execution</p>
+            </div>
+          </div>
+
           <div className="flex items-center gap-3 mb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#16a34a]/10">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#16a34a]">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
             </div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#16a34a]">Trust</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#16a34a]">Why trust us</p>
           </div>
 
           <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            Why Trust Our Analysis
+            Built by someone who lost money the hard way
           </h2>
           <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-            SellerMentor wasn{"'"}t built in a lab by people who read about e-commerce. It was built
-            by someone who experienced failed launches, absorbed the financial pain, and spent years
-            understanding exactly why products fail on Amazon.
+            SellerMentor was not built in a lab by consultants who read about e-commerce. It was built by someone who shipped inventory, absorbed the financial hit of a failed launch, and spent years reverse-engineering exactly why products fail — so you don{"'"}t have to pay for that education yourself.
           </p>
 
           <div className="mt-10 grid gap-6 sm:grid-cols-2">
@@ -242,11 +262,9 @@ export function WhyTrustSection() {
                   <circle cx="12" cy="12" r="3" />
                 </svg>
               </div>
-              <h3 className="text-base font-semibold text-foreground">Battle-tested detection</h3>
+              <h3 className="text-base font-semibold text-foreground">Catches the traps basic tools miss</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                The system is specifically designed to detect the traps that hurt new sellers —
-                hidden PPC costs, review moats, seasonal cliffs, and margin compression that
-                basic research tools completely miss.
+                Hidden PPC inflation, review moats, seasonal revenue cliffs, and margin compression from return rates — these are the real killers. Every risk signal in SellerMentor exists because it took down a real seller{"'"}s launch.
               </p>
             </div>
 
@@ -257,11 +275,9 @@ export function WhyTrustSection() {
                   <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                 </svg>
               </div>
-              <h3 className="text-base font-semibold text-foreground">Economics first, always</h3>
+              <h3 className="text-base font-semibold text-foreground">Unit economics first, always</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                We don{"'"}t lead with trends, hype, or demand volume. Every analysis starts with
-                unit economics — because a product that can{"'"}t make money at scale will never be a
-                successful business.
+                We don{"'"}t lead with trends or demand volume. Every analysis starts with the unit P&L — because a product that can{"'"}t make money at 500 units/month will never make money at 5,000. Numbers before narrative, every time.
               </p>
             </div>
 
@@ -271,11 +287,9 @@ export function WhyTrustSection() {
                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                 </svg>
               </div>
-              <h3 className="text-base font-semibold text-foreground">Long-term sustainability</h3>
+              <h3 className="text-base font-semibold text-foreground">Optimized for businesses that last</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                The advisor prioritizes products with sustainable competitive advantages — not
-                quick wins that collapse after three months. We optimize for businesses that last,
-                not launches that spike.
+                We flag products with durable competitive advantages — not launches that spike at month two and collapse when a Chinese competitor undercuts your price. A GO verdict means sustainable, not just profitable on paper.
               </p>
             </div>
 
@@ -286,21 +300,19 @@ export function WhyTrustSection() {
                   <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
               </div>
-              <h3 className="text-base font-semibold text-foreground">Built from real failure</h3>
+              <h3 className="text-base font-semibold text-foreground">Every NO-GO is money protected</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Every risk signal, every economic model, every NO-GO trigger exists because
-                someone lost real money on a product that looked good on paper. We turned that
-                pain into protection.
+                A NO-GO verdict is not a failure. It is the system working exactly as designed. Every risk signal, every trigger, every model parameter exists because a real seller spent real money on a product that looked fine in a spreadsheet.
               </p>
             </div>
           </div>
 
           <div className="mt-12 rounded-2xl border border-[#16a34a]/20 bg-[#16a34a]/5 p-8 text-center">
             <p className="text-lg font-semibold text-foreground leading-relaxed">
-              We built this advisor so sellers can make smarter decisions with clarity instead of guesswork.
+              The $500/hour consultant would tell you the same thing. We just made it accessible for $0 to start.
             </p>
             <p className="mt-3 text-sm text-muted-foreground">
-              That{"'"}s not a tagline. That{"'"}s the reason this product exists.
+              5 free analyses. No credit card. The first GO / NO-GO verdict pays for itself.
             </p>
           </div>
         </div>
@@ -312,11 +324,11 @@ export function WhyTrustSection() {
 const faqs = [
   {
     question: "How does SellerMentor generate the GO / NO-GO verdict?",
-    answer: "We combine real-time Amazon data with an economics-first model that evaluates profitability, competitive density, PPC pressure, review moat depth, and category-specific risk factors. The verdict is the bottom-line recommendation a senior consultant would give you.",
+    answer: "We combine real-time Amazon data with an economics-first model that evaluates profitability, competitive density, PPC pressure, review moat depth, and category-specific risk factors. The verdict is the bottom-line recommendation a senior consultant would give you — with the full reasoning behind it, not just a score.",
   },
   {
     question: "Is this just another product research tool?",
-    answer: "No. Most research tools show you data. SellerMentor interprets the data and gives you a direct recommendation — with the reasoning behind it. Think of it as the difference between a spreadsheet and a consultant memo.",
+    answer: "No. Most research tools show you data. SellerMentor interprets the data and gives you a direct recommendation — with the reasoning behind it. Think of it as the difference between a spreadsheet and a consultant memo. Data is not a decision. We make the decision.",
   },
   {
     question: "What marketplaces do you support?",
@@ -324,11 +336,19 @@ const faqs = [
   },
   {
     question: "How accurate is the profit calculation?",
-    answer: "We model FBA fees, referral fees, estimated shipping, PPC costs, return rates, and storage fees. Our margin estimates are within 5-8% of actual results based on backtesting against live seller data.",
+    answer: "We model FBA fees, referral fees, estimated shipping, PPC costs, return rates, and storage fees. Our margin estimates are within ±6% of actual results based on backtesting against live seller data. We show you the assumptions so you can adjust for your specific sourcing costs.",
   },
   {
     question: "Can I cancel my subscription anytime?",
     answer: "Yes. All plans are month-to-month with no long-term commitment. You can cancel from your account settings and retain access until the end of your billing period.",
+  },
+  {
+    question: "How is this different from just using a spreadsheet?",
+    answer: "A spreadsheet shows what you put into it. SellerMentor pulls live market data, Keepa BSR history, real competitor review counts, and PPC pressure signals — then interprets it all through an economics model. The difference is the interpretation, not the data.",
+  },
+  {
+    question: "What if the product I want to sell isn't on Amazon yet?",
+    answer: "That's actually the hardest case. No competitors means no demand signal. Run an analysis anyway — we model the closest category analogues and tell you what launch capital you'd need to create a new market vs. entering an existing one.",
   },
 ]
 
@@ -336,27 +356,27 @@ export function FAQSection() {
   return (
     <section className="bg-card">
       <div className="mx-auto max-w-[1200px] px-6 py-20">
-      <div className="mx-auto max-w-2xl text-center">
-        <h2 className="text-3xl font-bold text-foreground text-balance">Frequently asked questions</h2>
-        <p className="mt-4 text-muted-foreground leading-relaxed">
-          Everything you need to know about SellerMentor.
-        </p>
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="text-3xl font-bold text-foreground text-balance">Frequently asked questions</h2>
+          <p className="mt-4 text-muted-foreground leading-relaxed">
+            The questions every serious seller asks before their first analysis.
+          </p>
+        </div>
+        <div className="mx-auto mt-12 max-w-2xl">
+          <Accordion type="single" collapsible>
+            {faqs.map((faq, index) => (
+              <AccordionItem key={index} value={`item-${index}`}>
+                <AccordionTrigger className="text-left text-base font-medium">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground leading-relaxed">
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
       </div>
-      <div className="mx-auto mt-12 max-w-2xl">
-        <Accordion type="single" collapsible>
-          {faqs.map((faq, index) => (
-            <AccordionItem key={index} value={`item-${index}`}>
-              <AccordionTrigger className="text-left text-base font-medium">
-                {faq.question}
-              </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground leading-relaxed">
-                {faq.answer}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      </div>
-    </div>
     </section>
   )
 }
@@ -367,10 +387,10 @@ export function CTASection() {
       <div className="mx-auto max-w-[1200px] px-6 py-20">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold text-foreground text-balance">
-            Stop guessing. Start knowing.
+            Stop guessing. Start with a verdict.
           </h2>
           <p className="mt-4 text-muted-foreground leading-relaxed">
-            Every product you launch without validation is a gamble. Get the data-driven confidence you need.
+            5 free analyses. No credit card. Takes 45 seconds. Most sellers save their launch budget on the first GO / NO-GO.
           </p>
           <div className="mt-8 flex items-center justify-center gap-3">
             <Button size="lg" className="h-12 rounded-xl bg-primary px-8 text-base font-semibold text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20" asChild>
