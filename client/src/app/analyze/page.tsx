@@ -405,18 +405,13 @@ export default function AnalyzePage() {
                     className="h-12 rounded-xl border-border bg-card text-base placeholder:text-muted-foreground/50 focus-visible:ring-primary/30"
                     autoFocus
                   />
-                  <div className="flex items-center gap-2">
-                    <Input
-                      placeholder="ASIN (optional) — e.g. B08N5WRWNW"
-                      value={formData.asin}
-                      onChange={(e) => updateField("asin", e.target.value.trim().toUpperCase())}
-                      className="h-10 rounded-xl border-border bg-card text-sm placeholder:text-muted-foreground/40 focus-visible:ring-primary/30 font-mono tracking-wider"
-                      maxLength={10}
-                    />
-                    <span className="shrink-0 text-xs text-muted-foreground whitespace-nowrap">
-                      Improves Keepa accuracy
-                    </span>
-                  </div>
+                  <Input
+                    placeholder="ASIN (optional) — e.g. B08N5WRWNW"
+                    value={formData.asin}
+                    onChange={(e) => updateField("asin", e.target.value.trim().toUpperCase())}
+                    className="h-10 rounded-xl border-border bg-card text-sm placeholder:text-muted-foreground/40 focus-visible:ring-primary/30 font-mono tracking-wider"
+                    maxLength={10}
+                  />
                 </div>
               </div>
             )}
