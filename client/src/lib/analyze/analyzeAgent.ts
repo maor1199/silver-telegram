@@ -412,51 +412,78 @@ export async function analyzeProduct(input: AnalyzeInput) {
   // Clamp final score (UI only — verdict is logic‑based below)
   score = Math.max(1, Math.min(99, Math.round(score)))
 
-  // ─── FINAL DECISION ENGINE (SIMPLE & HUMAN-LIKE) ───
+  // ─── FINAL DECISION ENGINE — RIGOROUS 5-FACTOR INTEGRATION ───
+  // All 5 scoring layers must align with the verdict.
+  // Score is now a gate, not just a display number.
 
-  // 1. SURVIVAL — real profit after ads
+  // 1. ECONOMIC SURVIVAL
   const hasRealProfit = profitAfterAds > 0 && netMarginRatioForGate > 0.12
-
-  // 2. STRONG PROFIT — safe for scaling
   const hasHealthyProfit = profitAfterAds >= 10 && netMarginRatioForGate >= 0.18
 
-  // 3. MARKET LOCK — entry blocked
+  // 2. ENTRY BARRIERS
   const avgTop10Reviews = market?.avgReviews ?? 0
   const brandShareTop3 = dominantBrand ? 0.6 : 0.2
   const hasDominantBrand = dominantBrand
-
-  // 2000+ avg reviews + dominant brand = true lock; 500 was far too low and killed viable markets
+  // Severe review barrier: avg >5k reviews = new listing invisible without a true sub-niche angle
+  const severeReviewBarrier = avgTop10Reviews > 5000
+  // Full lock: brand moat + review moat together = near-impossible organic entry
   const marketLocked = avgTop10Reviews > 2000 && hasDominantBrand
 
-  // 4. WIN PATH — any way to compete
-  const avgPriceForVerdict = market?.avgPrice ?? sellingPrice
-  const pricePosition = avgPriceForVerdict > 0 ? sellingPrice / avgPriceForVerdict : 1
-
-  // 15% below market average = meaningful price advantage; 5% (0.95) was too weak to matter
-  const canCompeteOnPrice = pricePosition <= 0.85
+  // 3. WIN PATH — differentiation only
+  // Price wars are NOT a viable strategy for new sellers; competing 15% below market
+  // simply shrinks margin without improving rank. Removed from win-path logic.
   const hasRealDifferentiation = hasStrongVisualDiff
 
-  const hasWinPath = hasRealDifferentiation || canCompeteOnPrice
+  // 4. CAPITAL THRESHOLD — flag when launch requires serious capital
+  const isHighCapitalLaunch = launchCapitalRequired > 10000
+
+  // 5. SCORE GATE — market signal score must match the verdict
+  // Score < 40: too many structural red flags → cap verdict at IMPROVE
+  // Score < 30: severe red flags → push toward NO_GO
+  const scoreForcesImprove = score < 40
+  const scoreForcesDanger = score < 30
 
   // ─── VERDICT ───
   let verdict: "GO" | "IMPROVE_BEFORE_LAUNCH" | "NO_GO"
   let verdictAdvisory: string | undefined
 
-  // NO_GO only if clearly bad
+  // KILL SWITCH 1: can't make money after ads → always NO_GO
   if (!hasRealProfit) {
     verdict = "NO_GO"
-  } else if (marketLocked && !hasWinPath && profitAfterAds < 5) {
-    verdict = "NO_GO"
+    verdictAdvisory = `After all Amazon fees and estimated PPC, you're left with $${profitAfterAds.toFixed(2)}/unit (${estimatedMarginPercent.toFixed(1)}% margin). Minimum to survive: 12% and $1+. Fix COGS, price, or both.`
   }
 
-  // IMPROVE for most realistic cases
+  // KILL SWITCH 2: full market lock + no differentiation + thin profit
+  else if (marketLocked && !hasRealDifferentiation && profitAfterAds < 8) {
+    verdict = "NO_GO"
+    verdictAdvisory = `Market is locked (avg ${avgTop10Reviews.toLocaleString()} reviews + dominant brand) and there's no differentiation to carve a niche. A me-too product here will be invisible.`
+  }
+
+  // BARRIER: severe review moat with no sub-niche angle → entry too expensive
+  else if (severeReviewBarrier && !hasRealDifferentiation) {
+    verdict = "IMPROVE_BEFORE_LAUNCH"
+    verdictAdvisory = `Top 10 listings average ${avgTop10Reviews.toLocaleString()} reviews. A new listing with 0 reviews needs a clear sub-niche or differentiation to show up in search at all. Without it, 100% of traffic comes from expensive PPC against established sellers.`
+  }
+
+  // IMPROVE: profit exists but too thin for a safe launch
   else if (!hasHealthyProfit) {
     verdict = "IMPROVE_BEFORE_LAUNCH"
+    verdictAdvisory = `$${profitAfterAds.toFixed(2)}/unit profit is real but not enough buffer for returns, storage, and real-world PPC variance. Reach $10+ and 18%+ before you commit inventory.`
   }
 
-  // GO only for strong cases
+  // GO — only when economics are solid AND no structural barriers
   else {
     verdict = "GO"
+  }
+
+  // SCORE GATE: 5-layer market score overrides too-optimistic verdict
+  if (scoreForcesImprove && verdict === "GO") {
+    verdict = "IMPROVE_BEFORE_LAUNCH"
+    verdictAdvisory = `Unit economics are solid, but market signals score (${score}/100) shows too many structural red flags. Review the score breakdown before committing capital.`
+  }
+  if (scoreForcesDanger && verdict === "IMPROVE_BEFORE_LAUNCH") {
+    verdict = "NO_GO"
+    verdictAdvisory = `Market signals score (${score}/100) is critically low — multiple compounding barriers. High probability of loss even with improvements. Reassess the product entirely.`
   }
 
   // ─── Keepa Verdict Override ───────────────────────────────────────
@@ -661,12 +688,18 @@ export async function analyzeProduct(input: AnalyzeInput) {
       whyBullets.push(`${competitorsWithOver1000Reviews} of top results have 1,000+ reviews — PPC and conversion will be expensive.`)
     }
     if (sellingPrice > 0 && avgPrice > 0 && sellingPrice > avgPrice * 1.15) {
-      whyBullets.push(`Your price ($${sellingPrice.toFixed(2)}) is above market avg ($${avgPrice.toFixed(2)}) — differentiation must justify the premium.`)
+      whyBullets.push(`Your price ($${sellingPrice.toFixed(2)}) is above market avg ($${avgPrice.toFixed(2)}) — differentiation must justify the premium or you'll lose to cheaper options.`)
+    }
+    if (severeReviewBarrier && !hasRealDifferentiation) {
+      whyBullets.push(`Avg ${avgTop10Reviews.toLocaleString()} reviews in top 10 — without a differentiated angle, a new listing has no path to organic rank and 100% of sales must come from PPC at a severe CVR disadvantage.`)
+    }
+    if (isHighCapitalLaunch) {
+      whyBullets.push(`Launch requires ~$${launchCapitalRequired.toLocaleString("en-US", { maximumFractionDigits: 0 })} (inventory + PPC burn + Vine). Undercapitalization is the #1 cause of failed Amazon launches — do not start with less.`)
     }
     if (profitAfterAds >= 15 && passesMarginRule) {
-      whyBullets.push(`Profit after ads $${profitAfterAds.toFixed(0)}/unit and ${estimatedMarginPercent.toFixed(1)}% margin meet the bar — economics support a GO.`)
+      whyBullets.push(`Profit $${profitAfterAds.toFixed(0)}/unit at ${estimatedMarginPercent.toFixed(1)}% margin — economics are viable. Execute on differentiation and PPC discipline to protect it.`)
     } else if (profitAfterAds < 10 && whyBullets.length < 2) {
-      whyBullets.push(`Profit after ads $${profitAfterAds.toFixed(0)}/unit is too thin — PPC and returns would erase margin.`)
+      whyBullets.push(`$${profitAfterAds.toFixed(0)}/unit profit after ads is too thin — returns (3–8%), storage, and real PPC variance will likely make this unprofitable.`)
     }
   }
   if (!hasRealMarketData || !aiInsights?.why_this_decision?.length) {
@@ -1088,7 +1121,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
       netMarginRatioForGate,
       hasRealProfit,
       marketLocked,
-      hasWinPath,
+      hasRealDifferentiation,
     },
     score,
     confidence,
