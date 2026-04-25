@@ -32,13 +32,13 @@ export const metadata: Metadata = {
     title: 'SellerMentor — Expert Product Analysis for Amazon Sellers',
     description: 'Know if your product will succeed before you invest. GO / NO-GO verdict with real economics, competition signals & PPC analysis.',
     url: BASE_URL,
-    images: [{ url: '/og-default.png', width: 1200, height: 630, alt: 'SellerMentor — Amazon Product Analysis' }],
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'SellerMentor — Amazon Product Analysis' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'SellerMentor — Expert Product Analysis for Amazon Sellers',
     description: 'GO / NO-GO verdict with real economics, competition signals & PPC analysis for Amazon FBA sellers.',
-    images: ['/og-default.png'],
+    images: ['/opengraph-image'],
   },
   alternates: {
     canonical: BASE_URL,
