@@ -694,12 +694,33 @@ export default function WarRoom() {
                 </p>
               )}
 
+              {/* Score vs Verdict callout — when market looks good but numbers don't add up */}
+              {verdict === "NO-GO" && score != null && Number(score) >= 65 && (
+                <div className="mt-4 mx-auto max-w-md rounded-xl border border-amber-300/40 bg-amber-50/20 dark:bg-amber-950/15 px-5 py-3 text-left">
+                  <p className="text-xs font-bold text-amber-700 dark:text-amber-400 mb-1">Why the score is high but verdict is NO-GO</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    <strong>Market Score</strong> rates the niche — demand, competition, growth potential. It looks good here. <br />
+                    <strong>Verdict</strong> is your profitability math: selling price minus COGS, FBA fees, referral fee, and PPC. That math didn&apos;t clear the margin threshold. Try raising your price or reducing your unit cost and run again.
+                  </p>
+                </div>
+              )}
+
               {/* Key Metrics Row */}
               <div className="mt-8 flex items-center justify-center gap-8 flex-wrap">
                 {score != null && !isNaN(score) && (
-                  <div className="text-center">
+                  <div className="text-center relative group">
                     <p className="text-3xl font-black text-foreground">{Math.round(Number(score))}<span className="text-base font-normal text-muted-foreground">/100</span></p>
-                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Viability Score</p>
+                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-center gap-1">
+                      Market Score
+                      <HelpCircle className="h-3 w-3 text-muted-foreground/40 cursor-help" />
+                    </p>
+                    {/* Tooltip */}
+                    <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 rounded-xl border border-border bg-popover px-4 py-3 text-left text-xs text-popover-foreground leading-relaxed shadow-lg opacity-0 transition-opacity group-hover:opacity-100">
+                      <p className="font-bold mb-1">Market Score vs Verdict</p>
+                      <p><strong>Market Score</strong> = how attractive this niche is (demand, competition, growth).</p>
+                      <p className="mt-1"><strong>Verdict</strong> = whether <em>your specific numbers</em> (price − COGS − fees − PPC) leave enough profit.</p>
+                      <p className="mt-1 text-muted-foreground">A high score with NO-GO means: great market, but your margins need work.</p>
+                    </div>
                   </div>
                 )}
                 {confidence != null && !isNaN(confidence) && score !== confidence && (
@@ -758,7 +779,7 @@ export default function WarRoom() {
                   { id: "overview",        label: "Overview" },
                   { id: "deep-dive",       label: "Deep Dive" },
                   { id: "execution",       label: "Execution Plan" },
-                  { id: "market-history",  label: keepaData ? "📈 Market History" : "Market History" },
+                  { id: "market-history",  label: keepaData ? "Market History ✓" : "Market History" },
                 ] as const).map((tab) => (
                   <button
                     key={tab.id}
@@ -1399,46 +1420,70 @@ export default function WarRoom() {
               {/* If no keepa data — show ASIN search */}
               {!keepaData ? (
                 <section>
-                  <div className="rounded-2xl border border-border bg-card p-8 text-center">
-                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <BarChart3 className="h-6 w-6 text-primary" />
+                  {/* What you unlock */}
+                  <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {[
+                      { icon: <BarChart3 className="h-4 w-4 text-primary" />, label: "BSR Trend", desc: "12-month demand direction" },
+                      { icon: <DollarSign className="h-4 w-4 text-primary" />, label: "Price History", desc: "Price war detection" },
+                      { icon: <Star className="h-4 w-4 text-primary" />, label: "Review Velocity", desc: "How fast the moat grows" },
+                      { icon: <Users className="h-4 w-4 text-primary" />, label: "FBA Competition", desc: "Real FBA seller count" },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-xl border border-dashed border-border bg-card/50 p-3 text-center opacity-60">
+                        <div className="flex justify-center mb-1.5">{item.icon}</div>
+                        <p className="text-xs font-semibold text-foreground">{item.label}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-card p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+                      <div className="flex-1">
+                        <h3 className="text-sm font-bold text-foreground">Enter a competitor ASIN to unlock Market History</h3>
+                        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                          Find it in any Amazon product URL: <span className="font-mono text-foreground/70">amazon.com/dp/<strong>B08N5WRWNW</strong></span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <input
+                          type="text"
+                          value={asinInput}
+                          onChange={e => setAsinInput(e.target.value.toUpperCase())}
+                          placeholder="e.g. B08N5WRWNW"
+                          maxLength={10}
+                          className="w-40 h-10 rounded-xl border border-border bg-background px-3 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        />
+                        <button
+                          disabled={asinInput.length !== 10 || asinLoading}
+                          onClick={async () => {
+                            setAsinLoading(true)
+                            setAsinError(null)
+                            try {
+                              const res = await fetch(`/api/keepa/product?asin=${asinInput}`)
+                              const json = await res.json()
+                              if (!res.ok) throw new Error(json.error ?? "Failed")
+                              setKeepaData(json as KeepaProductData)
+                            } catch (e) {
+                              setAsinError(e instanceof Error ? e.message : "Failed to fetch data")
+                            } finally {
+                              setAsinLoading(false)
+                            }
+                          }}
+                          className="h-10 px-5 rounded-xl bg-primary text-xs font-bold text-primary-foreground disabled:opacity-50 hover:bg-primary/90 transition-colors whitespace-nowrap"
+                        >
+                          {asinLoading ? "Loading..." : "Fetch Data →"}
+                        </button>
+                      </div>
                     </div>
-                    <h3 className="text-base font-bold text-foreground">Market History Not Available</h3>
-                    <p className="mt-2 text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                      No ASIN was found in search results. Enter a competitor ASIN to fetch 12 months of BSR, price, and review history.
+                    {asinError && (
+                      <div className="mt-3 flex items-center gap-2 rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2">
+                        <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                        <p className="text-xs text-destructive">{asinError}</p>
+                      </div>
+                    )}
+                    <p className="mt-3 text-[11px] text-muted-foreground/60">
+                      Tip: enter the ASIN in Step 1 of the analysis form next time to automatically include Market History in your results.
                     </p>
-                    <div className="mt-6 flex items-center justify-center gap-2 max-w-xs mx-auto">
-                      <input
-                        type="text"
-                        value={asinInput}
-                        onChange={e => setAsinInput(e.target.value.toUpperCase())}
-                        placeholder="e.g. B08N5WRWNW"
-                        maxLength={10}
-                        className="flex-1 h-10 rounded-xl border border-border bg-background px-4 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                      <button
-                        disabled={asinInput.length !== 10 || asinLoading}
-                        onClick={async () => {
-                          setAsinLoading(true)
-                          setAsinError(null)
-                          try {
-                            const res = await fetch(`/api/keepa/product?asin=${asinInput}`)
-                            const json = await res.json()
-                            if (!res.ok) throw new Error(json.error ?? "Failed")
-                            setKeepaData(json as KeepaProductData)
-                          } catch (e) {
-                            setAsinError(e instanceof Error ? e.message : "Failed to fetch data")
-                          } finally {
-                            setAsinLoading(false)
-                          }
-                        }}
-                        className="h-10 px-4 rounded-xl bg-primary text-xs font-bold text-primary-foreground disabled:opacity-50 hover:bg-primary/90 transition-colors"
-                      >
-                        {asinLoading ? "Loading..." : "Fetch"}
-                      </button>
-                    </div>
-                    {asinError && <p className="mt-3 text-xs text-destructive">{asinError}</p>}
-                    <p className="mt-3 text-[11px] text-muted-foreground">Find an ASIN in the competitor&apos;s Amazon URL: amazon.com/dp/<strong>B08N5WRWNW</strong></p>
                   </div>
                 </section>
               ) : (

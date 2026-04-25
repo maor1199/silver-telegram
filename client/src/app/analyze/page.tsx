@@ -405,13 +405,18 @@ export default function AnalyzePage() {
                     className="h-12 rounded-xl border-border bg-card text-base placeholder:text-muted-foreground/50 focus-visible:ring-primary/30"
                     autoFocus
                   />
-                  <Input
-                    placeholder="ASIN (optional) — e.g. B08N5WRWNW"
-                    value={formData.asin}
-                    onChange={(e) => updateField("asin", e.target.value.trim().toUpperCase())}
-                    className="h-10 rounded-xl border-border bg-card text-sm placeholder:text-muted-foreground/40 focus-visible:ring-primary/30 font-mono tracking-wider"
-                    maxLength={10}
-                  />
+                  <div className="flex flex-col gap-1">
+                    <Input
+                      placeholder="Competitor ASIN (optional) — e.g. B08N5WRWNW"
+                      value={formData.asin}
+                      onChange={(e) => updateField("asin", e.target.value.trim().toUpperCase())}
+                      className="h-10 rounded-xl border-border bg-card text-sm placeholder:text-muted-foreground/40 focus-visible:ring-primary/30 font-mono tracking-wider"
+                      maxLength={10}
+                    />
+                    <p className="text-[11px] text-muted-foreground/60 pl-1">
+                      Unlocks Market History — 12 months of BSR, price & review data for that competitor. Find the ASIN in the Amazon URL: amazon.com/dp/<strong>B08N5WRWNW</strong>
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
