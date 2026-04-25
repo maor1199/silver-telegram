@@ -596,6 +596,21 @@ export default function WarRoom() {
     ? priceBandRaw as { budget?: number; sweet_spot?: string; premium?: number }
     : null
 
+  // ── Market Intelligence (CPR, Opportunity Score, sales, 5★ price) ─
+  const cpr = R?.cpr ?? analysisData?.cpr
+  const opportunityScore = R?.opportunityScore ?? analysisData?.opportunityScore ?? R?.opportunity_score ?? analysisData?.opportunity_score
+  const topCompetitorMonthlySales = R?.topCompetitorMonthlySales ?? analysisData?.topCompetitorMonthlySales ?? R?.top_competitor_monthly_sales ?? analysisData?.top_competitor_monthly_sales
+  const topCompetitorRevenue = R?.topCompetitorRevenue ?? analysisData?.topCompetitorRevenue ?? R?.top_competitor_revenue ?? analysisData?.top_competitor_revenue
+  const fiveStarPriceRange = safeStr(R?.fiveStarPriceRange ?? analysisData?.fiveStarPriceRange ?? R?.five_star_price_range ?? analysisData?.five_star_price_range)
+  const complianceFlags = safeList(R?.complianceFlags ?? analysisData?.complianceFlags ?? R?.compliance_flags ?? analysisData?.compliance_flags)
+  const ipRisk = safeStr(R?.ipRisk ?? analysisData?.ipRisk ?? R?.ip_risk ?? analysisData?.ip_risk)
+  const painPointsList = safeList(R?.painPointsList ?? analysisData?.painPointsList ?? R?.pain_points_list ?? analysisData?.pain_points_list)
+  const topCompetitorsList = (() => {
+    const raw = R?.topCompetitorsList ?? analysisData?.topCompetitorsList ?? R?.top_competitors ?? analysisData?.top_competitors ?? (R?.marketSnapshot as Record<string,unknown> | undefined)?.topCompetitors ?? (analysisData?.marketSnapshot as Record<string,unknown> | undefined)?.topCompetitors
+    if (!Array.isArray(raw)) return []
+    return raw as { position?: number; title?: string; price?: number; ratingsTotal?: number; rating?: number; brand?: string; sponsored?: boolean }[]
+  })()
+
   // ── Verdict styling ──────────────────────────────────
   const verdictConfig = {
     "GO": { bg: "bg-emerald-600", text: "text-white", border: "border-emerald-500", glow: "shadow-emerald-500/20", icon: <Check className="h-6 w-6" /> },
@@ -771,6 +786,52 @@ export default function WarRoom() {
                   </div>
                 )}
               </div>
+
+              {/* ── Market Intel Strip ─────────────────────────── */}
+              {(cpr != null || opportunityScore != null || topCompetitorMonthlySales != null || fiveStarPriceRange) && (
+                <div className="mt-8 mx-auto max-w-2xl grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {opportunityScore != null && (() => {
+                    const os = Number(opportunityScore)
+                    const osColor = os >= 65 ? "text-emerald-600 dark:text-emerald-400" : os >= 40 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
+                    const osBorder = os >= 65 ? "border-emerald-200/60 dark:border-emerald-800/30" : os >= 40 ? "border-amber-200/60 dark:border-amber-800/30" : "border-red-200/60 dark:border-red-800/30"
+                    return (
+                      <div className={cn("rounded-xl border p-3 text-center bg-card", osBorder)}>
+                        <p className={cn("text-2xl font-black", osColor)}>{os}</p>
+                        <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Opportunity</p>
+                        <p className="text-[9px] text-muted-foreground/60">demand vs competition</p>
+                      </div>
+                    )
+                  })()}
+                  {cpr != null && (
+                    <div className="rounded-xl border border-border bg-card p-3 text-center">
+                      <p className="text-2xl font-black text-foreground">~{Number(cpr)}</p>
+                      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">CPR</p>
+                      <p className="text-[9px] text-muted-foreground/60">units in 8 days → page 1</p>
+                    </div>
+                  )}
+                  {topCompetitorMonthlySales != null && (
+                    <div className="rounded-xl border border-border bg-card p-3 text-center">
+                      <p className="text-2xl font-black text-foreground">~{Number(topCompetitorMonthlySales).toLocaleString()}</p>
+                      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Top Seller</p>
+                      <p className="text-[9px] text-muted-foreground/60">units / month (est.)</p>
+                    </div>
+                  )}
+                  {topCompetitorRevenue != null && (
+                    <div className="rounded-xl border border-border bg-card p-3 text-center">
+                      <p className="text-2xl font-black text-foreground">${(Number(topCompetitorRevenue) / 1000).toFixed(0)}k</p>
+                      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Revenue</p>
+                      <p className="text-[9px] text-muted-foreground/60">top seller / month (est.)</p>
+                    </div>
+                  )}
+                  {fiveStarPriceRange && !topCompetitorRevenue && (
+                    <div className="rounded-xl border border-border bg-card p-3 text-center">
+                      <p className="text-xl font-black text-foreground">{fiveStarPriceRange}</p>
+                      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">5★ Price Zone</p>
+                      <p className="text-[9px] text-muted-foreground/60">price range of 4.5★+ listings</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Navigation Tabs */}
               <div className="mt-8 flex items-center justify-center gap-1 rounded-xl bg-secondary/50 p-1 w-fit mx-auto flex-wrap">
@@ -1093,6 +1154,131 @@ export default function WarRoom() {
               ═══════════════════════════════════════════════ */}
           {activeTab === "deep-dive" && (
             <div className="mt-10 flex flex-col gap-8 animate-in fade-in duration-300">
+
+              {/* ── Competitor X-Ray Table ─────────────────────────── */}
+              {topCompetitorsList.length > 0 && (
+                <section>
+                  <SectionHeader
+                    icon={<BarChart3 className="h-5 w-5 text-primary" />}
+                    title="Competitor X-Ray"
+                    sub={`${topCompetitorsList.length} results from page 1 — position, price, reviews, PPC`}
+                    badge="Live Data"
+                  />
+                  <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/40">
+                          <th className="py-2.5 pl-4 text-left font-semibold text-muted-foreground w-8">#</th>
+                          <th className="py-2.5 pl-3 text-left font-semibold text-muted-foreground">Product</th>
+                          <th className="py-2.5 pl-3 text-right font-semibold text-muted-foreground">Price</th>
+                          <th className="py-2.5 pl-3 text-right font-semibold text-muted-foreground">Rating</th>
+                          <th className="py-2.5 pl-3 text-right font-semibold text-muted-foreground">Reviews</th>
+                          <th className="py-2.5 pl-3 pr-4 text-center font-semibold text-muted-foreground">PPC</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topCompetitorsList.slice(0, 20).map((comp, i) => {
+                          const isWeak = (comp.ratingsTotal ?? 0) < 200
+                          const isStrong = (comp.ratingsTotal ?? 0) >= 2000
+                          return (
+                            <tr key={i} className={cn(
+                              "border-b border-border/40 transition-colors hover:bg-muted/20",
+                              comp.sponsored && "bg-amber-50/20 dark:bg-amber-950/10",
+                              isWeak && "bg-emerald-50/15 dark:bg-emerald-950/10"
+                            )}>
+                              <td className="py-2 pl-4 tabular-nums text-muted-foreground">{comp.position ?? i + 1}</td>
+                              <td className="py-2 pl-3 max-w-[240px]">
+                                <p className="truncate text-foreground leading-snug">{comp.title ?? "—"}</p>
+                                {comp.brand && <p className="text-[10px] text-muted-foreground/60 mt-0.5">{comp.brand}</p>}
+                                {isWeak && <span className="inline-block mt-0.5 rounded px-1 py-px text-[9px] font-bold bg-emerald-100/80 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400">Weak — Target</span>}
+                              </td>
+                              <td className="py-2 pl-3 text-right tabular-nums font-semibold text-foreground">
+                                {comp.price != null ? `$${comp.price.toFixed(2)}` : "—"}
+                              </td>
+                              <td className="py-2 pl-3 text-right tabular-nums">
+                                <span className={cn("font-semibold", (comp.rating ?? 0) >= 4.5 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")}>
+                                  {comp.rating != null ? `${comp.rating.toFixed(1)}★` : "—"}
+                                </span>
+                              </td>
+                              <td className={cn("py-2 pl-3 text-right tabular-nums", isStrong ? "text-red-500 dark:text-red-400 font-semibold" : "text-foreground")}>
+                                {comp.ratingsTotal != null ? comp.ratingsTotal.toLocaleString() : "—"}
+                              </td>
+                              <td className="py-2 pl-3 pr-4 text-center">
+                                {comp.sponsored ? (
+                                  <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-amber-100/70 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">PPC</span>
+                                ) : (
+                                  <span className="text-muted-foreground/30 text-[10px]">org</span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                    <div className="px-4 py-2 border-t border-border/40 flex items-center gap-4 text-[10px] text-muted-foreground/60">
+                      <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-100/80 dark:bg-emerald-900/40 border border-emerald-200/60" /> Weak listing — realistic PPC target</span>
+                      <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-amber-100/70 dark:bg-amber-900/30 border border-amber-200/60" /> Sponsored (PPC slot)</span>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* ── Review Mining — top pain points from competitor reviews ── */}
+              {painPointsList.length > 0 && (
+                <section>
+                  <SectionHeader
+                    icon={<Star className="h-5 w-5 text-amber-500" />}
+                    title="Review Mining"
+                    sub="Top pain points extracted from competitor reviews — what buyers hate"
+                    badge="Voice of Customer"
+                  />
+                  <div className="rounded-2xl border border-amber-200/40 dark:border-amber-800/20 bg-amber-50/20 dark:bg-amber-950/10 p-5">
+                    <div className="flex flex-wrap gap-2">
+                      {painPointsList.slice(0, 12).map((pain, i) => (
+                        <span key={i} className="rounded-full border border-amber-300/50 dark:border-amber-700/30 bg-background px-3 py-1 text-xs font-medium text-foreground">
+                          {pain}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-[11px] text-muted-foreground/70">
+                      Lead with a solution to the top pain point in your main image and bullet 1 — this is where conversion is won or lost.
+                    </p>
+                  </div>
+                </section>
+              )}
+
+              {/* ── Compliance & IP Risk ──────────────────────────── */}
+              {(complianceFlags.length > 0 || ipRisk) && (
+                <section>
+                  <SectionHeader
+                    icon={<Shield className="h-5 w-5 text-red-500" />}
+                    title="Compliance & IP Risk"
+                    sub="Regulatory requirements and IP exposure for this category"
+                    badge="Must Check"
+                  />
+                  <div className="rounded-2xl border border-red-200/40 dark:border-red-800/20 bg-red-50/15 dark:bg-red-950/10 p-5 flex flex-col gap-4">
+                    {complianceFlags.length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">Compliance Requirements</p>
+                        <ul className="flex flex-col gap-2.5">
+                          {complianceFlags.map((flag, i) => (
+                            <li key={i} className="flex items-start gap-2.5 text-[13px] text-foreground/85 leading-relaxed">
+                              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />
+                              {flag}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {ipRisk && (
+                      <div className={cn(complianceFlags.length > 0 && "border-t border-red-200/30 dark:border-red-800/20 pt-3")}>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">IP Risk Assessment</p>
+                        <p className="text-[13px] text-foreground/85 leading-relaxed">{ipRisk}</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
 
               {/* Market Signals — full first page (30): avg price, reviews, review structure, new seller presence, keyword saturation, price compression, brand distribution, maturity, sponsored density */}
               <section>

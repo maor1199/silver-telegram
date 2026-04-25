@@ -113,6 +113,9 @@ export type AIInsights = {
   what_wins_here?: string           // one sentence: what makes the top 3 win
   minimum_entry_requirements?: string[]  // non-negotiable checklist before launch
   price_band?: { budget: number; sweet_spot: string; premium: number }  // market price structure
+  /** Compliance & IP intelligence */
+  compliance_flags?: string[]       // regulatory requirements for this category
+  ip_risk?: string                  // one-sentence IP/patent risk assessment
   /** Advisor implication per section: what this data means in money/time/risk and what to do (max 2 sentences, definitive, to "you") */
   advisor_implication_why_this_decision?: string
   advisor_implication_expert_insight?: string
@@ -549,6 +552,30 @@ PRICE_BAND (price_band — object with 3 keys):
 Based on topPrices, avgPrice, and market positioning signals, return the price structure:
 { "budget": <number — lowest viable price before race to bottom>, "sweet_spot": "<string — '$X–$Y' range where winning listings cluster>", "premium": <number — highest a listing can charge with differentiation> }
 Use real numbers from the market data. Never invent prices.
+
+COMPLIANCE_FLAGS (compliance_flags — array of 2–4 strings):
+Based on the product keyword, list the most critical regulatory compliance requirements a new Amazon seller MUST know. Be specific to the inferred category.
+Rules:
+- Only return items genuinely required or highly likely for this specific product
+- Each item must name the exact regulation/certification and consequence of ignoring it
+- Do NOT include generic advice like "follow Amazon guidelines"
+Category examples:
+  Supplements/health: "FDA requires supplement facts panel + no disease claims — Amazon removes listings with unapproved claims"
+  Children's products: "CPSC ASTM F963 + CPSIA lead/phthalate testing required — CPC must be uploaded before listing is approved"
+  Electronics/wireless: "FCC ID certification required for wireless devices — selling without risks listing removal and customs seizure"
+  Cosmetics/skincare: "FDA cosmetic registration + full INCI ingredient list — drug claims (e.g. anti-aging treatment) trigger enforcement"
+  Food/grocery: "FDA Food Facility Registration + nutrition label — allergen disclosure is mandatory on packaging"
+  Electrical appliances: "UL or ETL listing required — California Prop 65 warning needed if product contains listed chemicals"
+  Generic home goods / décor: return an empty array
+Return 2–4 concise strings, or an empty array if no specific compliance applies.
+
+IP_RISK (ip_risk — string):
+One sentence assessing IP risk for this product. Rate LOW / MEDIUM / HIGH with a reason grounded in category dynamics.
+Examples:
+  LOW: "Low IP risk — generic home goods category with fragmented brands and no known dominant patent holders."
+  MEDIUM: "Medium IP risk — design patents are common in this space; search Google Patents before ordering samples."
+  HIGH: "High IP risk — this keyword is tied to active utility patent litigation; get a freedom-to-operate search before sourcing."
+Never invent specific patent numbers.
 
 Return valid JSON only. No markdown code fences.`
 

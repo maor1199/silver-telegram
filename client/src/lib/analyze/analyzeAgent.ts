@@ -233,6 +233,48 @@ export async function analyzeProduct(input: AnalyzeInput) {
   // CPC-based ACoS on day 1 (before reviews improve CVR) — used to trigger the PPC cannibalization warning
   const cpcBasedLaunchAcos = sellingPrice > 0 ? launchAdCostPerUnit / sellingPrice : 0
 
+  // ─── Market Intelligence Metrics (CPR, Opportunity Score, 5★ Price) ───────
+  // CPR — Cerebro Product Rank equivalent: units a new seller must move in 8 days
+  // to signal to Amazon's algorithm they belong on page 1.
+  // Formula: (top competitor daily sales) × 8
+  const topCompetitorMonthlySales =
+    input.keepaData?.estimatedMonthlySales
+    ?? (avgReviews >= 5000 ? 800 : avgReviews >= 2000 ? 500 : avgReviews >= 500 ? 300 : 150)
+  const cpr = Math.max(8, Math.round((topCompetitorMonthlySales / 30) * 8))
+  const topCompetitorRevenue = Math.round(topCompetitorMonthlySales * avgPrice)
+
+  // Opportunity Score (0–99) — demand vs competition balance (like JungleScout IQ)
+  // Demand pulls score up; competition barriers pull it down. Base = 50.
+  let oppScore = 50
+  // Demand signals
+  oppScore += topCompetitorMonthlySales >= 600 ? 18 : topCompetitorMonthlySales >= 300 ? 12 : topCompetitorMonthlySales >= 150 ? 6 : 0
+  if (input.keepaData?.bsrTrend === "improving") oppScore += 14
+  else if (input.keepaData?.bsrTrend === "stable") oppScore += 4
+  else if (input.keepaData?.bsrTrend === "declining") oppScore -= 12
+  oppScore += newSellersInTop20 >= 4 ? 10 : newSellersInTop20 >= 2 ? 5 : 0
+  // Competition barriers
+  oppScore -= avgReviews >= 5000 ? 22 : avgReviews >= 2000 ? 14 : avgReviews >= 500 ? 7 : 0
+  oppScore -= dominantBrand ? 12 : 0
+  oppScore -= (market?.sponsoredShare ?? 0) > 0.5 ? 10 : (market?.sponsoredShare ?? 0) > 0.3 ? 5 : 0
+  oppScore -= input.keepaData?.amazonIsSelling ? 18 : 0
+  oppScore -= input.keepaData?.sellerCountTrend === "growing" ? 5 : 0
+  const opportunityScore = Math.max(1, Math.min(99, Math.round(oppScore)))
+
+  // 5-star price zone — price range of competitors with 4.5★+ rating
+  const fiveStarComps = topCompetitors.filter(c => (c.rating ?? 0) >= 4.5 && c.price > 0)
+  const fiveStarPriceRange =
+    fiveStarComps.length >= 2
+      ? (() => {
+          const prices = fiveStarComps.map(c => c.price).sort((a, b) => a - b)
+          const lo = prices[0]
+          const hi = prices[prices.length - 1]
+          return `$${lo.toFixed(0)}–$${hi.toFixed(0)}`
+        })()
+      : null
+
+  // Review mining — top pain points already extracted above as `painPoints`
+  // (sourced from reviewBasedPainPoints when available, else title-inferred)
+
   // Use Keepa estimated sales velocity when available — far more accurate than hardcoded defaults.
   // SALES_PER_DAY: Keepa monthly ÷ 30, floored at 1, capped at 100 (no fantasy numbers).
   // FIRST_ORDER_UNITS: 2 months of velocity — enough to survive launch without over-committing.
@@ -1250,6 +1292,16 @@ export async function analyzeProduct(input: AnalyzeInput) {
     advisor_implication_competition_reality: aiInsights?.advisor_implication_competition_reality ?? undefined,
     advisor_implication_opportunity: aiInsights?.advisor_implication_opportunity ?? undefined,
     advisor_implication_early_strategy_guidance: aiInsights?.advisor_implication_early_strategy_guidance ?? undefined,
+    // ── Market Intelligence ──
+    cpr,
+    opportunity_score: opportunityScore,
+    top_competitor_monthly_sales: topCompetitorMonthlySales,
+    top_competitor_revenue: topCompetitorRevenue,
+    five_star_price_range: fiveStarPriceRange ?? undefined,
+    pain_points_list: painPoints.length > 0 ? painPoints : undefined,
+    // ── Compliance & IP ──
+    compliance_flags: aiInsights?.compliance_flags ?? undefined,
+    ip_risk: aiInsights?.ip_risk ?? undefined,
   }
   console.log("STEP 3 - REPORT WHY:", report.why_this_decision)
 
@@ -1375,5 +1427,16 @@ export async function analyzeProduct(input: AnalyzeInput) {
     opportunity_insight: co.opportunity_insight,
     competition_insight: co.competition_insight,
     what_most_sellers_miss_insight: co.what_most_sellers_miss_insight,
+    // ── Market Intelligence ──
+    cpr,
+    opportunityScore,
+    topCompetitorMonthlySales,
+    topCompetitorRevenue,
+    fiveStarPriceRange: fiveStarPriceRange ?? undefined,
+    painPointsList: painPoints.length > 0 ? painPoints : undefined,
+    topCompetitorsList: topCompetitors.length > 0 ? topCompetitors : undefined,
+    // ── Compliance & IP ──
+    complianceFlags: aiInsights?.compliance_flags ?? undefined,
+    ipRisk: aiInsights?.ip_risk ?? undefined,
   }
 }
