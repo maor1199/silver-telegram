@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Menu, X, LogOut, ChevronDown, Sparkles, ClipboardList, ImagePlay } from "lucide-react"
+import { Menu, X, LogOut, ChevronDown, Sparkles, ClipboardList, ImagePlay, ListChecks, Target } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import type { Session } from "@supabase/supabase-js"
@@ -21,6 +21,18 @@ const TOOLS_MENU_ITEMS = [
     href: "/studio",
     description: "AI-powered product images, lifestyle photos & A+ content for your listing",
     icon: ImagePlay,
+  },
+  {
+    name: "Launch Tracker",
+    href: "/launch-tracker",
+    description: "5-phase interactive checklist to take your product from idea to Day 1 on Amazon",
+    icon: ListChecks,
+  },
+  {
+    name: "PPC Campaign Wizard",
+    href: "/ppc-wizard",
+    description: "Build your first Amazon PPC campaign with exact settings, bids & budgets",
+    icon: Target,
   },
   {
     name: "Product Research Guide",
