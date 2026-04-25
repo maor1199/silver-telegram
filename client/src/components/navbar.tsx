@@ -4,41 +4,47 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Menu, X, LogOut, ChevronDown, Sparkles, ClipboardList, ImagePlay, ListChecks, Target } from "lucide-react"
+import { Menu, X, LogOut, ChevronDown, Sparkles, ClipboardList, ImagePlay, ListChecks, Target, Search, Star, Wand2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import type { Session } from "@supabase/supabase-js"
 
+/* ─── Flat list for mobile menu ──────────────────────────── */
 const TOOLS_MENU_ITEMS = [
+  { name: "Listing Copywriter",  href: "/listing-builder",      description: "Generate titles, bullets & descriptions",         icon: Sparkles    },
+  { name: "Listing Studio",      href: "/studio",               description: "AI images, lifestyle photos & A+ content",        icon: ImagePlay   },
+  { name: "Listing Optimizer",   href: "/listing-optimizer",    description: "Score & improve your existing listing",           icon: Wand2       },
+  { name: "Launch Tracker",      href: "/launch-tracker",       description: "5-phase checklist from idea to Day 1",            icon: ListChecks  },
+  { name: "PPC Campaign Wizard", href: "/ppc-wizard",           description: "Build your first campaign with exact settings",   icon: Target      },
+  { name: "Keyword Tool",        href: "/keyword-tool",         description: "AI keyword list with priority scores",            icon: Search      },
+  { name: "Review Intelligence", href: "/review-intelligence",  description: "Extract pain points from competitor reviews",     icon: Star        },
+  { name: "Research Guide",      href: "/research-guide",       description: "9-step product validation methodology",           icon: ClipboardList },
+]
+
+/* ─── Sectioned for desktop mega menu ────────────────────── */
+const TOOLS_SECTIONS = [
   {
-    name: "Listing Copywriter",
-    href: "/listing-builder",
-    description: "Generate optimized titles, bullets & descriptions for Amazon",
-    icon: Sparkles,
+    label: "Content",
+    items: [
+      { name: "Listing Copywriter",  href: "/listing-builder",   description: "Generate titles, bullets & descriptions for Amazon", icon: Sparkles  },
+      { name: "Listing Studio",      href: "/studio",            description: "AI images, lifestyle photos & A+ content",           icon: ImagePlay },
+      { name: "Listing Optimizer",   href: "/listing-optimizer", description: "Score & improve your existing listing",              icon: Wand2     },
+    ],
   },
   {
-    name: "Listing Studio",
-    href: "/studio",
-    description: "AI-powered product images, lifestyle photos & A+ content for your listing",
-    icon: ImagePlay,
+    label: "Launch",
+    items: [
+      { name: "Launch Tracker",      href: "/launch-tracker", description: "5-phase interactive checklist from idea to Day 1", icon: ListChecks },
+      { name: "PPC Campaign Wizard", href: "/ppc-wizard",     description: "Build your first campaign with exact bids & budgets", icon: Target  },
+    ],
   },
   {
-    name: "Launch Tracker",
-    href: "/launch-tracker",
-    description: "5-phase interactive checklist to take your product from idea to Day 1 on Amazon",
-    icon: ListChecks,
-  },
-  {
-    name: "PPC Campaign Wizard",
-    href: "/ppc-wizard",
-    description: "Build your first Amazon PPC campaign with exact settings, bids & budgets",
-    icon: Target,
-  },
-  {
-    name: "Product Research Guide",
-    href: "/research-guide",
-    description: "The 9-step framework professionals use before committing to any product",
-    icon: ClipboardList,
+    label: "Research",
+    items: [
+      { name: "Keyword Tool",        href: "/keyword-tool",        description: "AI-generated keyword list with priority scores",  icon: Search      },
+      { name: "Review Intelligence", href: "/review-intelligence", description: "Extract pain points from competitor reviews",     icon: Star        },
+      { name: "Research Guide",      href: "/research-guide",      description: "9-step product validation methodology",          icon: ClipboardList },
+    ],
   },
 ]
 
@@ -260,7 +266,7 @@ export function Navbar() {
   )
 }
 
-/* ── TOOLS dropdown with glassmorphism ────────────────── */
+/* ── TOOLS mega-menu ──────────────────────────────────── */
 function ToolsDropdown({ pathname }: { pathname: string }) {
   const [open, setOpen] = useState(false)
   const timeout = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -293,26 +299,35 @@ function ToolsDropdown({ pathname }: { pathname: string }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-[100] mt-1.5 w-64 rounded-xl border border-border bg-background/95 p-2 opacity-100 shadow-2xl backdrop-blur-md">
-          {TOOLS_MENU_ITEMS.map((tool) => (
-            <Link
-              key={tool.name}
-              href={tool.href}
-              onClick={() => setOpen(false)}
-              className={cn(
-                "flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors opacity-100",
-                pathname === tool.href
-                  ? "bg-secondary text-foreground"
-                  : "hover:bg-secondary/50 text-foreground"
-              )}
-            >
-              <tool.icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <div className="flex flex-col">
-                <span className="text-sm font-medium leading-tight">{tool.name}</span>
-                <span className="mt-0.5 text-xs text-muted-foreground leading-snug">{tool.description}</span>
+        <div className="absolute left-0 top-full z-[100] mt-1.5 w-[700px] rounded-xl border border-border bg-background/95 p-4 shadow-2xl backdrop-blur-md">
+          <div className="grid grid-cols-3 gap-x-4 gap-y-0 divide-x divide-border/50">
+            {TOOLS_SECTIONS.map((section, si) => (
+              <div key={section.label} className={cn("flex flex-col gap-0.5", si > 0 && "pl-4")}>
+                <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                  {section.label}
+                </p>
+                {section.items.map((tool) => (
+                  <Link
+                    key={tool.name}
+                    href={tool.href}
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-colors",
+                      pathname.startsWith(tool.href)
+                        ? "bg-secondary text-foreground"
+                        : "hover:bg-secondary/60 text-foreground"
+                    )}
+                  >
+                    <tool.icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-medium leading-tight">{tool.name}</span>
+                      <span className="mt-0.5 text-[11px] text-muted-foreground leading-snug">{tool.description}</span>
+                    </div>
+                  </Link>
+                ))}
               </div>
-            </Link>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>
