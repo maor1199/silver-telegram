@@ -587,7 +587,16 @@ export default function WarRoom() {
   const marginThresholdPct =
     R?.marginThresholdPct ?? analysisData?.marginThresholdPct ?? R?.margin_threshold_pct ?? analysisData?.margin_threshold_pct
 
-  // ── Verdict styling ────────────────────────────────── 
+  // ── Critical Intelligence fields (new — always visible) ───────────
+  const tableStakes = safeList(R?.table_stakes ?? analysisData?.table_stakes)
+  const whatWinsHere = safeStr(R?.what_wins_here ?? analysisData?.what_wins_here)
+  const minimumEntry = safeList(R?.minimum_entry_requirements ?? analysisData?.minimum_entry_requirements)
+  const priceBandRaw = R?.price_band ?? analysisData?.price_band
+  const priceBand = (priceBandRaw && typeof priceBandRaw === "object")
+    ? priceBandRaw as { budget?: number; sweet_spot?: string; premium?: number }
+    : null
+
+  // ── Verdict styling ──────────────────────────────────
   const verdictConfig = {
     "GO": { bg: "bg-emerald-600", text: "text-white", border: "border-emerald-500", glow: "shadow-emerald-500/20", icon: <Check className="h-6 w-6" /> },
     "GO-BUT": { bg: "bg-amber-500", text: "text-white", border: "border-amber-400", glow: "shadow-amber-500/20", icon: <AlertTriangle className="h-6 w-6" /> },
@@ -803,6 +812,103 @@ export default function WarRoom() {
               </div>
             </div>
           </section>
+
+          {/* ═══════════════════════════════════════════════
+              CRITICAL INTELLIGENCE — always visible, above tabs
+              Table Stakes · Price Band · What Wins · Entry Requirements
+              ═══════════════════════════════════════════════ */}
+          {(tableStakes.length > 0 || whatWinsHere || minimumEntry.length > 0 || priceBand) && (
+            <section className="mt-8">
+              <div className="mb-3 flex items-center gap-2">
+                <Crosshair className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-black uppercase tracking-[0.12em] text-foreground">Critical Intelligence</h2>
+                <span className="rounded-md bg-primary/10 border border-primary/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-primary">Must Read</span>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+
+                {/* Price Band */}
+                {priceBand && (
+                  <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Price Band</span>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      {priceBand.budget != null && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-muted-foreground">Floor</span>
+                          <span className="text-sm font-bold text-foreground">${Number(priceBand.budget).toFixed(2)}</span>
+                        </div>
+                      )}
+                      {priceBand.sweet_spot && (
+                        <div className="flex items-center justify-between rounded-lg bg-primary/8 px-2 py-1">
+                          <span className="text-[11px] font-semibold text-primary">Sweet Spot</span>
+                          <span className="text-sm font-black text-primary">{priceBand.sweet_spot}</span>
+                        </div>
+                      )}
+                      {priceBand.premium != null && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-muted-foreground">Premium</span>
+                          <span className="text-sm font-bold text-foreground">${Number(priceBand.premium).toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Table Stakes */}
+                {tableStakes.length > 0 && (
+                  <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Table Stakes</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/70 -mt-1">Every top competitor has this — you must too</p>
+                    <ul className="flex flex-col gap-2">
+                      {tableStakes.slice(0, 5).map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-[12px] text-foreground/85 leading-snug">
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500/70" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* What Wins Here */}
+                {whatWinsHere && (
+                  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">What Wins Here</span>
+                    </div>
+                    <p className="text-[13px] text-foreground leading-relaxed font-medium">{whatWinsHere}</p>
+                  </div>
+                )}
+
+                {/* Minimum Entry Requirements */}
+                {minimumEntry.length > 0 && (
+                  <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Before You Launch</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/70 -mt-1">Non-negotiable for this market</p>
+                    <ul className="flex flex-col gap-2">
+                      {minimumEntry.slice(0, 5).map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-[12px] text-foreground/85 leading-snug">
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500/60" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+              </div>
+            </section>
+          )}
 
           {/* ═══════════════════════════════════════════════
               SECTION 1 — OVERVIEW (Decision Layer)

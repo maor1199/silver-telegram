@@ -108,6 +108,11 @@ export type AIInsights = {
   market_domination_analysis?: string
   early_strategy_guidance?: string
   honeymoon_roadmap?: string[]
+  /** Critical market intelligence — always visible, above tabs */
+  table_stakes?: string[]           // what EVERY top competitor has — you must match this
+  what_wins_here?: string           // one sentence: what makes the top 3 win
+  minimum_entry_requirements?: string[]  // non-negotiable checklist before launch
+  price_band?: { budget: number; sweet_spot: string; premium: number }  // market price structure
   /** Advisor implication per section: what this data means in money/time/risk and what to do (max 2 sentences, definitive, to "you") */
   advisor_implication_why_this_decision?: string
   advisor_implication_expert_insight?: string
@@ -513,6 +518,37 @@ Complex:
 - Viability adjustment: -8
 - Write in advisor_implication for EXPERT_INSIGHT:
   "22% return rate = $[sellingPrice * 0.22] lost per 10 sales. Amazon will flag your listing within 60 days if return rate stays high. Image 3 must be a step-by-step installation guide. Non-negotiable."
+
+CRITICAL MARKET INTELLIGENCE (4 required new fields — always return these):
+
+TABLE_STAKES (table_stakes — array of 3–5 strings):
+What does EVERY top competitor on page 1 have? This is the minimum bar a new seller must match to get traffic and convert. Scan competitor titles, review signals, pricing patterns, and listing quality signals.
+Rules:
+- Each item must be specific and observable — not generic like "good product quality"
+- Must reference actual data from competitor titles, prices, or market signals
+- Focus only on things ALL top sellers share — not just some
+Example: "All top 10 listings are priced between $26–$32 — outside this band you lose the Buy Box comparison before you have reviews"
+Example: "Every listing above 4.0 stars mentions the main keyword in the first 5 words of the title"
+Return 3–5 concise strings.
+
+WHAT_WINS_HERE (what_wins_here — string):
+One sentence explaining what gives the top 3 sellers their unfair advantage. What is the specific mechanism — not a description of the market, but the WHY behind who wins. Reference a specific signal.
+Example: "Top sellers win because they own exact-match terms with 200–400 reviews each, creating a social proof floor that keeps CPC low while forcing new entrants into broad match at 2× cost."
+
+MINIMUM_ENTRY (minimum_entry_requirements — array of 3–5 strings):
+What must a new seller have or do BEFORE launching? Non-negotiable requirements specific to this market.
+Rules:
+- Each item must be actionable and specific to this market's data
+- Reference actual numbers (review counts, price points, budgets)
+- Frame as "you must X or Y happens"
+Example: "Price at $28–$31 — 7 listings cluster here; pricing above this without 500+ reviews loses Buy Box immediately"
+Example: "Minimum $600/month PPC budget for 60 days — this market has high sponsored density and you need purchase history before organic rank contributes"
+Return 3–5 concise strings.
+
+PRICE_BAND (price_band — object with 3 keys):
+Based on topPrices, avgPrice, and market positioning signals, return the price structure:
+{ "budget": <number — lowest viable price before race to bottom>, "sweet_spot": "<string — '$X–$Y' range where winning listings cluster>", "premium": <number — highest a listing can charge with differentiation> }
+Use real numbers from the market data. Never invent prices.
 
 Return valid JSON only. No markdown code fences.`
 
