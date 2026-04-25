@@ -975,7 +975,6 @@ export default function WarRoom() {
                     icon={<Shield className="h-5 w-5 text-primary" />}
                     title="Why This Decision"
                     sub="Observation → implication"
-                    helpText={help("whyThisDecision")}
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <ul className="flex flex-col gap-2.5">
@@ -1063,18 +1062,6 @@ export default function WarRoom() {
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <p className="text-sm text-foreground leading-relaxed">{whatMostSellersMiss}</p>
-                    {advisorImplicationWhatMostSellersMiss && (
-                      <p style={{
-                        fontSize: '13px',
-                        color: 'var(--color-text-secondary)',
-                        borderLeft: '2px solid #f97316',
-                        paddingLeft: '10px',
-                        marginTop: '8px',
-                        lineHeight: '1.5'
-                      }}>
-                        {advisorImplicationWhatMostSellersMiss}
-                      </p>
-                    )}
                   </div>
                 </section>
               )}
@@ -1338,194 +1325,50 @@ export default function WarRoom() {
                       </div>
                     )
                   })()}
-                  {advisorImplicationMarketSignals && (
-                    <p style={{
-                      fontSize: '13px',
-                      color: 'var(--color-text-secondary)',
-                      borderLeft: '2px solid #f97316',
-                      paddingLeft: '10px',
-                      marginTop: '8px',
-                      lineHeight: '1.5'
-                    }}>
-                      {advisorImplicationMarketSignals}
-                    </p>
-                  )}
                 </div>
               </section>
 
-              {/* Entry Reality — how difficult entering is (reasoning, avoid HIGH/LOW labels) */}
-              <section>
-                <SectionHeader
-                  icon={<Target className="h-5 w-5 text-primary" />}
-                  title="Entry Reality"
-                  sub="How difficult it is to enter this niche"
-                />
-                <div className="rounded-2xl border border-border bg-card p-6">
-                  {(() => {
-                    const reasoning = typeof fMarketReality === "string" ? fMarketReality : (fMarketReality as string[])?.join(" ") || difficultyScoreDisplay || difficultyLevel
-                    if (reasoning) {
-                      return <p className="text-sm text-foreground leading-relaxed">{reasoning}</p>
-                    }
-                    if (fReviewIntel[0] || fMarketTrends[0]) {
-                      return <p className="text-sm text-foreground leading-relaxed">{fReviewIntel[0] || fMarketTrends[0]}</p>
-                    }
-                    return <p className="text-sm text-muted-foreground/60 italic">No entry analysis available.</p>
-                  })()}
-                  {advisorImplicationEntryReality && (
-                    <p style={{
-                      fontSize: '13px',
-                      color: 'var(--color-text-secondary)',
-                      borderLeft: '2px solid #f97316',
-                      paddingLeft: '10px',
-                      marginTop: '8px',
-                      lineHeight: '1.5'
-                    }}>
-                      {advisorImplicationEntryReality}
-                    </p>
-                  )}
-                </div>
-              </section>
-
-              {/* Market Domination — one brand vs many */}
-              {marketDominationAnalysis && (
+              {/* Competition — brand landscape + how listings actually compete */}
+              {(fCompetition.length > 0 || marketDominationAnalysis) && (
                 <section>
                   <SectionHeader
                     icon={<Users className="h-5 w-5 text-primary" />}
-                    title="Market Domination"
-                    sub="Whether the niche is controlled by one brand or many"
+                    title="Competition"
+                    sub="Brand landscape and how listings compete on page 1"
                   />
-                  <div className="rounded-2xl border border-border bg-card p-6">
-                    <p className="text-sm text-foreground leading-relaxed">{marketDominationAnalysis}</p>
-                    {advisorImplicationMarketDominationAnalysis && (
-                      <p style={{
-                        fontSize: '13px',
-                        color: 'var(--color-text-secondary)',
-                        borderLeft: '2px solid #f97316',
-                        paddingLeft: '10px',
-                        marginTop: '8px',
-                        lineHeight: '1.5'
-                      }}>
-                        {advisorImplicationMarketDominationAnalysis}
-                      </p>
+                  <div className="rounded-2xl border border-border bg-card p-6 flex flex-col gap-4">
+                    {marketDominationAnalysis && (
+                      <p className="text-sm text-foreground leading-relaxed">{marketDominationAnalysis}</p>
                     )}
-                  </div>
-                </section>
-              )}
-
-              {/* Competition Reality — how listings compete (reviews, pricing, positioning) */}
-              {(fCompetition?.length ?? 0) > 0 && (
-                <section>
-                  <SectionHeader
-                    icon={<Users className="h-5 w-5 text-primary" />}
-                    title="Competition Reality"
-                    sub="How listings compete in this niche"
-                    helpText={help("competition")}
-                  />
-                  <div className="rounded-2xl border border-border bg-card p-6">
-                    <ul className="flex flex-col gap-2.5">
-                      {fCompetition.slice(0, 6).map((item, i) => (
-                        <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
-                          <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-primary/60" />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                    {advisorImplicationCompetitionReality && (
-                      <p style={{
-                        fontSize: '13px',
-                        color: 'var(--color-text-secondary)',
-                        borderLeft: '2px solid #f97316',
-                        paddingLeft: '10px',
-                        marginTop: '8px',
-                        lineHeight: '1.5'
-                      }}>
-                        {advisorImplicationCompetitionReality}
-                      </p>
+                    {fCompetition.length > 0 && (
+                      <ul className={cn("flex flex-col gap-2.5", marketDominationAnalysis && "border-t border-border/50 pt-4")}>
+                        {fCompetition.slice(0, 5).map((item, i) => (
+                          <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
+                            <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-primary/60" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                 </section>
               )}
 
               {/* Opportunity — one realistic differentiation opportunity */}
-              <section>
-                <SectionHeader
-                  icon={<Lightbulb className="h-5 w-5 text-emerald-600" />}
-                  title="Opportunity"
-                  sub="One realistic differentiation opportunity"
-                />
-                <div className="rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-6">
-                  {opportunity ? (
-                    <p className="text-sm text-foreground leading-relaxed">{opportunity}</p>
-                  ) : fDiffIdeas[0] ? (
-                    <p className="text-sm text-foreground leading-relaxed">{fDiffIdeas[0]}</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground/60 italic">No opportunity identified.</p>
-                  )}
-                  {advisorImplicationOpportunity && (
-                    <p style={{
-                      fontSize: '13px',
-                      color: 'var(--color-text-secondary)',
-                      borderLeft: '2px solid #f97316',
-                      paddingLeft: '10px',
-                      marginTop: '8px',
-                      lineHeight: '1.5'
-                    }}>
-                      {advisorImplicationOpportunity}
+              {(opportunity || fDiffIdeas[0]) && (
+                <section>
+                  <SectionHeader
+                    icon={<Lightbulb className="h-5 w-5 text-emerald-600" />}
+                    title="Opportunity"
+                    sub="One realistic differentiation angle based on market gaps"
+                  />
+                  <div className="rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-6">
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {opportunity || fDiffIdeas[0]}
                     </p>
-                  )}
-                </div>
-              </section>
-
-              {/* Profit Reality — 4 bullets: referral, FBA, COGS, PPC (same wording as before) */}
-              <section>
-                <SectionHeader
-                  icon={<DollarSign className="h-5 w-5 text-primary" />}
-                  title="Profit Reality"
-                  sub="Real profitability based on margin and PPC assumptions"
-                />
-                <div className="rounded-2xl border border-border bg-card p-6">
-                  {(() => {
-                    if (profitExplanation) {
-                      const parts = profitExplanation.split(/\s*\(\d\)\s+/).map(s => s.trim()).filter(Boolean)
-                      const bullets = parts[0]?.includes("subtract") || parts[0]?.includes("selling price") ? parts.slice(1, 5) : parts.slice(0, 4)
-                      const hasNumbered = profitExplanation.includes("(1)") && bullets.length >= 1
-                      if (hasNumbered && bullets.length >= 1) {
-                        return (
-                          <ul className="flex flex-col gap-2.5">
-                            {bullets.slice(0, 4).map((item, i) => (
-                              <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
-                                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                        )
-                      }
-                      return <p className="text-sm text-foreground leading-relaxed">{profitExplanation}</p>
-                    }
-                    if (fProfitReality[0]) {
-                      return (
-                        <ul className="flex flex-col gap-2.5">
-                          {fProfitReality.slice(0, 4).map((item, i) => (
-                            <li key={i} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
-                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                              {item}
-                            </li>
-                          ))}
-                        </ul>
-                      )
-                    }
-                    if (pb) {
-                      return (
-                        <p className="text-sm text-foreground leading-relaxed">
-                          Net profit after ads: {fmt(pb.profitAfterAds)} per unit. ROI and margin depend on your COGS, FBA/referral fees, and assumed ACoS.
-                        </p>
-                      )
-                    }
-                    return <p className="text-sm text-muted-foreground/60 italic">No profit analysis available.</p>
-                  })()}
-                </div>
-              </section>
+                  </div>
+                </section>
+              )}
 
               {/* Launch Capital — inventory, PPC, misc */}
               <section>
@@ -1583,7 +1426,6 @@ export default function WarRoom() {
                   icon={<Calendar className="h-5 w-5 text-primary" />}
                   title="30-Day Launch Plan"
                   sub="Week 1 · Week 2 · Week 3–4"
-                  helpText={help("executionPlan")}
                 />
                 {(() => {
                   const steps = honeymoonRoadmap?.length ? honeymoonRoadmap : fActionPlan
@@ -1632,7 +1474,6 @@ export default function WarRoom() {
                     icon={<Target className="h-5 w-5 text-primary" />}
                     title="Alternative Keywords"
                     sub="Up to 3 keyword angles"
-                    helpText={help("alternativeKeywords")}
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <div className="flex flex-wrap gap-2.5">
@@ -1675,18 +1516,6 @@ export default function WarRoom() {
                     }
                     return <p className="text-sm text-muted-foreground/60 italic">No early strategy guidance available.</p>
                   })()}
-                  {advisorImplicationEarlyStrategyGuidance && (
-                    <p style={{
-                      fontSize: '13px',
-                      color: 'var(--color-text-secondary)',
-                      borderLeft: '2px solid #f97316',
-                      paddingLeft: '10px',
-                      marginTop: '8px',
-                      lineHeight: '1.5'
-                    }}>
-                      {advisorImplicationEarlyStrategyGuidance}
-                    </p>
-                  )}
                 </div>
               </section>
             </div>
