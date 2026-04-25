@@ -703,16 +703,6 @@ export default function WarRoom() {
                 </p>
               )}
 
-              {/* Score vs Verdict callout — when market looks good but numbers don't add up */}
-              {verdict === "NO-GO" && score != null && Number(score) >= 65 && (
-                <div className="mt-4 mx-auto max-w-md rounded-xl border border-amber-300/40 bg-amber-50/20 dark:bg-amber-950/15 px-5 py-3 text-left">
-                  <p className="text-xs font-bold text-amber-700 dark:text-amber-400 mb-1">Why the score is high but verdict is NO-GO</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    <strong>Market Score</strong> rates the niche — demand, competition, growth potential. It looks good here. <br />
-                    <strong>Verdict</strong> is your profitability math: selling price minus COGS, FBA fees, referral fee, and PPC. That math didn&apos;t clear the margin threshold. Try raising your price or reducing your unit cost and run again.
-                  </p>
-                </div>
-              )}
 
               {/* Key Metrics Row */}
               <div className="mt-8 flex items-center justify-center gap-8 flex-wrap">
@@ -958,12 +948,12 @@ export default function WarRoom() {
                           const verdict = d.verdict ?? "TABLE_STAKES"
                           const verdictText =
                             verdict === "STRONG"
-                              ? "STRONG: Put this in your title and image 1."
+                              ? "Strong differentiator — lead with this in your title and image 1."
                               : verdict === "WEAK"
-                                ? "WEAK: Use in bullet 2, not your title."
+                                ? "Weak angle — mention in bullet 2, not your title."
                                 : verdict === "PENDING"
-                                  ? "PENDING: Awaiting analysis."
-                                  : "TABLE_STAKES: Remove from your main message."
+                                  ? "Awaiting analysis."
+                                  : "Already standard in this market — every top seller has it. Don't lead with it."
                           return (
                             <li key={i} className="flex items-start gap-3 text-sm text-foreground leading-relaxed">
                               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />

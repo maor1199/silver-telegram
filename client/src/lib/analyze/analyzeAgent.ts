@@ -191,7 +191,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const diffInputLower = differentiationInput.toLowerCase()
   const mentionsPainPoint = painPoints.length > 0 && painPoints.some((p) => diffInputLower.includes(String(p).toLowerCase()))
   const differentiationScore =
-    differentiationInput.length < 100 || !mentionsPainPoint ? ("Weak" as const) : ("Strong" as const)
+    differentiationInput.length < 50 || !mentionsPainPoint ? ("Weak" as const) : ("Strong" as const)
   const painPoint1 = painPoints[0] ?? "quality"
   const gapTip =
     differentiationScore === "Weak" && painPoints.length > 0
@@ -199,11 +199,11 @@ export async function analyzeProduct(input: AnalyzeInput) {
       : undefined
 
   const marketDensityHigh = competitorsWithOver1000Reviews >= 3
-  let acosFloor = marketDensityHigh ? 0.45 : 0.25
-  // Aligned with the Differentiation Score card — weak text (<100 chars or no pain-point mention)
+  let acosFloor = marketDensityHigh ? 0.40 : 0.25
+  // Aligned with the Differentiation Score card — weak text (<50 chars or no pain-point mention)
   // means the seller has no real edge → ACoS floor rises (more PPC needed to compensate)
-  const differentiationStrong = differentiationInput.length >= 100 && mentionsPainPoint
-  if (!differentiationStrong) acosFloor = Math.max(acosFloor, 0.5)
+  const differentiationStrong = differentiationInput.length >= 50 && mentionsPainPoint
+  if (!differentiationStrong) acosFloor = Math.max(acosFloor, 0.38)
 
   // 6.5% is realistic for a new listing with 0–10 reviews; 10% is after Vine reviews + listing polish
   const LAUNCH_CVR = 0.065

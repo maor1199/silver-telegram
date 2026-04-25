@@ -51,12 +51,8 @@ export function HeroSection() {
             </span>
             <span className="text-border hidden sm:inline">{"·"}</span>
             <span className="flex items-center gap-1.5">
-              <span className="font-medium text-foreground">GO rate: 31%</span>
-              <span className="text-muted-foreground">(most products fail)</span>
-            </span>
-            <span className="text-border hidden sm:inline">{"·"}</span>
-            <span className="hidden sm:flex items-center gap-1.5">
-              <span className="font-medium text-foreground">Profit accuracy: ±6%</span>
+              <span className="font-medium text-foreground">Full unit economics</span>
+              <span className="text-muted-foreground">(FBA, PPC, COGS)</span>
             </span>
             <span className="text-border hidden md:inline">{"·"}</span>
             <span className="hidden md:flex items-center gap-1.5">
