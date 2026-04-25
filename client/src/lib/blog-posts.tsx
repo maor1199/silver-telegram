@@ -626,6 +626,691 @@ export const POSTS: BlogPost[] = [
       },
     ],
   },
+
+  // ─────────────────────────────────────────────────────────────────────
+  // POST 3: Amazon FBA Fees 2026
+  // ─────────────────────────────────────────────────────────────────────
+  {
+    slug: "amazon-fba-fees-2026-complete-breakdown",
+    title: "Amazon FBA Fees in 2026: The Complete Breakdown (With Real Numbers)",
+    excerpt: "Most new sellers underestimate Amazon fees by 30–40%. Here's every fee you'll pay — FBA fulfillment, referral, storage, returns, and the hidden ones Amazon doesn't advertise — with exact 2026 numbers.",
+    category: "FBA Basics",
+    categoryColor: "bg-orange-50 text-orange-700 border-orange-100",
+    readTime: 9,
+    publishedAt: "2026-04-01",
+    coverImage: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=1200&q=80",
+    featured: false,
+    tags: ["amazon fees", "fba fees", "amazon fba", "fulfillment fees", "storage fees"],
+    faqSchema: [
+      {
+        question: "What are the main Amazon FBA fees in 2026?",
+        answer: "The main fees are: referral fee (typically 15% of the selling price), FBA fulfillment fee (based on size/weight — starting at $3.22 for small standard items), monthly storage fees ($0.78/cubic foot Jan–Sep, $2.40/cubic foot Oct–Dec), and aged inventory surcharges for stock held over 181 days. There are also returns processing fees and removal order fees that most sellers overlook.",
+      },
+      {
+        question: "How do I calculate my true cost per unit on Amazon FBA?",
+        answer: "True cost = COGS (manufacturing + QC) + inbound shipping to Amazon + FBA fulfillment fee + Amazon referral fee + estimated PPC spend + monthly storage allocation + a reserve for returns. Most sellers only add the first three and are shocked when their actual margins come in 30–40% lower than expected.",
+      },
+      {
+        question: "What is the Amazon FBA storage fee for Q4 2026?",
+        answer: "Q4 (October–December) storage fees jump to $2.40 per cubic foot per month — compared to $0.78/cubic foot for the rest of the year. This is a 3x increase. On top of that, any inventory held over 181 days incurs an aged inventory surcharge starting at $0.50/cubic foot per month, increasing with time.",
+      },
+      {
+        question: "Is Amazon FBA still worth it in 2026 given the fees?",
+        answer: "Yes — but only when you do the full fee math before sourcing. FBA is worth it because it gives you Prime eligibility, handles all shipping and customer service, and dramatically increases conversion rates. The sellers who struggle with fees are the ones who calculated margin based on COGS and referral fee alone, ignoring FBA, storage, PPC, and returns.",
+      },
+    ],
+    tocItems: [
+      { id: "why-sellers-underestimate", text: "Why Sellers Underestimate Amazon Fees by 30–40%", level: 2 },
+      { id: "referral-fees", text: "Referral Fees: The 15% That Comes Off the Top", level: 2 },
+      { id: "fba-fulfillment-fees", text: "FBA Fulfillment Fees by Size Tier (2026 Numbers)", level: 2 },
+      { id: "storage-fees", text: "Monthly Storage Fees and the Q4 Trap", level: 2 },
+      { id: "aged-inventory", text: "Aged Inventory Surcharges: The Silent Profit Killer", level: 2 },
+      { id: "returns-removals", text: "Returns Processing and Removal Orders", level: 2 },
+      { id: "true-cost-formula", text: "The True Cost Formula Every Seller Needs", level: 2 },
+      { id: "fee-mistakes", text: "4 Fee Mistakes That Kill New Seller Margins", level: 2 },
+    ],
+    content: [
+      {
+        type: "takeaways",
+        items: [
+          "Amazon takes 30–40% of revenue before you count COGS, PPC, or shipping — most new sellers don't realize this until it's too late.",
+          "FBA fulfillment fees start at $3.22 for small standard items and scale sharply with size and weight.",
+          "Q4 storage fees are 3x higher than the rest of the year — poor inventory planning can wipe out holiday profits.",
+          "Run the true cost formula (COGS + FBA fee + referral fee + PPC + shipping) on every product before you order.",
+        ],
+      },
+      {
+        type: "h2", id: "why-sellers-underestimate",
+        text: "Why Sellers Underestimate Amazon Fees by 30–40%",
+      },
+      {
+        type: "p",
+        text: "The most common mistake new Amazon FBA sellers make isn't picking the wrong product or writing bad listing copy — it's doing incomplete fee math before they commit to inventory. A seller sees a product selling for $24.99, pays $6.00 landed cost, and thinks they're making $18.99 a unit. By the time Amazon is done, they're making $4.00 — on a good day.",
+      },
+      {
+        type: "p",
+        text: "Amazon doesn't make it easy to see all fees in one place. The referral fee is one calculation. The FBA fulfillment fee is another. Storage is billed separately. Aged inventory surcharges are a line item most sellers discover only after the fact. And returns processing? Almost nobody accounts for that until they get their first holiday return wave.",
+      },
+      {
+        type: "callout",
+        variant: "stat",
+        title: "The Real Number",
+        text: "On a typical $25 product, Amazon collects $3.75 in referral fees + $4.85 in FBA fulfillment fees + $0.15 in storage allocation = $8.75 before you've spent a dollar on PPC or accounted for your COGS. That's 35% of your selling price — gone before you see a cent.",
+      },
+      {
+        type: "h2", id: "referral-fees",
+        text: "Referral Fees: The 15% That Comes Off the Top",
+      },
+      {
+        type: "p",
+        text: "Every time you make a sale on Amazon, Amazon takes a referral fee — a percentage of the total selling price including any shipping you charge. In most categories, this is exactly 15%. But the category matters: some are lower, some are higher, and a few can surprise you.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Most categories (home, kitchen, sports, tools, toys): 15%",
+          "Electronics and accessories: 8–15% depending on subcategory",
+          "Clothing and footwear: 17%",
+          "Amazon Device Accessories: 45% — one of the highest categories",
+          "Grocery and gourmet food: 8% under $15, 15% over $15",
+          "Jewelry: 20% up to $250, 5% above $250",
+          "Minimum referral fee applies in many categories: $0.30 per item",
+        ],
+      },
+      {
+        type: "callout",
+        variant: "tip",
+        title: "Always Verify Before You Source",
+        text: "Amazon's referral fee schedule updates periodically. Before committing to any product, look up the exact fee for your specific category on Amazon's Seller Central fee page. A 2% difference in referral fee on a $25 product at 500 units/month is $150 — real money.",
+      },
+      {
+        type: "h2", id: "fba-fulfillment-fees",
+        text: "FBA Fulfillment Fees by Size Tier (2026 Numbers)",
+      },
+      {
+        type: "p",
+        text: "FBA fulfillment fees are charged per unit shipped and are based on the product's size tier and weight. Amazon sorts products into tiers by their packaged dimensions and weight — and the fee jumps sharply once you cross a tier boundary. This is why experienced sellers obsess over product dimensions before sourcing.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Small Standard (up to 16 oz, max 15×12×0.75 in): $3.22 per unit",
+          "Large Standard — 1 lb: $5.40 per unit",
+          "Large Standard — 2 lb: $5.98 per unit",
+          "Large Standard — up to 20 lb: $5.98 + $0.16 per half-pound over 2 lb",
+          "Small Oversize (up to 70 lb, max 60×30 in): $9.73 + $0.42/lb over 2 lb",
+          "Medium Oversize (up to 150 lb, max 108 in longest side): $19.05 + $0.42/lb over 2 lb",
+          "Large Oversize / Special Oversize: $89.98+ — avoid this tier entirely as a new seller",
+        ],
+      },
+      {
+        type: "callout",
+        variant: "warning",
+        title: "The Dimensional Weight Trap",
+        text: "Amazon uses dimensional weight (length × width × height ÷ 139) versus actual weight — whichever is greater. A light but bulky product like a foam cushion can fall into a higher size tier than its weight suggests, costing you $2–4 more per unit in fulfillment fees. Measure your packaged product before calculating fees.",
+      },
+      {
+        type: "p",
+        text: "The practical takeaway: target products that fit comfortably in the Small Standard or lower Large Standard tiers. Anything that pushes into Oversize is extremely difficult to make profitable as a new seller. The economics simply don't work until you have volume, leverage with suppliers, and optimized shipping.",
+      },
+      {
+        type: "h2", id: "storage-fees",
+        text: "Monthly Storage Fees and the Q4 Trap",
+      },
+      {
+        type: "p",
+        text: "Amazon charges monthly storage fees based on the cubic footage your inventory occupies in their fulfillment centers. The fees are low enough to ignore for fast-turning products — and devastating for slow-moving inventory during the holidays.",
+      },
+      {
+        type: "ul",
+        items: [
+          "January–September (Standard-size): $0.78 per cubic foot per month",
+          "October–December (Standard-size): $2.40 per cubic foot per month — a 3x increase",
+          "January–September (Oversize): $0.56 per cubic foot per month",
+          "October–December (Oversize): $1.40 per cubic foot per month",
+        ],
+      },
+      {
+        type: "p",
+        text: "The Q4 trap catches new sellers who send large quantities of inventory to Amazon in October hoping to capture holiday sales — but misjudge demand. Leftover units at $2.40/cubic foot add up fast. 50 unsold units of a medium-sized product can cost $40–60/month in Q4 storage alone.",
+      },
+      {
+        type: "callout",
+        variant: "tip",
+        title: "The 60-Day Inventory Rule",
+        text: "Send enough inventory to cover 60–90 days of sales, not more. Replenish frequently rather than stockpiling. This keeps your storage costs low year-round and protects you from the Q4 storage spike on unsold units. Your IPI (Inventory Performance Index) score also improves — which unlocks better storage limits.",
+      },
+      {
+        type: "h2", id: "aged-inventory",
+        text: "Aged Inventory Surcharges: The Silent Profit Killer",
+      },
+      {
+        type: "p",
+        text: "On top of regular monthly storage fees, Amazon charges an additional aged inventory surcharge on units that have been sitting in fulfillment centers for more than 181 days. This catches sellers who ordered too much, had a slow launch, or didn't monitor their inventory age.",
+      },
+      {
+        type: "ul",
+        items: [
+          "181–270 days: $0.50 per cubic foot per month surcharge (on top of regular storage)",
+          "271–365 days: $1.00 per cubic foot per month surcharge",
+          "366+ days: $1.50 per cubic foot per month surcharge",
+          "Surcharge is in addition to standard monthly storage — costs compound quickly",
+        ],
+      },
+      {
+        type: "p",
+        text: "If you have aged inventory building up, the right move is to run a steep price promotion, create a coupon, or pay removal order fees to get it out of the fulfillment center. The removal fee is almost always cheaper than 6+ months of aged inventory surcharges.",
+      },
+      {
+        type: "h2", id: "returns-removals",
+        text: "Returns Processing and Removal Orders",
+      },
+      {
+        type: "p",
+        text: "Two fees that new sellers almost universally forget to budget for: returns processing and removal orders. Both are real costs that will hit you — the only question is how much.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Returns processing fee: charged when a customer returns a product. For most standard-size items, Amazon charges $2.00–$5.00 per return depending on category and size.",
+          "Removal order fee: charged when you ask Amazon to send inventory back to you or dispose of it. Disposal is $0.15–$0.30 per unit. Return to seller is $0.50–$1.00+ per unit depending on size.",
+          "Return rate benchmark: budget 3–8% of units sold for returns in most categories. Apparel and electronics run higher (10–20%).",
+          "Unfulfillable inventory: returned items that Amazon deems unsellable count against your storage limit and still incur storage fees until removed.",
+        ],
+      },
+      {
+        type: "h2", id: "true-cost-formula",
+        text: "The True Cost Formula Every Seller Needs",
+      },
+      {
+        type: "p",
+        text: "Before you commit to any product, run this formula. Every single time. Not after you've ordered samples — before. This is the calculation that separates sellers who make money from those who wonder where it went.",
+      },
+      {
+        type: "callout",
+        variant: "stat",
+        title: "True Cost Formula",
+        text: "True Cost = COGS (manufacturing + QC) + Inbound Shipping to Amazon + FBA Fulfillment Fee + Amazon Referral Fee (15%) + PPC Spend Estimate (15–25% of revenue) + Storage Allocation + Returns Reserve (5% of revenue). Subtract from your selling price. What remains is your real profit per unit.",
+      },
+      {
+        type: "p",
+        text: "Working example: Product selling at $26.99. COGS $5.50 + inbound shipping $0.80 + FBA fee $4.85 + referral fee $4.05 (15%) + PPC $4.05 (15%) + storage/returns $1.20 = $20.45 total cost. Profit per unit: $6.54. Net margin: 24.2%. That's workable — but barely. A product with a $1.00 higher COGS or $2 lower selling price is a loser.",
+      },
+      {
+        type: "h2", id: "fee-mistakes",
+        text: "4 Fee Mistakes That Kill New Seller Margins",
+      },
+      {
+        type: "ol",
+        items: [
+          "Calculating margin with only COGS and referral fee — the two most visible costs. FBA fee, PPC, storage, and returns together often equal or exceed the referral fee itself.",
+          "Not measuring packaged dimensions before sourcing — falling into a higher size tier adds $2–4 per unit in FBA fees on every single sale.",
+          "Sending 90-day supply to Amazon in September without a sell-through plan — those unsold units face Q4 storage fees at $2.40/cubic foot starting October 1.",
+          "Ignoring the break-even ACoS — if your PPC ACoS exceeds your gross margin before advertising, every sponsored click is a guaranteed loss. Calculate break-even ACoS before launching ads.",
+        ],
+      },
+      { type: "divider" },
+      {
+        type: "p",
+        text: "Amazon FBA fees are not a secret — they're published and predictable. The sellers who get hurt by them are the ones who never ran the full math. Use the true cost formula on every product, every time. Make it a habit before it becomes an expensive lesson.",
+      },
+      {
+        type: "cta",
+        title: "See Exactly What Amazon Will Take From Your Product",
+        text: "SellerMentor's fee calculator runs the complete true cost formula automatically — FBA fee, referral fee, PPC estimate, storage, and returns — and tells you your real net margin in seconds. No surprises at scale.",
+        buttonText: "Calculate My Real Margins — Free",
+        buttonHref: "/analyze",
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────
+  // POST 4: How to Write an Amazon Product Listing That Converts
+  // ─────────────────────────────────────────────────────────────────────
+  {
+    slug: "how-to-write-amazon-product-listing-that-converts",
+    title: "How to Write an Amazon Product Listing That Actually Converts in 2026",
+    excerpt: "Your listing is your salesperson. A bad listing loses sales even when your product is good. Here's the exact formula for a title, bullets, and description that rank and convert — with real examples.",
+    category: "Listing Optimization",
+    categoryColor: "bg-violet-50 text-violet-700 border-violet-100",
+    readTime: 10,
+    publishedAt: "2026-04-08",
+    coverImage: "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=1200&q=80",
+    featured: false,
+    tags: ["amazon listing", "listing optimization", "amazon seo", "product title", "bullet points", "amazon a9"],
+    faqSchema: [
+      {
+        question: "How do I write a good Amazon product title in 2026?",
+        answer: "Use the formula: Primary Keyword + Key Benefit/Differentiator + Secondary Keyword + Size/Quantity/Variant if relevant. Keep the title between 150–200 characters. Lead with the keyword buyers actually search, not your brand name. Avoid ALL CAPS in the title, keyword stuffing, and promotional language like 'best' or 'sale'. Amazon's algorithm and buyers both reward clear, informative titles.",
+      },
+      {
+        question: "What is the best structure for Amazon bullet points?",
+        answer: "Each bullet should open with a CAPS hook (3–5 word outcome), followed by the feature that delivers it, followed by specific proof or detail. Five bullets should cover: (1) primary benefit/differentiator, (2) ease of use, (3) quality/durability, (4) versatility/compatibility, (5) trust signal/guarantee. Lead with the benefit the buyer cares about — not the feature you're proud of.",
+      },
+      {
+        question: "What are backend search terms on Amazon and how do I use them?",
+        answer: "Backend search terms are keywords you enter in Seller Central that are invisible to buyers but indexed by Amazon's algorithm. Use the full 250-byte limit. Include keywords that didn't fit naturally in your title and bullets — synonyms, alternate spellings, related terms. Do NOT repeat keywords already in your title (Amazon already indexes those). Do not use commas — just space-separated terms.",
+      },
+      {
+        question: "Does A+ content really improve Amazon conversion rates?",
+        answer: "Yes — Amazon's own data shows A+ content increases conversion rates by an average of 3–10%. The impact is higher for products where the buyer needs to understand how something works, compare options, or feel confident in quality. A+ replaces the product description with visual modules (comparison charts, lifestyle images with text, feature highlights). It requires Brand Registry enrollment.",
+      },
+    ],
+    tocItems: [
+      { id: "listing-is-salesperson", text: "Your Listing Is Your Only Salesperson", level: 2 },
+      { id: "title-formula", text: "The Amazon Title Formula (150–200 Characters)", level: 2 },
+      { id: "title-examples", text: "Title Before & After: Real Examples", level: 3 },
+      { id: "five-bullet-structure", text: "The 5-Bullet Structure That Converts", level: 2 },
+      { id: "bullet-formula", text: "The Bullet Formula: Hook → Feature → Proof", level: 3 },
+      { id: "bullet-rewrites", text: "Bullet Rewrites: Before & After", level: 3 },
+      { id: "description-strategy", text: "Description Strategy: Close the Last Objection", level: 2 },
+      { id: "backend-search-terms", text: "Backend Search Terms: 250 Bytes of Free Ranking", level: 2 },
+      { id: "aplus-content", text: "A+ Content: When and How to Use It", level: 2 },
+      { id: "listing-mistakes", text: "5 Listing Mistakes That Kill Conversions", level: 2 },
+    ],
+    content: [
+      {
+        type: "takeaways",
+        items: [
+          "Your title is your ad headline — it must contain the primary search keyword buyers use, not the name you gave your product.",
+          "Bullets should lead with the outcome (benefit), not the feature. Buyers buy results, not specs.",
+          "Specificity creates trust: '95% fur reduction in one pass' converts better than 'effective grooming'.",
+          "Backend search terms are free ranking — use all 250 bytes with keywords that didn't fit in your copy.",
+        ],
+      },
+      {
+        type: "h2", id: "listing-is-salesperson",
+        text: "Your Listing Is Your Only Salesperson",
+      },
+      {
+        type: "p",
+        text: "On Amazon, there are no salespeople, no product demos, no store assistants. Your listing is the only thing standing between a browser and a buyer. It has to do everything: get found in search, grab attention in 3 seconds, answer every question, overcome every objection, and earn the click — without any human interaction at all.",
+      },
+      {
+        type: "p",
+        text: "Most new sellers treat listing copy as an afterthought. They write a title that makes sense to them, copy-paste feature specs into bullets, and paste a paragraph from their supplier's product sheet into the description. Then they wonder why the conversion rate is 4% while competitors are at 12%. The listing is the difference — almost every time.",
+      },
+      {
+        type: "callout",
+        variant: "stat",
+        title: "Conversion Rate by Listing Quality",
+        text: "An optimized Amazon listing (strategic title, benefit-led bullets, strong images, A+ content) converts at 10–15% from search. An average listing converts at 4–7%. On 1,000 sessions per month, that's the difference between 40–70 sales and 100–150 sales — from the exact same traffic.",
+      },
+      {
+        type: "h2", id: "title-formula",
+        text: "The Amazon Title Formula (150–200 Characters)",
+      },
+      {
+        type: "p",
+        text: "Your title serves two masters: Amazon's search algorithm and the human buyer scanning search results. The algorithm needs keywords in the title to rank your product. The buyer needs to understand what the product is and why it's worth clicking in under 2 seconds. A great title does both simultaneously.",
+      },
+      {
+        type: "p",
+        text: "The formula that works consistently: Primary Keyword (exact match, how buyers search) + Key Benefit or Differentiator + Secondary Keyword + Variant/Size if relevant. Target 150–200 characters — long enough to be information-rich, short enough not to be cut off in mobile search results.",
+      },
+      {
+        type: "callout",
+        variant: "tip",
+        title: "What Goes First Matters Most",
+        text: "Amazon's algorithm gives more weight to keywords that appear earlier in the title. Put your primary keyword first — not your brand name, not your product's fancy name. Buyers search 'stainless steel water bottle insulated' not 'HydroFlow Pro Max'. Lead with how they search.",
+      },
+      {
+        type: "h3", id: "title-examples",
+        text: "Title Before & After: Real Examples",
+      },
+      {
+        type: "ul",
+        items: [
+          "❌ BEFORE: 'HydroFlow Pro Stainless Steel Bottle — Stay Hydrated All Day!'",
+          "✅ AFTER: 'Insulated Stainless Steel Water Bottle 40 oz — Double-Wall Vacuum Keeps Cold 48 Hours, Wide Mouth, Leak-Proof Lid, BPA Free'",
+          "❌ BEFORE: 'PawGroom Pet Brush — Great for Dogs and Cats'",
+          "✅ AFTER: 'Self-Cleaning Dog Brush for Shedding — Deshedding Tool for Short & Long Hair, One-Click Fur Release, Gentle on Skin, Works on Dogs & Cats'",
+          "Key difference: the 'after' versions lead with search keywords, include specific proof (48 hours, 40 oz, one-click), and answer buyer questions before they click.",
+        ],
+      },
+      {
+        type: "h2", id: "five-bullet-structure",
+        text: "The 5-Bullet Structure That Converts",
+      },
+      {
+        type: "p",
+        text: "Amazon gives you 5 bullet points. Most sellers use them to list features. That's a mistake. Buyers don't buy features — they buy outcomes. They don't care that your brush has 'stainless steel self-cleaning bristles.' They care that it 'removes 95% of fur in one pass without getting fur on your hands.'",
+      },
+      {
+        type: "p",
+        text: "Structure your 5 bullets to cover these topics in this order — because this mirrors the exact sequence of a buyer's decision process:",
+      },
+      {
+        type: "ol",
+        items: [
+          "Bullet 1 — Primary benefit and main differentiator: the single strongest reason to buy your product over competitors.",
+          "Bullet 2 — Ease of use: buyers fear complexity and effort. Show them it's simple.",
+          "Bullet 3 — Quality and durability: buyers fear cheap products that break. Overcome this with specifics.",
+          "Bullet 4 — Versatility or compatibility: expands the buyer's sense of value.",
+          "Bullet 5 — Guarantee or trust signal: removes the last risk from clicking 'Add to Cart'.",
+        ],
+      },
+      {
+        type: "h3", id: "bullet-formula",
+        text: "The Bullet Formula: Hook → Feature → Proof",
+      },
+      {
+        type: "p",
+        text: "Every bullet should follow the same three-part structure: open with a short ALL-CAPS hook (the outcome/benefit), follow with the feature that delivers it, and close with a specific number, comparison, or detail that makes the claim believable. Without the proof element, the benefit is just a claim. With it, it becomes a reason to buy.",
+      },
+      {
+        type: "callout",
+        variant: "tip",
+        title: "The Bullet Formula in Plain English",
+        text: "OUTCOME IN 3–5 CAPS WORDS — The feature that creates that outcome — one specific number, time, comparison, or sensory detail that makes the outcome real and believable to a skeptical buyer.",
+      },
+      {
+        type: "h3", id: "bullet-rewrites",
+        text: "Bullet Rewrites: Before & After",
+      },
+      {
+        type: "ul",
+        items: [
+          "❌ 'Made with food-grade stainless steel, BPA-free and safe for daily use'",
+          "✅ 'ZERO CHEMICALS, ZERO TASTE TRANSFER — Food-grade 18/8 stainless steel keeps your water tasting clean whether it's been in there 1 hour or 12 — no plastic smell, no metallic aftertaste, certified BPA-free'",
+          "❌ 'Easy to clean, fits most cup holders'",
+          "✅ 'CLEANS IN 90 SECONDS FLAT — Wide 2.4-inch mouth fits a standard bottle brush, top rack dishwasher safe, and the 3.2-inch base slides into every standard car cup holder and gym bag side pocket'",
+          "❌ 'Comes with a satisfaction guarantee'",
+          "✅ 'TRY IT RISK-FREE FOR 60 DAYS — If it leaks, dents, or disappoints in any way, contact us for a full replacement or refund. No return shipping required. We stand behind every bottle, no questions asked.'",
+        ],
+      },
+      {
+        type: "h2", id: "description-strategy",
+        text: "Description Strategy: Close the Last Objection",
+      },
+      {
+        type: "p",
+        text: "The product description is read by the buyers who are still on the fence after reading your title, bullets, and viewing your images. This is a high-intent audience — they haven't bounced. But something is still stopping them. Your description's one job is to identify and remove that last barrier.",
+      },
+      {
+        type: "p",
+        text: "A description that converts opens with the buyer's pain (not your product), builds identification with a short relatable scenario, addresses the top 1–2 remaining objections directly, and closes with a confident call to action. If you have Brand Registry access, skip the description and build A+ content instead — it outperforms plain text descriptions consistently.",
+      },
+      {
+        type: "h2", id: "backend-search-terms",
+        text: "Backend Search Terms: 250 Bytes of Free Ranking",
+      },
+      {
+        type: "p",
+        text: "Backend search terms are keywords you enter in Seller Central that buyers never see but Amazon's algorithm fully indexes. You have 250 bytes (roughly 250 characters). This is free ranking real estate — and most sellers waste it.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Use all 250 bytes — every unused byte is a wasted ranking opportunity",
+          "Do NOT repeat keywords already in your title — Amazon already indexes those",
+          "Include synonyms, alternate spellings, and related terms buyers might search",
+          "No commas needed — just space-separated keywords",
+          "Include Spanish/alternate language terms if your audience is multilingual",
+          "Avoid prohibited terms: 'best', 'cheap', 'guaranteed', competitor brand names",
+        ],
+      },
+      {
+        type: "h2", id: "aplus-content",
+        text: "A+ Content: When and How to Use It",
+      },
+      {
+        type: "p",
+        text: "A+ content is available to sellers enrolled in Amazon Brand Registry. It replaces the plain-text product description with rich visual modules — comparison charts, lifestyle images with text overlays, feature highlight sections, and brand story content. Amazon's data shows A+ content increases conversion rates by 3–10% on average, with higher gains for complex or higher-ticket products.",
+      },
+      {
+        type: "p",
+        text: "Prioritize these A+ modules: (1) a product comparison chart positioning your product against generic alternatives, (2) a lifestyle-in-use module showing your target buyer using the product, and (3) a feature-highlight module with your top 3 differentiators shown visually. If you're choosing between professional photography and A+ content, do the photography first — images drive more conversion impact at every price point.",
+      },
+      {
+        type: "h2", id: "listing-mistakes",
+        text: "5 Listing Mistakes That Kill Conversions",
+      },
+      {
+        type: "ol",
+        items: [
+          "Leading bullets with feature specs instead of buyer outcomes — 'Made from 304 stainless steel' means nothing to a buyer who just wants to know if their coffee stays hot.",
+          "Keyword stuffing the title — 'Yoga Mat Non Slip Yoga Mat Thick Exercise Mat Yoga' triggers Amazon's NLP penalty and looks unprofessional to buyers simultaneously.",
+          "Vague trust signals — 'satisfaction guaranteed' without specific terms (timeframe, process) is ignored. '60-day no-questions-asked replacement' is credible.",
+          "Not using all 5 bullet points — leaving bullets blank or combining points is wasted persuasion real estate.",
+          "Describing your product to people who already bought it — write as if the buyer has never heard of your product and needs to understand in 60 seconds whether it solves their specific problem.",
+        ],
+      },
+      { type: "divider" },
+      {
+        type: "p",
+        text: "A conversion-optimized listing isn't about writing talent — it's about structure and discipline. Lead with keywords. Open bullets with outcomes. Back claims with specifics. Remove risk at the end. Do this on every listing and you'll outperform 80% of the products you compete with — without changing your price or your product.",
+      },
+      {
+        type: "cta",
+        title: "Build Your Entire Listing in Under 60 Seconds",
+        text: "SellerMentor's AI Listing Copywriter generates an SEO-optimized title, 5 conversion-focused bullet points, and a full product description — trained on listings that actually sell. Paste in your product details and get pro copy instantly.",
+        buttonText: "Write My Listing Now — Free",
+        buttonHref: "/listing-builder",
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────
+  // POST 5: Amazon PPC for Beginners 2026
+  // ─────────────────────────────────────────────────────────────────────
+  {
+    slug: "amazon-ppc-beginners-guide-2026",
+    title: "Amazon PPC for Beginners: How to Run Ads Without Losing Money in 2026",
+    excerpt: "PPC is the fastest way to sink a launch budget or the smartest investment you'll make — depends entirely on how you set it up. Here's the beginner's playbook for the first 90 days of Amazon advertising.",
+    category: "PPC & Advertising",
+    categoryColor: "bg-red-50 text-red-700 border-red-100",
+    readTime: 11,
+    publishedAt: "2026-04-15",
+    coverImage: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1200&q=80",
+    featured: false,
+    tags: ["amazon ppc", "amazon advertising", "sponsored products", "acos", "amazon ads beginners"],
+    faqSchema: [
+      {
+        question: "What is ACoS in Amazon PPC and what is a good ACoS?",
+        answer: "ACoS (Advertising Cost of Sale) is the percentage of your sales revenue spent on advertising. Formula: Ad Spend ÷ Ad Revenue × 100. For a new product launch, 35–50% ACoS is acceptable because you're buying data and visibility. For a mature product, target an ACoS below your break-even point. Break-even ACoS = (Selling Price − All Costs) ÷ Selling Price × 100. A 25–35% ACoS is a solid target for most standard products once past the launch phase.",
+      },
+      {
+        question: "Should I start with auto or manual Amazon PPC campaigns?",
+        answer: "Start with auto campaigns for the first 2 weeks. Auto campaigns let Amazon's algorithm discover which search terms convert for your product — you're buying keyword data, not just sales. After 14 days, download the Search Term Report, identify the converting terms (3+ clicks, 1+ conversion), and move those into a manual exact-match campaign where you control the bids. Keep the auto campaign running at a lower bid for ongoing discovery.",
+      },
+      {
+        question: "How much should I spend on Amazon PPC when starting out?",
+        answer: "Budget 15–25% of your target monthly revenue for PPC during the first 60–90 days. If you want to do $5,000 in monthly revenue, budget $750–$1,250/month for ads. For daily budget in Seller Central, divide monthly budget by 30. Start with a daily budget of $20–$30 minimum — too low and Amazon won't serve your ads consistently, skewing your data.",
+      },
+      {
+        question: "What are the most common Amazon PPC mistakes beginners make?",
+        answer: "The four most costly beginner PPC mistakes are: (1) bidding too low — your ads don't serve and you assume PPC doesn't work when really your ads are never shown, (2) running no negative keywords — paying for irrelevant clicks that have zero chance of converting, (3) pausing campaigns too early — PPC data takes 2–4 weeks to become meaningful, (4) running ads on an unoptimized listing — sending paid traffic to a low-converting listing multiplies your losses instead of your sales.",
+      },
+    ],
+    tocItems: [
+      { id: "ppc-math-first", text: "Understand the Math Before You Touch the Dashboard", level: 2 },
+      { id: "campaign-types", text: "Amazon PPC Campaign Types: Start Here, Not There", level: 2 },
+      { id: "auto-vs-manual", text: "Auto vs. Manual: The Right Tool at the Right Time", level: 2 },
+      { id: "keyword-mining-flow", text: "The 2-Week Auto → Mine → Manual Flow", level: 2 },
+      { id: "acos-explained", text: "ACoS Explained: Your Most Important PPC Number", level: 2 },
+      { id: "daily-budget", text: "How to Set Your Daily Budget (The Right Way)", level: 2 },
+      { id: "90-day-playbook", text: "The 90-Day Beginner PPC Playbook", level: 2 },
+      { id: "weeks-breakdown", text: "Week-by-Week: What to Do and When", level: 3 },
+      { id: "ppc-mistakes", text: "5 PPC Mistakes That Burn Launch Budgets", level: 2 },
+    ],
+    content: [
+      {
+        type: "takeaways",
+        items: [
+          "Never launch PPC on an unoptimized listing — paid traffic multiplies your conversion rate, good or bad.",
+          "Start with auto campaigns for 2 weeks to collect keyword data, then migrate winners to manual exact-match.",
+          "Calculate your break-even ACoS before spending a dollar: (Price − All Costs) ÷ Price × 100.",
+          "Budget 15–25% of target monthly revenue for PPC during the first 60–90 days of a launch.",
+        ],
+      },
+      {
+        type: "h2", id: "ppc-math-first",
+        text: "Understand the Math Before You Touch the Dashboard",
+      },
+      {
+        type: "p",
+        text: "Amazon PPC (Pay-Per-Click) advertising places your product in front of buyers who are actively searching for products like yours. You bid on keywords. When a buyer searches that keyword and clicks your ad, you pay the bid amount — whether they buy or not. The difference between profitability and a burned launch budget comes down entirely to whether your math worked before you started spending.",
+      },
+      {
+        type: "p",
+        text: "Before you create a single campaign, you need two numbers: your break-even ACoS and your target ACoS. Without these, you're flying blind — spending money with no benchmark for success or failure. Most new sellers skip this step. Then they look at their ACoS at the end of month one, have no idea if it's good or terrible, and either panic-pause everything or keep burning money.",
+      },
+      {
+        type: "callout",
+        variant: "warning",
+        title: "Run PPC on a Ready Listing Only",
+        text: "PPC amplifies your listing's conversion rate — it doesn't fix it. If your listing converts at 4%, paid traffic converts at 4%. If it converts at 12%, paid traffic converts at 12%. Sending $500/month in PPC to a weak listing is a donation to Amazon. Optimize your listing completely before running a single ad.",
+      },
+      {
+        type: "h2", id: "campaign-types",
+        text: "Amazon PPC Campaign Types: Start Here, Not There",
+      },
+      {
+        type: "p",
+        text: "Amazon offers three main ad types: Sponsored Products, Sponsored Brands, and Sponsored Display. As a new seller, you have one job: start with Sponsored Products only. This is the ad type that appears directly in search results and on product detail pages. It has the highest return for new products, the most data visibility, and the lowest complexity.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Sponsored Products: ads in search results and on competitor product pages. Start here. This is 90% of your PPC focus for the first 90 days.",
+          "Sponsored Brands: banner ads featuring your brand logo and multiple products. Requires Brand Registry. Use after you have a proven product and positive review count.",
+          "Sponsored Display: remarketing ads shown to buyers who viewed your product but didn't purchase. Best for retargeting once you have traffic volume worth remarketing to.",
+          "Video Ads: high-impact but high-production-cost. Not for beginners — build your Sponsored Products foundation first.",
+        ],
+      },
+      {
+        type: "h2", id: "auto-vs-manual",
+        text: "Auto vs. Manual: The Right Tool at the Right Time",
+      },
+      {
+        type: "p",
+        text: "Within Sponsored Products, you choose between auto targeting and manual targeting. They serve completely different purposes — and the mistake beginners make is treating them as alternatives when they're actually a sequence.",
+      },
+      {
+        type: "p",
+        text: "Auto targeting lets Amazon's algorithm determine which search terms to show your ad for, based on your listing content. You set one bid for all match types. Amazon finds the opportunities. Your job is to watch, collect data, and discover which terms actually convert.",
+      },
+      {
+        type: "p",
+        text: "Manual targeting gives you direct control over which keywords trigger your ads, which match types you use (broad, phrase, exact), and the exact bid for each. The power of manual is precision — but you need data to use it well. Without data, manual campaigns are guesswork at a higher cost.",
+      },
+      {
+        type: "callout",
+        variant: "tip",
+        title: "Auto and Manual Are a Team, Not Competitors",
+        text: "Run auto campaigns permanently at a moderate bid to continuously discover new converting search terms. Run manual exact-match campaigns at aggressive bids for your proven winners. Most experienced sellers run both types simultaneously — auto for discovery, manual for profit.",
+      },
+      {
+        type: "h2", id: "keyword-mining-flow",
+        text: "The 2-Week Auto → Mine → Manual Flow",
+      },
+      {
+        type: "p",
+        text: "Here is the exact process that turns raw PPC spend into a profitable, data-driven campaign structure. This is the foundation of every successful Amazon PPC account.",
+      },
+      {
+        type: "ol",
+        items: [
+          "Week 1–2: Launch one auto campaign with a $25–$40/day budget. Set your default bid at $0.75–$1.00. Let it run untouched for at least 14 days.",
+          "Day 14: Download the Search Term Report from Seller Central (Reports → Advertising Reports → Search Term Report). This shows every search term that triggered your ad and the resulting clicks, spend, and orders.",
+          "Identify winners: any search term with 3+ clicks and at least 1 order is a candidate for your manual campaign. Any term with 8+ clicks and zero orders is a negative keyword.",
+          "Launch a manual Exact Match campaign with your winning search terms. Set aggressive bids (start 20–30% higher than what the auto campaign was spending on those terms).",
+          "Add all zero-conversion search terms (8+ clicks, 0 orders) as negative exact-match keywords to the auto campaign.",
+          "Repeat the mining process every 2 weeks. Your manual campaign grows. Your auto campaign gets cleaner. Your ACoS improves steadily.",
+        ],
+      },
+      {
+        type: "h2", id: "acos-explained",
+        text: "ACoS Explained: Your Most Important PPC Number",
+      },
+      {
+        type: "p",
+        text: "ACoS stands for Advertising Cost of Sale. It's the percentage of your ad-attributed revenue that you spent on ads. Formula: (Ad Spend ÷ Ad Revenue) × 100. If you spent $30 on ads and those ads generated $100 in sales, your ACoS is 30%.",
+      },
+      {
+        type: "p",
+        text: "The number that matters most isn't a specific ACoS target — it's your break-even ACoS. This is the maximum ACoS you can sustain without losing money on your PPC sales. Calculate it before you spend anything.",
+      },
+      {
+        type: "callout",
+        variant: "stat",
+        title: "Break-Even ACoS Formula",
+        text: "Break-Even ACoS = (Selling Price − All Costs) ÷ Selling Price × 100. Example: Selling price $26.99, total costs per unit $19.50 (COGS + FBA fee + referral fee). Profit before ads = $7.49. Break-even ACoS = $7.49 ÷ $26.99 × 100 = 27.8%. Any ACoS below 27.8% means you're making money on PPC sales. Above it, you're losing.",
+      },
+      {
+        type: "p",
+        text: "For a new product launch, it's acceptable — even strategic — to run at or slightly above break-even ACoS. You're buying rank, reviews, and velocity, not just direct profit. But set a ceiling: an ACoS above 60–70% on a mature product with no rank improvement is simply a burning budget.",
+      },
+      {
+        type: "h2", id: "daily-budget",
+        text: "How to Set Your Daily Budget (The Right Way)",
+      },
+      {
+        type: "p",
+        text: "Your daily budget in Seller Central is the maximum Amazon will spend per campaign per day. Setting it correctly is important for two reasons: too low and your ads stop serving partway through the day (your data is incomplete and biased toward morning traffic), too high and you can burn your monthly budget in a week.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Target monthly PPC budget: 15–25% of your target monthly revenue (e.g., $5,000 revenue target = $750–$1,250/month PPC budget)",
+          "Daily budget: monthly PPC budget ÷ 30 (e.g., $1,000/month = $33/day)",
+          "Minimum effective daily budget: $20–$25/day. Below this, Amazon's algorithm doesn't serve ads consistently and your data becomes unreliable.",
+          "Distribute budget across campaigns: auto campaign gets 40%, manual exact campaigns get 60% once running.",
+          "Increase daily budget as revenue grows — keep PPC at 15–25% of revenue, not a flat number.",
+        ],
+      },
+      {
+        type: "h2", id: "90-day-playbook",
+        text: "The 90-Day Beginner PPC Playbook",
+      },
+      {
+        type: "p",
+        text: "The first 90 days of Amazon PPC have one goal: build a profitable campaign structure from real data. You are not trying to maximize profit in month one. You are trying to learn which keywords convert, what bids work, and what your sustainable ACoS looks like — so that month 3 and beyond are profitable.",
+      },
+      {
+        type: "h3", id: "weeks-breakdown",
+        text: "Week-by-Week: What to Do and When",
+      },
+      {
+        type: "ul",
+        items: [
+          "Weeks 1–2: Launch auto campaign only. Budget $25–$40/day. Default bid $0.75–$1.00. Do NOT touch it. You need clean data, not adjustments.",
+          "Week 3: Download Search Term Report. Identify converting terms (3+ clicks, 1+ order). Launch manual exact-match campaign with winners at 20% higher bids. Add wasted spend terms as negatives to auto.",
+          "Week 4: Review both campaigns. Raise bids on converting exact-match keywords by 15–20%. Pause any exact-match keywords with 15+ clicks and zero sales.",
+          "Month 2: Run weekly Search Term Report reviews. Continue mining auto for new winners. Add phrase-match campaign for moderate-volume keywords not yet in exact-match.",
+          "Month 3: Focus on reducing ACoS — lower bids on high-spend, low-conversion keywords. Test product targeting (competitor ASINs). Add negative keywords aggressively to tighten auto campaign targeting.",
+          "Day 90: You should have a lean, data-backed campaign structure with an ACoS at or below break-even, clear top converting keywords, and a scalable daily budget tied to revenue.",
+        ],
+      },
+      {
+        type: "h2", id: "ppc-mistakes",
+        text: "5 PPC Mistakes That Burn Launch Budgets",
+      },
+      {
+        type: "ol",
+        items: [
+          "Bidding too low on auto campaigns ($0.10–$0.25) — your ads rarely serve, you collect almost no data, then conclude 'PPC doesn't work' when PPC was never actually running. Start at $0.75 minimum.",
+          "Running zero negative keywords — every irrelevant search term that triggers your ad and gets clicks with zero conversions is money burned. Mine negatives from week 3 onward, every week.",
+          "Pausing campaigns after 7–10 days because ACoS is 'too high' — PPC data takes 2–3 weeks to become statistically meaningful. High ACoS in week one is normal and expected. Patience is a competitive advantage.",
+          "Running ads on an unoptimized listing — your listing's conversion rate determines whether your PPC spend becomes revenue or waste. Fix the listing before you run the ads.",
+          "Ignoring the match type sequence — running only broad-match keywords in a manual campaign without mining converting terms into exact-match means you're overpaying for impressions on loosely related searches. Follow the auto → mine → exact flow.",
+        ],
+      },
+      { type: "divider" },
+      {
+        type: "p",
+        text: "Amazon PPC is not complicated — but it requires patience, process, and discipline. Start with auto, collect data, move winners to manual, kill wasted spend with negatives, and repeat. The sellers who build profitable PPC accounts aren't smarter — they're more systematic. Follow the 90-day playbook and you'll have a campaign structure that most sellers take 12 months to build.",
+      },
+      {
+        type: "cta",
+        title: "Know Your PPC Budget Before You Launch",
+        text: "SellerMentor calculates your break-even ACoS, recommended daily budget, and estimated PPC cost for a product launch — so you know exactly what to spend and what to expect before you create a single campaign.",
+        buttonText: "Get My PPC Launch Budget — Free",
+        buttonHref: "/analyze",
+      },
+    ],
+  },
 ]
 
 export function getPost(slug: string): BlogPost | undefined {
