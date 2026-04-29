@@ -1304,16 +1304,35 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   const honeymoonRoadmap = honeymoonRoadmapDefault
 
+  // ── Execution Plan: AI-first, deterministic fallback ───────────────────
+  // The AI returns a verdict-specific plan (GO / NO_GO / IMPROVE_BEFORE_LAUNCH).
+  // We always prefer the AI's version — it references real market numbers, not
+  // generic steps. The deterministic honeymoonRoadmapDefault is a fallback only
+  // when the AI returns nothing or truncates.
   const highBarrierStep = `High Review Barrier: avg ${avgReviews.toLocaleString()} reviews in this niche. Do not launch without at least $15,000 total budget (inventory + PPC + Vine).`
   const ppcCannibalizationStep = `PPC Warning: your launch ACoS will likely hit 60%+ in the first 30 days. Cap your daily budget at $${dailyPpcBudget} and only scale when ACoS drops below ${targetAcosDisplay}%.`
-  const executionPlanRaw = [
+  const deterministicPlanRaw = [
     ...(avgReviews > 10000 ? [highBarrierStep] : []),
     ...(cpcBasedLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
     ...honeymoonRoadmapDefault,
   ]
-  const execution_plan = executionPlanRaw.map((step: string) =>
+  const deterministicPlan = deterministicPlanRaw.map((step: string) =>
     String(step).replace(/\bkeywords:\s*:\s*/gi, "keywords: ")
   )
+
+  // AI execution_plan wins when non-empty (verdict-specific, data-grounded)
+  // Market warnings (high barrier, PPC cannibalization) are prepended even on AI plan
+  const aiExecutionPlan = aiInsights?.execution_plan?.length
+    ? aiInsights.execution_plan.map(s => String(s).replace(/\bkeywords:\s*:\s*/gi, "keywords: "))
+    : null
+  const executionWarnings = [
+    ...(avgReviews > 10000 ? [highBarrierStep] : []),
+    ...(cpcBasedLaunchAcos > 0.6 ? [ppcCannibalizationStep] : []),
+  ]
+  const execution_plan = aiExecutionPlan
+    ? [...executionWarnings, ...aiExecutionPlan]
+    : deterministicPlan
+
   const what_would_make_go = whatWouldFlipFromExecutionPlan(verdict, execution_plan)
 
   const alternative_keywords_with_cost = alternative_keywords.map((kw) => ({
