@@ -86,6 +86,12 @@ export type AIInsightsInput = {
   keepa_peak_sales_months?: string
   keepa_trough_sales_months?: string
   painPointSource?: "reviews" | "titles"
+  /** DataForSEO real CPC in USD — use in expert_insight and early_strategy_guidance */
+  dfs_cpc_usd?: number
+  /** DataForSEO real search volume */
+  dfs_search_volume?: number
+  /** DataForSEO related keywords — use in alternative_keywords and execution_plan */
+  relatedKeywords?: string[]
 }
 
 export type AIInsights = {
@@ -897,6 +903,32 @@ function buildUserPrompt(input: AIInsightsInput): string {
     )
   }
 
+  // DataForSEO CPC + search volume — critical ad economics context
+  if (input.dfs_cpc_usd != null || input.dfs_search_volume != null) {
+    lines.push("", "=== DATAFORSEO REAL MARKET DATA ===")
+    if (input.dfs_search_volume != null) {
+      lines.push(`Real Amazon/Google search volume for "${input.keyword}": ${input.dfs_search_volume.toLocaleString()} searches/month — use this to calibrate market size claims`)
+    }
+    if (input.dfs_cpc_usd != null) {
+      lines.push(`Real Google Ads CPC (best proxy for Amazon PPC competition): $${input.dfs_cpc_usd.toFixed(2)}/click`)
+      if (input.profitAfterAds != null) {
+        const LAUNCH_CVR = 0.065
+        const adCostPerUnit = input.dfs_cpc_usd / LAUNCH_CVR
+        lines.push(`At 6.5% launch CVR → ~$${adCostPerUnit.toFixed(2)} ad spend per unit sold — mention this in expert_insight as the real cost of ranking`)
+      }
+    }
+  }
+
+  // DataForSEO related keywords — AI uses these for alternative_keywords and execution_plan
+  if (input.relatedKeywords?.length) {
+    lines.push(
+      "",
+      "=== DATAFORSEO RELATED KEYWORDS (real Amazon searches) ===",
+      "Use these for alternative_keywords and PPC keyword suggestions in execution_plan. These are actual buyer search terms — not generic phrases.",
+      ...input.relatedKeywords.slice(0, 10).map((kw, i) => `${i + 1}. ${kw}`)
+    )
+  }
+
   lines.push(
     "",
     "This data represents the FULL first page of Amazon results (up to 30 listings), not just the top 10. Analyze the user's product against it. Use real market structure signals in every insight. Return JSON with all required keys."
@@ -912,7 +944,7 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
   }
 
   try {
-    const model = process.env.OPENAI_MODEL || "gpt-4o-mini"
+    const model = process.env.OPENAI_MODEL || "gpt-4o"
     const completion = await openai.chat.completions.create({
       model,
       messages: [
@@ -920,8 +952,8 @@ export async function getAIInsights(input: AIInsightsInput): Promise<AIInsights 
         { role: "user", content: buildUserPrompt(input) },
       ],
       response_format: { type: "json_object" },
-      temperature: 0.5,
-      max_tokens: 4000,
+      temperature: 0.3,
+      max_tokens: 6000,
     })
 
     const raw = completion.choices[0]?.message?.content?.trim()
@@ -1072,7 +1104,7 @@ export async function getConsultantInsights(data: Record<string, unknown>): Prom
   const openai = getOpenAIClient()
   if (!openai) return null
   try {
-    const model = process.env.OPENAI_MODEL || "gpt-4o-mini"
+    const model = process.env.OPENAI_MODEL || "gpt-4o"
     const userMessage = JSON.stringify(data)
     const completion = await openai.chat.completions.create({
       model,
@@ -1081,8 +1113,8 @@ export async function getConsultantInsights(data: Record<string, unknown>): Prom
         { role: "user", content: userMessage },
       ],
       response_format: { type: "json_object" },
-      temperature: 0.5,
-      max_tokens: 1500,
+      temperature: 0.3,
+      max_tokens: 2000,
     })
     const raw = completion.choices[0]?.message?.content?.trim()
     if (!raw) return null

@@ -1311,7 +1311,6 @@ export const POSTS: BlogPost[] = [
       },
     ],
   },
-]
 
   // ─────────────────────────────────────────────────────────────────────
   // POST 6: How to Find Products to Sell on Amazon

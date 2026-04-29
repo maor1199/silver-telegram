@@ -24,6 +24,8 @@ type AnalyzeInput = {
   leadTimeWeeks?: number
   /** One-time sample cost in USD — added to launch capital */
   sampleCost?: number
+  /** DataForSEO related keywords — passed to AI for better alternative_keywords and PPC suggestions */
+  relatedKeywords?: string[]
   marketData?: {
     success?: boolean
     avgPrice?: number
@@ -597,6 +599,23 @@ export async function analyzeProduct(input: AnalyzeInput) {
     }
   }
 
+  // Layer 6b — DataForSEO CPC signal (real ad competition cost indicator)
+  // High CPC means expensive ads = lower profit margin = score penalty.
+  // Low CPC means cheaper ranking opportunity = score boost.
+  const dfsCpcUsd = input.dataForSEO?.cpcUsd ?? null
+  if (dfsCpcUsd != null) {
+    if (dfsCpcUsd >= 3.0) {
+      score -= 10
+      scoreBreakdown.dfsCpc = `-10 (CPC $${dfsCpcUsd.toFixed(2)}/click — very high ad cost, profit under pressure)`
+    } else if (dfsCpcUsd >= 1.50) {
+      score -= 5
+      scoreBreakdown.dfsCpc = `-5 (CPC $${dfsCpcUsd.toFixed(2)}/click — moderate-high ad competition)`
+    } else if (dfsCpcUsd < 0.60) {
+      score += 5
+      scoreBreakdown.dfsCpc = `+5 (CPC $${dfsCpcUsd.toFixed(2)}/click — low ad competition, cheaper ranking)`
+    }
+  }
+
   // Clamp final score (UI only — verdict is logic‑based below)
   score = Math.max(1, Math.min(99, Math.round(score)))
 
@@ -747,6 +766,85 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const breakEvenMonths = breakEvenUnitsForCapital != null && SALES_PER_DAY > 0
     ? parseFloat((breakEvenUnitsForCapital / (SALES_PER_DAY * 30)).toFixed(1))
     : null
+
+  // ── Month-by-Month Profit Projection (M1–M6) ────────────────────────────
+  // Models the P&L ramp as a new listing gains reviews and organic traffic.
+  // Ramp factors are conservative estimates for a product launching with 0 reviews:
+  //   M1 20% velocity, ACoS +20pp (no reviews, paying Newbie Tax)
+  //   M2 40% velocity, ACoS +15pp (a few Vine reviews landing)
+  //   M3 65% velocity, ACoS +10pp (10+ reviews, organic rank beginning)
+  //   M4 85% velocity, ACoS +5pp  (stable listing, organic contributing)
+  //   M5 100% velocity, ACoS 0pp  (fully ramped, steady state)
+  //   M6 110% velocity, ACoS -5pp (optimized campaigns, margin improving)
+  const monthlyRamp = [
+    { month: 1, velocityFactor: 0.20, acosAdj: 0.20 },
+    { month: 2, velocityFactor: 0.40, acosAdj: 0.15 },
+    { month: 3, velocityFactor: 0.65, acosAdj: 0.10 },
+    { month: 4, velocityFactor: 0.85, acosAdj: 0.05 },
+    { month: 5, velocityFactor: 1.00, acosAdj: 0.00 },
+    { month: 6, velocityFactor: 1.10, acosAdj: -0.05 },
+  ]
+  const baseMonthlyUnits = SALES_PER_DAY * 30
+  let cumulativeProfit = -launchCapitalRequired // start from negative (sunk launch cost)
+  const monthlyProjection = monthlyRamp.map(({ month, velocityFactor, acosAdj }) => {
+    const units = Math.round(baseMonthlyUnits * velocityFactor)
+    const effectiveAcos = Math.min(0.75, Math.max(0.15, assumedAcos + acosAdj))
+    const monthRevenue = units * sellingPrice
+    const monthReferral = units * referralFee
+    const monthFba = units * fbaFee
+    const monthCogs = units * cogs
+    const monthPpc = units * sellingPrice * effectiveAcos
+    const monthProfit = monthRevenue - monthReferral - monthFba - monthCogs - monthPpc
+    cumulativeProfit += monthProfit
+    return {
+      month,
+      units,
+      revenue: Math.round(monthRevenue),
+      profit: Math.round(monthProfit),
+      acos: Math.round(effectiveAcos * 100),
+      cumulativeProfit: Math.round(cumulativeProfit),
+      breaksEven: cumulativeProfit >= 0,
+    }
+  })
+  // Determine breakeven month from projection (more accurate than units-only calc)
+  const breakEvenMonth = monthlyProjection.find(m => m.breaksEven)?.month ?? null
+  const projectedMonthlyProfitAtSteadyState = monthlyProjection[4]?.profit ?? null // M5 = fully ramped
+
+  // ── Stress Test Calculations ─────────────────────────────────────────────
+  // Q1: What happens if ACoS runs 10pp higher than modeled? (realistic scenario)
+  const stressAcos = Math.min(0.85, assumedAcos + 0.10)
+  const stressPpcCost = sellingPrice * stressAcos
+  const stressProfitAfterAds = sellingPrice - totalCost + ppcCostPerUnit - stressPpcCost
+  const stressMarginPct = sellingPrice > 0 ? (stressProfitAfterAds / sellingPrice) * 100 : 0
+
+  // Q2: What happens if 8% of units are returned? (mid-range return scenario)
+  const RETURN_RATE = 0.08
+  const returnLossPerUnit = sellingPrice * RETURN_RATE  // refund + disposal
+  const profitAfterReturns = profitAfterAds - returnLossPerUnit
+  const marginAfterReturns = sellingPrice > 0 ? (profitAfterReturns / sellingPrice) * 100 : 0
+
+  // Combined worst-case (both stress at once)
+  const worstCaseProfit = stressProfitAfterAds - returnLossPerUnit
+  const worstCaseMargin = sellingPrice > 0 ? (worstCaseProfit / sellingPrice) * 100 : 0
+
+  const stressTest = {
+    baseProfit: Math.round(profitAfterAds * 100) / 100,
+    baseMarginPct: Math.round(estimatedMarginPercent * 10) / 10,
+    // Scenario A: ACoS 10pp higher
+    highAcosProfit: Math.round(stressProfitAfterAds * 100) / 100,
+    highAcosMarginPct: Math.round(stressMarginPct * 10) / 10,
+    highAcosLabel: `+10pp ACoS (${Math.round(stressAcos * 100)}%)`,
+    highAcosSurvives: stressProfitAfterAds > 0 && stressMarginPct >= 8,
+    // Scenario B: 8% return rate
+    returnRateProfit: Math.round(profitAfterReturns * 100) / 100,
+    returnRateMarginPct: Math.round(marginAfterReturns * 10) / 10,
+    returnRateLabel: "8% return rate",
+    returnRateSurvives: profitAfterReturns > 0,
+    // Scenario C: both at once
+    worstCaseProfit: Math.round(worstCaseProfit * 100) / 100,
+    worstCaseMarginPct: Math.round(worstCaseMargin * 10) / 10,
+    worstCaseSurvives: worstCaseProfit > 0,
+  }
 
   // ── Return Rate Estimate ─────────────────────────────────────────────────
   const complexityStr = (input.complexity ?? "moderate").toLowerCase()
@@ -900,6 +998,11 @@ export async function analyzeProduct(input: AnalyzeInput) {
     keepa_fba_seller_count: keepa?.fbaSellerCount,
     keepa_peak_sales_months: keepa?.peakSalesMonths?.join(", "),
     keepa_trough_sales_months: keepa?.troughSalesMonths?.join(", "),
+    // DataForSEO real market signals for AI context
+    dfs_cpc_usd: input.dataForSEO?.cpcUsd ?? undefined,
+    dfs_search_volume: input.dataForSEO?.searchVolume ?? undefined,
+    relatedKeywords: input.relatedKeywords?.length ? input.relatedKeywords : undefined,
+    assumed_acos: assumedAcos,
   }
   const aiInsights = await getAIInsights(aiInput)
   console.log("STEP 1 - RAW AI WHY:", aiInsights?.why_this_decision)
@@ -1550,6 +1653,12 @@ export async function analyzeProduct(input: AnalyzeInput) {
     // ── Fix-It & Differentiation ──
     fix_it_scenarios: fixItScenarios ?? undefined,
     differentiation_suggestions: differentiationSuggestions.length > 0 ? differentiationSuggestions : undefined,
+    // ── Month-by-Month Projection ──
+    monthly_projection: monthlyProjection,
+    break_even_month: breakEvenMonth ?? undefined,
+    projected_monthly_profit_steady_state: projectedMonthlyProfitAtSteadyState ?? undefined,
+    // ── Stress Test ──
+    stress_test: stressTest,
   }
   console.log("STEP 3 - REPORT WHY:", report.why_this_decision)
 
@@ -1726,5 +1835,11 @@ export async function analyzeProduct(input: AnalyzeInput) {
     searchTrend: input.dataForSEO?.searchTrend ?? undefined,
     realCpcUsd: input.dataForSEO?.cpcUsd ?? undefined,
     keywordCompetitionLevel: input.dataForSEO?.competitionLevel ?? undefined,
+    // ── Month-by-Month Projection ──
+    monthlyProjection,
+    breakEvenMonth: breakEvenMonth ?? undefined,
+    projectedMonthlyProfitAtSteadyState: projectedMonthlyProfitAtSteadyState ?? undefined,
+    // ── Stress Test ──
+    stressTest,
   }
 }

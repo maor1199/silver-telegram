@@ -656,6 +656,26 @@ export default function WarRoom() {
     R?.fix_it_scenarios ?? analysisData?.fix_it_scenarios
   ) as FixItScenarios | null | undefined
 
+  // ── Stress Test ────────────────────────────────────────────────────
+  type StressTest = {
+    baseProfit: number; baseMarginPct: number
+    highAcosProfit: number; highAcosMarginPct: number; highAcosLabel: string; highAcosSurvives: boolean
+    returnRateProfit: number; returnRateMarginPct: number; returnRateLabel: string; returnRateSurvives: boolean
+    worstCaseProfit: number; worstCaseMarginPct: number; worstCaseSurvives: boolean
+  }
+  const stressTest = (
+    R?.stressTest ?? analysisData?.stressTest ??
+    R?.stress_test ?? analysisData?.stress_test
+  ) as StressTest | null | undefined
+
+  // ── Monthly Projection ──────────────────────────────────────────────
+  type MonthProjection = { month: number; units: number; revenue: number; profit: number; acos: number; cumulativeProfit: number; breaksEven: boolean }
+  const monthlyProjectionRaw = R?.monthlyProjection ?? analysisData?.monthlyProjection ?? R?.monthly_projection ?? analysisData?.monthly_projection
+  const monthlyProjection: MonthProjection[] = Array.isArray(monthlyProjectionRaw)
+    ? (monthlyProjectionRaw as MonthProjection[])
+    : []
+  const breakEvenMonth = R?.breakEvenMonth ?? analysisData?.breakEvenMonth ?? R?.break_even_month ?? analysisData?.break_even_month
+
   // ── Critical Intelligence fields (new — always visible) ───────────
   const tableStakes = safeList(R?.table_stakes ?? analysisData?.table_stakes)
   const whatWinsHere = safeStr(R?.what_wins_here ?? analysisData?.what_wins_here)
@@ -716,7 +736,7 @@ export default function WarRoom() {
     if (!data) return
     try {
       const payload = {
-        product: safeStr((data as Record<string,unknown>)?.keyword ?? (data as Record<string,unknown>)?.product ?? (data as Record<string,unknown>)?.report && typeof (data as Record<string,unknown>).report === "object" ? ((data as Record<string,unknown>).report as Record<string,unknown>)?.keyword : ""),
+        product: safeStr((data as Record<string,unknown>)?.keyword ?? (data as Record<string,unknown>)?.product ?? ((data as Record<string,unknown>)?.report && typeof (data as Record<string,unknown>).report === "object" ? ((data as Record<string,unknown>).report as Record<string,unknown>)?.keyword : "")),
         verdict,
         score: score ?? null,
         margin: safeStr((data as Record<string,unknown>)?.estimatedMargin ?? ((data as Record<string,unknown>)?.report as Record<string,unknown>)?.estimatedMargin ?? ""),
@@ -1513,6 +1533,109 @@ export default function WarRoom() {
                   </div>
                 )}
               </section>
+
+              {/* ── Stress Test ─────────────────────────────────────── */}
+              {stressTest && (
+                <section>
+                  <SectionHeader
+                    icon={<Activity className="h-5 w-5 text-amber-500" />}
+                    title="Profit Stress Test"
+                    sub="What happens to your margin under realistic bad-case scenarios"
+                  />
+                  <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                    <div className="grid grid-cols-3 divide-x divide-border">
+                      {/* Base */}
+                      <div className="p-4 text-center">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Base case</p>
+                        <p className={cn("text-2xl font-black tabular-nums", stressTest.baseProfit > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+                          ${stressTest.baseProfit.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">{stressTest.baseMarginPct.toFixed(1)}% margin</p>
+                        <p className="text-[11px] text-muted-foreground/60 mt-0.5">Model ACoS</p>
+                      </div>
+                      {/* High ACoS */}
+                      <div className={cn("p-4 text-center", !stressTest.highAcosSurvives && "bg-red-50/50 dark:bg-red-950/20")}>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">{stressTest.highAcosLabel}</p>
+                        <p className={cn("text-2xl font-black tabular-nums", stressTest.highAcosProfit > 0 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400")}>
+                          ${stressTest.highAcosProfit.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">{stressTest.highAcosMarginPct.toFixed(1)}% margin</p>
+                        <p className={cn("text-[11px] mt-0.5 font-medium", stressTest.highAcosSurvives ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+                          {stressTest.highAcosSurvives ? "✓ Survives" : "✗ Goes negative"}
+                        </p>
+                      </div>
+                      {/* Worst case */}
+                      <div className={cn("p-4 text-center", !stressTest.worstCaseSurvives && "bg-red-50/50 dark:bg-red-950/20")}>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">+ACoS + 8% returns</p>
+                        <p className={cn("text-2xl font-black tabular-nums", stressTest.worstCaseProfit > 0 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400")}>
+                          ${stressTest.worstCaseProfit.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">{stressTest.worstCaseMarginPct.toFixed(1)}% margin</p>
+                        <p className={cn("text-[11px] mt-0.5 font-medium", stressTest.worstCaseSurvives ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+                          {stressTest.worstCaseSurvives ? "✓ Survives" : "✗ Goes negative"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="border-t border-border bg-muted/30 px-4 py-2.5">
+                      <p className="text-[11px] text-muted-foreground">
+                        Real launches often see ACoS run 10–20pp above model in the first 30 days. Returns average 5–10% depending on category complexity.
+                        {!stressTest.worstCaseSurvives && <strong className="text-red-600 dark:text-red-400 ml-1"> This product doesn't survive worst-case — build in a bigger margin buffer before launching.</strong>}
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* ── Monthly P&L Projection (M1–M6) ─────────────────── */}
+              {monthlyProjection.length > 0 && (
+                <section>
+                  <SectionHeader
+                    icon={<TrendingUp className="h-5 w-5 text-primary" />}
+                    title="Month-by-Month P&L Projection"
+                    sub={breakEvenMonth ? `Projected breakeven: Month ${breakEvenMonth}` : "6-month ramp as your listing gains reviews and organic rank"}
+                  />
+                  <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border bg-muted/40">
+                            <th className="py-2.5 pl-4 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Month</th>
+                            <th className="py-2.5 px-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Units</th>
+                            <th className="py-2.5 px-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Revenue</th>
+                            <th className="py-2.5 px-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Net Profit</th>
+                            <th className="py-2.5 px-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">ACoS</th>
+                            <th className="py-2.5 pr-4 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cumulative</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {monthlyProjection.map((m) => (
+                            <tr key={m.month} className={cn(m.breaksEven && !monthlyProjection[m.month - 2]?.breaksEven ? "bg-emerald-50/50 dark:bg-emerald-950/20" : "")}>
+                              <td className="py-2.5 pl-4 font-semibold text-foreground">M{m.month}</td>
+                              <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{m.units.toLocaleString()}</td>
+                              <td className="py-2.5 px-3 text-right tabular-nums text-foreground">${m.revenue.toLocaleString()}</td>
+                              <td className={cn("py-2.5 px-3 text-right tabular-nums font-semibold", m.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+                                {m.profit >= 0 ? "+" : ""}${m.profit.toLocaleString()}
+                              </td>
+                              <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{m.acos}%</td>
+                              <td className={cn("py-2.5 pr-4 text-right tabular-nums font-bold", m.cumulativeProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400")}>
+                                {m.cumulativeProfit >= 0 ? "+" : ""}${m.cumulativeProfit.toLocaleString()}
+                                {m.breaksEven && !monthlyProjection[m.month - 2]?.breaksEven && (
+                                  <span className="ml-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 dark:text-emerald-300">BREAK EVEN</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="border-t border-border bg-muted/30 px-4 py-2.5">
+                      <p className="text-[11px] text-muted-foreground">
+                        Projection assumes velocity ramp from 20% → 110% of estimated market sales rate as reviews accumulate. ACoS starts high and declines as organic traffic grows. Cumulative includes launch capital outlay.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              )}
 
               {/* ── What Would Flip This Decision ─────────────────── */}
               {(verdict === "NO-GO" || verdict === "GO-BUT") && whatWouldMakeGo.length > 0 && (

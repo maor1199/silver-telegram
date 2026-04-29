@@ -120,6 +120,7 @@ export async function POST(req: Request) {
       moq,
       leadTimeWeeks,
       sampleCost,
+      relatedKeywords: relatedKeywords?.length ? relatedKeywords.map(k => typeof k === "string" ? k : k.keyword).filter(Boolean) : undefined,
     }),
       Promise.resolve(null), // placeholder to keep destructuring
     ])
