@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils"
 import { useRequireAuth } from "@/hooks/use-require-auth"
 
 /* ── Config ── */
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ""
-const NGROK_URL = `${API_URL}/api/generate-listing`
+// Use the built-in Next.js API route — no external backend required
+const NGROK_URL = `/api/generate-listing`
 
 /* ── Types ── */
 interface BulletPoint {
@@ -288,7 +288,6 @@ function ListingCopywriter() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           productName: productName.trim(),

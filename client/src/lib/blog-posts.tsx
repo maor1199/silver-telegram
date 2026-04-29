@@ -1313,6 +1313,333 @@ export const POSTS: BlogPost[] = [
   },
 ]
 
+  // ─────────────────────────────────────────────────────────────────────
+  // POST 6: How to Find Products to Sell on Amazon
+  // ─────────────────────────────────────────────────────────────────────
+  {
+    slug: "how-to-find-products-to-sell-on-amazon",
+    title: "How to Find Products to Sell on Amazon in 2026 (7 Methods That Actually Work)",
+    excerpt: "Most product ideas come from the wrong places. Here are the 7 methods experienced sellers use to find products with real demand, manageable competition, and margins that survive the full Amazon fee stack.",
+    category: "Product Research",
+    categoryColor: "bg-blue-50 text-blue-700 border-blue-100",
+    readTime: 9,
+    publishedAt: "2026-04-01",
+    coverImage: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&q=80",
+    featured: false,
+    tags: ["product research", "amazon fba", "product ideas", "amazon selling"],
+    faqSchema: [
+      { question: "How do you find profitable products to sell on Amazon?", answer: "The most reliable methods are: reverse-engineering competitor niches using BSR data, mining Amazon's Best Seller and Movers & Shakers lists, analyzing review complaints for product improvement opportunities, and using keyword research tools to find high-volume low-competition search terms. Always validate with the full margin math before sourcing." },
+      { question: "What makes a product good to sell on Amazon?", answer: "A good Amazon product has: consistent demand (BSR under 50,000, 200+ sales/month for top sellers), manageable competition (top sellers under 500 reviews), healthy margins after all fees (25%+ net), a clear differentiation angle, and no major regulatory or IP barriers." },
+      { question: "What products should beginners avoid on Amazon?", answer: "Beginners should avoid: electronics (high return rates, complex regulations), grocery and food (safety compliance), anything with patents or brand trademarks, products dominated by Amazon's own brands, seasonal products with 4-month windows, and products under $15 (margins disappear after fees)." },
+    ],
+    tocItems: [
+      { id: "why-most-ideas-fail", text: "Why Most Product Ideas Fail Before Launch", level: 2 },
+      { id: "method-1", text: "Method 1: BSR Reverse Engineering", level: 2 },
+      { id: "method-2", text: "Method 2: Review Mining", level: 2 },
+      { id: "method-3", text: "Method 3: Keyword Gap Analysis", level: 2 },
+      { id: "method-4", text: "Method 4: Movers & Shakers Lists", level: 2 },
+      { id: "method-5", text: "Method 5: Alibaba Trend Scanning", level: 2 },
+      { id: "method-6", text: "Method 6: Problem Hunting in Facebook Groups", level: 2 },
+      { id: "method-7", text: "Method 7: Offline-to-Online Transfer", level: 2 },
+      { id: "validation", text: "Validating Before You Source", level: 2 },
+    ],
+    content: [
+      {
+        type: "takeaways",
+        items: [
+          "The best product ideas come from data, not inspiration. Passion kills margins.",
+          "Review mining is the highest-signal method — customers tell you exactly what's wrong with existing products.",
+          "A product idea without margin math is just a guess. Always validate before talking to suppliers.",
+          "Most beginners look in the same places. The edge is in categories that look boring on the surface.",
+        ],
+      },
+      { type: "h2", id: "why-most-ideas-fail", text: "Why Most Product Ideas Fail Before Launch" },
+      { type: "p", text: "The most common mistake new Amazon sellers make is starting with inspiration instead of data. They see a product they personally like, search it on Amazon, notice it has decent reviews, and call it a winning idea. What they miss is everything underneath: the true margin after Amazon takes its cut, how fast the review count is growing (making entry harder every month), whether PPC costs have risen 40% in the last year, and whether the top 10 sellers are aggregators with capital they can't compete with." },
+      { type: "p", text: "Profitable product ideas aren't found — they're extracted from data. Here are the 7 methods that work." },
+      { type: "h2", id: "method-1", text: "Method 1: BSR Reverse Engineering" },
+      { type: "p", text: "Every Amazon category has a Best Seller Rank (BSR) for each product. Lower BSR = more sales. The formula isn't exact, but rough estimates work: BSR 1,000 in Home & Kitchen is approximately 1,500–2,500 units/month. BSR 10,000 is roughly 200–400 units/month." },
+      { type: "p", text: "The method: open any Amazon category, sort by Best Sellers, and scroll past the obvious big brands. Look for products ranked 2,000–15,000 that are sold by private label sellers (not brands you recognize). If multiple different sellers are doing this, there's real demand without a moat." },
+      { type: "callout", variant: "tip", title: "The sweet spot", text: "BSR 3,000–20,000 in mid-size categories. Big enough for real volume, small enough that you're not fighting for crumbs from the top 3 products." },
+      { type: "h2", id: "method-2", text: "Method 2: Review Mining (The Highest-Signal Method)" },
+      { type: "p", text: "This is the single best source of product ideas available to Amazon sellers, and almost no beginners use it properly. The process: find a product with 1,000+ reviews, filter to 1-star and 2-star reviews, read 50–100 of them, and look for patterns." },
+      { type: "p", text: "What you're hunting for is a recurring complaint that (a) appears in 20%+ of negative reviews, (b) is fixable through design or sourcing, and (c) isn't already fixed by any top-10 seller. That complaint is your differentiation brief. Build a product that specifically solves it, lead with the solution in your first bullet point and second image, and you have a reason to exist in that market." },
+      {
+        type: "ul",
+        items: [
+          "\"The lid leaks after 3 months\" → improved lid seal = your bullet point 1",
+          "\"Straps are too short for larger dogs\" → extended strap lengths = your feature",
+          "\"Smells like chemicals for weeks\" → odor-free materials = your title differentiator",
+          "\"Instructions are incomprehensible\" → clear setup guide included = trust signal",
+        ],
+      },
+      { type: "h2", id: "method-3", text: "Method 3: Keyword Gap Analysis" },
+      { type: "p", text: "Tools like Helium 10, Jungle Scout, or DataForSEO let you find keywords with meaningful search volume (5,000+/month) where the top-ranking products have weak listings. Weak means: poor images, thin bullet points, low review count, no brand story. High search volume + weak incumbents = opportunity window." },
+      { type: "h2", id: "method-4", text: "Method 4: Movers & Shakers Lists" },
+      { type: "p", text: "Amazon's Movers & Shakers lists show products with the biggest BSR improvement in the past 24 hours. These are early demand signals — products gaining traction before the market notices. Check these lists weekly across 5–6 relevant categories. When you see a private label product (not a brand name) appear 3–4 weeks in a row, something real is happening in that niche." },
+      { type: "h2", id: "method-5", text: "Method 5: Alibaba Trend Scanning" },
+      { type: "p", text: "Alibaba's search trending data shows what suppliers are producing at increasing volume. A product with rising supplier MOQ availability and dropping unit costs is often ahead of the Amazon demand curve by 3–6 months. Cross-reference with Google Trends to confirm the demand signal." },
+      { type: "h2", id: "method-6", text: "Method 6: Problem Hunting in Facebook Groups" },
+      { type: "p", text: "Search Facebook for groups related to activities your target customer does (hiking, pet ownership, home organization). Look for posts asking \"does anyone know a good X that does Y?\" or \"I can never find a product that...\" These are unmet needs with an identified audience who will buy immediately." },
+      { type: "h2", id: "method-7", text: "Method 7: Offline-to-Online Transfer" },
+      { type: "p", text: "Products sold in physical specialty stores (outdoors shops, pet boutiques, hardware stores) often have dedicated buyers but weak Amazon presence. The store is proof of demand. The weak Amazon presence is your opening. A local outdoors retailer selling a $45 dog boot with no major Amazon competitor is a stronger signal than any trending report." },
+      { type: "h2", id: "validation", text: "Validating Before You Source" },
+      { type: "p", text: "Every method above generates candidates — not confirmed winners. Before you talk to a single supplier, run the full margin analysis: selling price minus FBA fees, referral fee (usually 15%), estimated PPC cost (25–40% of revenue at launch), unit COGS, and shipping. If the net margin is below 20% after all these costs, the product can't survive a price war, a PPC rate increase, or a slow month." },
+      {
+        type: "cta",
+        title: "Validate your product idea in 45 seconds",
+        text: "Enter your keyword, cost estimates, and selling price. Get a full GO / NO-GO verdict with margin math, competition score, and advisor memo.",
+        buttonText: "Run free analysis →",
+        buttonHref: "/analyze",
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────
+  // POST 7: Amazon FBA vs FBM
+  // ─────────────────────────────────────────────────────────────────────
+  {
+    slug: "amazon-fba-vs-fbm-which-is-better",
+    title: "Amazon FBA vs FBM: Which Is Better for New Sellers in 2026?",
+    excerpt: "FBA isn't always the right answer — and FBM isn't always the cheaper one. Here's the full comparison with real numbers, and the one scenario where FBM wins every time.",
+    category: "Amazon FBA",
+    categoryColor: "bg-orange-50 text-orange-700 border-orange-100",
+    readTime: 7,
+    publishedAt: "2026-04-05",
+    coverImage: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1200&q=80",
+    featured: false,
+    tags: ["amazon fba", "amazon fbm", "fulfillment", "amazon fees"],
+    faqSchema: [
+      { question: "Is FBA or FBM better for new Amazon sellers?", answer: "FBA is better for most new sellers because Prime eligibility dramatically improves conversion rates (Prime members buy at 3-4x the rate of non-Prime listings), and FBA handles all shipping and returns. FBM makes sense only when your product is very large/heavy, when you can fulfill faster than Amazon, or when you're testing demand before committing to FBA inventory." },
+      { question: "How much do Amazon FBA fees cost?", answer: "FBA fees include: fulfillment fee ($3.22–$7+ depending on size/weight), referral fee (8–15% of sale price), and optional monthly storage ($0.78–$2.40/cubic foot). For a typical small private label product priced at $25–45, total Amazon fees usually run 35–45% of the selling price." },
+      { question: "Can you switch from FBM to FBA?", answer: "Yes. Many sellers start with FBM to test demand without committing to FBA inventory, then switch to FBA once the product is validated. You can run both simultaneously — FBA for your main inventory and FBM as a backup when FBA stock runs out." },
+    ],
+    tocItems: [
+      { id: "what-is-fba", text: "What Is FBA and What Does It Actually Cost?", level: 2 },
+      { id: "what-is-fbm", text: "What Is FBM and When Does It Make Sense?", level: 2 },
+      { id: "real-numbers", text: "Real Numbers: FBA vs FBM on a $35 Product", level: 2 },
+      { id: "fba-wins", text: "When FBA Wins", level: 2 },
+      { id: "fbm-wins", text: "When FBM Wins", level: 2 },
+      { id: "hybrid", text: "The Hybrid Approach Most Sellers Miss", level: 2 },
+    ],
+    content: [
+      {
+        type: "takeaways",
+        items: [
+          "FBA wins on conversion — Prime listings convert 3–4x better than non-Prime for most products.",
+          "FBM wins on heavy, bulky, or slow-moving products where FBA storage costs destroy margins.",
+          "Most new sellers should start with FBA — then add FBM as backup inventory insurance.",
+          "The real cost comparison isn't FBA fees vs shipping. It's FBA conversion lift vs FBM operational overhead.",
+        ],
+      },
+      { type: "h2", id: "what-is-fba", text: "What Is FBA and What Does It Actually Cost?" },
+      { type: "p", text: "Fulfillment by Amazon (FBA) means you ship your inventory to Amazon's fulfillment centers, and Amazon handles picking, packing, shipping, customer service, and returns. Your listings become Prime-eligible, which for most categories is the difference between a 2% conversion rate and an 8–12% conversion rate." },
+      { type: "p", text: "What FBA costs: For a typical small private label product (0.5 lbs, standard size), expect to pay $3.22–$4.50 in FBA fulfillment fees per unit, plus 15% referral fee on the sale price, plus storage fees if your inventory sits unsold. A product priced at $35 might pay $5.25 referral + $3.50 fulfillment = $8.75 in Amazon fees before your PPC costs." },
+      { type: "h2", id: "what-is-fbm", text: "What Is FBM and When Does It Make Sense?" },
+      { type: "p", text: "Fulfilled by Merchant (FBM) means you store and ship orders yourself. You pay only the referral fee (no fulfillment fee, no storage). In exchange, your listing is not Prime-eligible by default (you can qualify for Seller-Fulfilled Prime if you meet strict shipping speed requirements, but this is hard for most small sellers)." },
+      { type: "h2", id: "real-numbers", text: "Real Numbers: FBA vs FBM on a $35 Product" },
+      {
+        type: "ul",
+        items: [
+          "FBA: $35 sale − $5.25 referral − $3.50 FBA fee − $0.40 storage = $25.85 before COGS",
+          "FBM: $35 sale − $5.25 referral − $6.00 your shipping cost = $23.75 before COGS",
+          "FBA net advantage: $2.10/unit — PLUS 3–4x conversion rate",
+          "At 100 units/month FBM vs 350 units/month FBA (same ad spend): FBA generates $700 more gross profit despite the higher per-unit fee",
+        ],
+      },
+      { type: "callout", variant: "stat", title: "The conversion gap is the real story", text: "A Prime listing converting at 10% vs a non-Prime listing converting at 3% means you need 3x the traffic to match FBA sales with FBM. That's 3x the PPC spend. FBA fees look expensive until you price in the conversion advantage." },
+      { type: "h2", id: "fba-wins", text: "When FBA Wins" },
+      {
+        type: "ul",
+        items: [
+          "Light products under 2 lbs where FBA fulfillment fees are low",
+          "Products with high turn rate (selling 200+/month) — storage fees are negligible",
+          "Competitive categories where Prime badge is required to appear on page 1",
+          "Any product where you don't want to handle customer service and returns",
+        ],
+      },
+      { type: "h2", id: "fbm-wins", text: "When FBM Wins" },
+      {
+        type: "ul",
+        items: [
+          "Large, heavy products where FBA fulfillment fees exceed $12–15/unit",
+          "Slow-moving products with high storage risk (seasonal, niche, or unproven demand)",
+          "Products you can ship same-day from a local warehouse faster than Amazon",
+          "Hazmat and restricted products that Amazon won't accept in FBA",
+        ],
+      },
+      { type: "h2", id: "hybrid", text: "The Hybrid Approach Most Sellers Miss" },
+      { type: "p", text: "The smartest setup for most sellers is FBA as primary + FBM as backup. Send 90% of your inventory to FBA. Keep 10% at home or in a prep center. When FBA stock runs out (it will, especially around Q4), your FBM listing keeps selling and protects your BSR while your FBA restock is in transit. This single move prevents the \"back in stock\" ranking penalty that can set you back 2–3 months." },
+      {
+        type: "cta",
+        title: "See if your product's margins work under FBA",
+        text: "Our analysis models the full FBA fee stack — fulfillment, referral, storage, and PPC — so you know the real net profit before you order.",
+        buttonText: "Run free analysis →",
+        buttonHref: "/analyze",
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────
+  // POST 8: Amazon Keyword Research Guide
+  // ─────────────────────────────────────────────────────────────────────
+  {
+    slug: "amazon-keyword-research-guide-2026",
+    title: "Amazon Keyword Research in 2026: The Complete Guide for New Sellers",
+    excerpt: "Keywords are the difference between page 1 and page 6. This guide covers how Amazon's search algorithm actually works, how to find your primary and secondary keywords, and where to put them in your listing.",
+    category: "Listing Optimization",
+    categoryColor: "bg-purple-50 text-purple-700 border-purple-100",
+    readTime: 8,
+    publishedAt: "2026-04-10",
+    coverImage: "https://images.unsplash.com/photo-1555421689-d68471e189f2?w=1200&q=80",
+    featured: false,
+    tags: ["keyword research", "amazon seo", "listing optimization", "amazon a9"],
+    faqSchema: [
+      { question: "How do you do keyword research for Amazon?", answer: "Start with your primary keyword (the exact phrase customers type to find your product). Use tools like Helium 10 Cerebro, Jungle Scout, or Amazon's own search bar auto-suggest to find related keywords with real search volume. Prioritize exact-match phrases with 1,000+ monthly searches and manageable competition. Then sort into primary (title), secondary (bullets), and backend (search terms field)." },
+      { question: "What is Amazon A9 algorithm?", answer: "Amazon's A9 algorithm ranks products based on purchase likelihood, not just keyword relevance. It weighs: keyword match in your title and backend, conversion rate (clicks that turn into sales), price competitiveness, review count and rating, and in-stock rate. A listing with perfect keywords but 5 reviews will lose to a listing with decent keywords and 500 reviews." },
+      { question: "Where should keywords go in an Amazon listing?", answer: "Primary keyword: first 5 words of your title. Secondary keywords: naturally throughout title, bullet points 1–3, and description. Backend search terms: synonyms, misspellings, and related terms NOT already in your visible copy. Never repeat keywords — each unique keyword only needs to appear once for Amazon to index it." },
+    ],
+    tocItems: [
+      { id: "how-a9-works", text: "How Amazon's A9 Algorithm Actually Works", level: 2 },
+      { id: "keyword-types", text: "The 3 Types of Keywords You Need", level: 2 },
+      { id: "research-tools", text: "Keyword Research Tools (Free and Paid)", level: 2 },
+      { id: "where-to-place", text: "Where to Place Each Keyword", level: 2 },
+      { id: "mistakes", text: "Keyword Mistakes That Kill Rankings", level: 2 },
+    ],
+    content: [
+      {
+        type: "takeaways",
+        items: [
+          "Amazon ranks products on purchase likelihood — not keyword stuffing. Conversion matters more than keyword density.",
+          "Your primary keyword must be in the first 5 words of your title. This is non-negotiable.",
+          "Backend search terms are indexed but not displayed — use them for synonyms and misspellings, never repeat visible copy.",
+          "One good keyword in your title converts better than 10 keywords crammed in badly.",
+        ],
+      },
+      { type: "h2", id: "how-a9-works", text: "How Amazon's A9 Algorithm Actually Works" },
+      { type: "p", text: "Amazon's ranking algorithm (called A9, now evolved to A10) has one goal: show the product most likely to result in a purchase. This is fundamentally different from Google, which optimizes for information relevance. Amazon optimizes for revenue — which means it weights conversion rate, click-through rate, review quality, price, and in-stock status as heavily as keyword match." },
+      { type: "p", text: "What this means practically: a listing with a 12% conversion rate on a mid-volume keyword will outrank a listing with a 2% conversion rate on the exact same keyword. Getting your keywords right gets you indexed. Converting those clicks is what keeps you ranked." },
+      { type: "h2", id: "keyword-types", text: "The 3 Types of Keywords You Need" },
+      {
+        type: "ul",
+        items: [
+          "Primary keyword: the exact phrase your best customer types. Usually 2–4 words. High volume (5,000+/month). Goes in title first.",
+          "Secondary keywords: related phrases and variations with 500–5,000 searches/month. Go in bullets 1–3 and description.",
+          "Long-tail keywords: specific 4–7 word phrases with 100–1,000 searches/month but very high purchase intent. Go in backend search terms.",
+        ],
+      },
+      { type: "h2", id: "research-tools", text: "Keyword Research Tools" },
+      { type: "p", text: "Free: Amazon's search bar auto-suggest (type your product keyword and note every suggestion — these are real searches). Sonar by Sellics. Google's free Keyword Planner (indirect signal)." },
+      { type: "p", text: "Paid: Helium 10 Cerebro (reverse-ASIN lookup — enter a competitor ASIN and see every keyword it ranks for). Jungle Scout Keyword Scout. DataForSEO Amazon keyword data API (what tools like SellerMentor use for real-time search volume)." },
+      { type: "callout", variant: "tip", title: "The fastest research method", text: "Find your top 3 competitors. Run each ASIN through Helium 10 Cerebro or Jungle Scout. Export their keywords. Filter to search volume 1,000+ and relevance score 80+. You now have a keyword list built on proven rankings, not guesses." },
+      { type: "h2", id: "where-to-place", text: "Where to Place Each Keyword" },
+      {
+        type: "ul",
+        items: [
+          "Title: primary keyword in words 1–5, 1–2 secondary keywords naturally woven in, under 200 characters total",
+          "Bullet 1: repeat primary keyword in a benefit statement, not a list of specs",
+          "Bullets 2–5: secondary keywords, each bullet focused on one benefit",
+          "Description: natural language with secondary keywords, written for humans first",
+          "Backend search terms: synonyms, misspellings, alternate phrasings — never repeat what's already visible",
+        ],
+      },
+      { type: "h2", id: "mistakes", text: "Keyword Mistakes That Kill Rankings" },
+      {
+        type: "ul",
+        items: [
+          "Keyword stuffing: \"Water Bottle Stainless Steel BPA Free Insulated Vacuum 32oz Flask Tumbler\" — Amazon penalizes this",
+          "Repeating keywords: every keyword needs to appear only once to be indexed. Repetition wastes character space.",
+          "Ignoring backend search terms: this is free real estate most sellers leave empty",
+          "Targeting only high-volume keywords: a 50,000-search/month keyword with 10,000 competitors vs a 5,000-search keyword with 200 competitors — take the second one",
+          "Not updating keywords: Amazon search trends shift. Re-audit keywords every 90 days.",
+        ],
+      },
+      {
+        type: "cta",
+        title: "Get a keyword-aware listing analysis",
+        text: "SellerMentor analyzes your product's market alongside real Amazon search volume data. Know if your keyword has the traffic to support a profitable launch.",
+        buttonText: "Run free analysis →",
+        buttonHref: "/analyze",
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────
+  // POST 9: Why Amazon Sellers Fail First Product
+  // ─────────────────────────────────────────────────────────────────────
+  {
+    slug: "why-amazon-sellers-fail-first-product",
+    title: "Why 67% of Amazon Sellers Lose Money on Their First Product (And How to Not Be One of Them)",
+    excerpt: "The failure rate isn't random — it follows a pattern. Here are the 5 specific mistakes that turn promising product ideas into expensive lessons, and what to do instead.",
+    category: "Beginner Guide",
+    categoryColor: "bg-red-50 text-red-700 border-red-100",
+    readTime: 7,
+    publishedAt: "2026-04-15",
+    coverImage: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1200&q=80",
+    featured: false,
+    tags: ["amazon fba", "beginners", "product research", "amazon mistakes"],
+    faqSchema: [
+      { question: "Why do most Amazon sellers fail?", answer: "The #1 cause is wrong product selection — not poor execution. Sellers choose products with insufficient demand, unwinnable competition, or margins that collapse under the full Amazon fee stack. Most failed launches looked fine in a basic spreadsheet but missed PPC costs, realistic FBA fees, and the review moat they needed to overcome." },
+      { question: "How much money do you need to start selling on Amazon FBA?", answer: "Realistically, $3,000–$5,000 for a first product. This covers: 300–500 units of inventory ($1,000–$3,000), shipping to Amazon ($150–$500), product photography ($300–$600), Amazon listing setup, initial PPC campaign ($500–$1,000 for the first 30 days), and samples ($50–$200). Sellers who start with less often run out of runway before the product gains traction." },
+      { question: "How long does it take to make money selling on Amazon?", answer: "Most successful private label sellers reach profitability in month 3–6. Month 1 is almost always unprofitable (high PPC, low conversion from low reviews). Month 2–3 reviews start building and PPC efficiency improves. Month 4–6 is where most products either prove themselves or confirm they should be exited. If you're not cash-flow positive by month 6, the product economics are likely fundamentally broken." },
+    ],
+    tocItems: [
+      { id: "the-pattern", text: "The Failure Pattern Is Not Random", level: 2 },
+      { id: "mistake-1", text: "Mistake 1: Choosing Demand Without Checking Margins", level: 2 },
+      { id: "mistake-2", text: "Mistake 2: Underestimating the Review Moat", level: 2 },
+      { id: "mistake-3", text: "Mistake 3: Ignoring PPC in the Unit Economics", level: 2 },
+      { id: "mistake-4", text: "Mistake 4: Launching Without Differentiation", level: 2 },
+      { id: "mistake-5", text: "Mistake 5: Running Out of Inventory at Month 2", level: 2 },
+      { id: "what-works", text: "What the Successful 33% Do Differently", level: 2 },
+    ],
+    content: [
+      {
+        type: "takeaways",
+        items: [
+          "67% of first products fail — almost always due to product selection, not execution.",
+          "PPC is the hidden cost that makes profitable-looking products unprofitable. Always include it in your margin math.",
+          "The review moat is real: launching into a market where every top seller has 3,000+ reviews is not a plan, it's a donation.",
+          "The sellers who succeed aren't smarter. They validate before they spend.",
+        ],
+      },
+      { type: "h2", id: "the-pattern", text: "The Failure Pattern Is Not Random" },
+      { type: "p", text: "After analyzing hundreds of Amazon launches, the failure pattern is remarkably consistent. It almost never comes down to bad suppliers, poor listing copy, or bad luck. It comes down to one thing: the product economics were broken from the start, and no one ran the full math before ordering inventory." },
+      { type: "p", text: "The sellers who lose money on their first product share a common experience: they saw demand, liked the product, convinced themselves they could compete, and ordered 500 units. Three months later, their PPC ACoS is 80%, their reviews are stuck at 12, and their landed cost didn't leave room for the ad spend they needed to get to page 1." },
+      { type: "h2", id: "mistake-1", text: "Mistake 1: Choosing Demand Without Checking Margins" },
+      { type: "p", text: "High demand is necessary but not sufficient. A product with 50,000 monthly searches and $8 landed cost sounds like a winner — until you price it at $19.99 (matching the market), pay $3 in referral fees, $3.50 in FBA fees, and spend $5 per unit on PPC to rank. You're at breakeven before a single return or storage fee." },
+      { type: "p", text: "The margin math must include: unit cost + shipping to Amazon + FBA fulfillment fee + referral fee (15% for most categories) + estimated PPC spend (25–40% of revenue at launch) + return allowance (5–15% depending on category). If the result is below 20% net margin, the product can't survive the launch phase." },
+      { type: "callout", variant: "stat", title: "The real cost stack", text: "For a $35 product: $5.25 referral + $3.50 FBA + $8.75 PPC (25% ACoS) + $0.50 storage = $18 in costs before your unit cost. That leaves $17 to cover COGS and profit. If your unit cost is $12 including shipping, your net margin is $5 — 14%. A slight price drop from a competitor and you're negative." },
+      { type: "h2", id: "mistake-2", text: "Mistake 2: Underestimating the Review Moat" },
+      { type: "p", text: "Amazon's A9 algorithm gives enormous weight to review count and recency. A listing with 3,000 reviews converting at 8% will hold page 1 against a new listing with 0 reviews converting at 12% — because the PPC cost to compete is unsustainable for the new entrant. You're paying $8–15/click to reach customers who then compare you (0 reviews) to the incumbent (3,000 reviews). The conversion doesn't follow." },
+      { type: "p", text: "The rule of thumb: only enter a market where at least one of the top-10 products has under 200 reviews. Ideally, 2–3 of them do. That's your opening window. Once the whole top 10 is over 500 reviews, the window has closed." },
+      { type: "h2", id: "mistake-3", text: "Mistake 3: Ignoring PPC in the Unit Economics" },
+      { type: "p", text: "This is the most common fatal mistake. Sellers calculate margin as: selling price minus COGS minus Amazon fees. They see 35% and feel good. Then they launch, discover they need PPC to get any visibility, and their real ACoS for the first 60 days is 60%. Their 35% margin product is now running at negative 10% until reviews build." },
+      { type: "p", text: "The correct calculation includes PPC as a cost of acquisition. At launch, expect 35–55% ACoS for most competitive categories. That means $0.35–$0.55 of every $1 in sales goes to ads. Your product economics must survive this phase or you'll run out of capital before the product matures." },
+      { type: "h2", id: "mistake-4", text: "Mistake 4: Launching Without Differentiation" },
+      { type: "p", text: "Me-too products — the same item as the top sellers, same price range, no meaningful difference — have one path to success: being cheaper. That path leads to a price war with suppliers who have lower costs than you. Differentiation doesn't have to be revolutionary: fixing the #1 complaint in competitor 1-star reviews, including an accessory nobody else includes, or offering 3 sizes when everyone else offers 1. Any real difference gives customers a reason to choose you over the incumbent." },
+      { type: "h2", id: "mistake-5", text: "Mistake 5: Running Out of Inventory at Month 2" },
+      { type: "p", text: "Month 2 is when most private label products start gaining organic traction — reviews are building, PPC is becoming efficient, BSR is improving. Running out of inventory at exactly this moment is one of the most painful and common mistakes in FBA. Amazon penalizes stockouts with ranking drops that can take months to recover. Order enough for 90 days from day 1 and start your reorder when you hit 60 days of stock remaining." },
+      { type: "h2", id: "what-works", text: "What the Successful 33% Do Differently" },
+      {
+        type: "ul",
+        items: [
+          "They run the full margin math before contacting a single supplier",
+          "They only enter markets where the top-10 review count shows an opening window",
+          "They treat PPC as a cost of goods for the first 90 days, not a marketing expense",
+          "They have a clear differentiation angle that directly addresses competitor 1-star reviews",
+          "They order enough inventory to survive a successful launch — not a test run",
+        ],
+      },
+      {
+        type: "cta",
+        title: "Run the math before you order",
+        text: "SellerMentor runs the full unit economics — FBA fees, PPC, competition depth, and risk signals — and returns a GO / NO-GO verdict in 45 seconds. Free to start.",
+        buttonText: "Validate my product →",
+        buttonHref: "/analyze",
+      },
+    ],
+  },
+]
+
 export function getPost(slug: string): BlogPost | undefined {
   return POSTS.find(p => p.slug === slug)
 }

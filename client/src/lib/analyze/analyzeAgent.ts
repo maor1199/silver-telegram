@@ -1,6 +1,7 @@
 import { getAIInsights, getConsultantInsights, getMarginThreshold, getValidatedDifferentiators, type ConsultantInsights } from "./openaiService"
 import { buildSignals } from "./signals"
 import type { KeepaProductData } from "../keepa/keepaService"
+import type { DataForSEOKeywordData } from "../dataforseo/dataForSeoService"
 
 type AnalyzeInput = {
   keyword?: string
@@ -15,6 +16,14 @@ type AnalyzeInput = {
   marginThreshold?: number
   /** Keepa 12-month market intelligence for top competitor ASIN */
   keepaData?: KeepaProductData | null
+  /** DataForSEO real search volume + CPC for the keyword */
+  dataForSEO?: DataForSEOKeywordData | null
+  /** Minimum Order Quantity from supplier — overrides velocity-based FIRST_ORDER_UNITS */
+  moq?: number
+  /** Supplier lead time in weeks (for display in results) */
+  leadTimeWeeks?: number
+  /** One-time sample cost in USD — added to launch capital */
+  sampleCost?: number
   marketData?: {
     success?: boolean
     avgPrice?: number
@@ -100,7 +109,7 @@ function calculateDynamicACoS(marketData: {
   const keywordSaturation = marketData.keywordSaturation ?? 30
   const priceCompression = marketData.priceCompression
 
-  let acos = 0.45
+  let acos = 0.35
   if (sponsoredTop10 >= 7) acos += 0.1
   else if (sponsoredTop10 >= 4) acos += 0.05
   if (avgReviews >= 5000) acos += 0.1
@@ -272,6 +281,56 @@ export async function analyzeProduct(input: AnalyzeInput) {
         })()
       : null
 
+  // ── Niche Revenue Estimator ──────────────────────────────────────────────
+  // Estimate monthly sales for each organic top-10 competitor using the
+  // same reviews-based proxy, then sum for total niche size.
+  const organicCompetitors = topCompetitors.filter(c => !c.sponsored).slice(0, 10)
+  const nicheCompData = organicCompetitors.length >= 3
+    ? organicCompetitors.map(c => {
+        const rev = c.ratingsTotal ?? 0
+        const estSales = rev >= 5000 ? 650 : rev >= 2000 ? 450 : rev >= 500 ? 250 : 120
+        return { estSales, price: c.price > 0 ? c.price : avgPrice }
+      })
+    : null
+  const nicheMonthlyUnits = nicheCompData
+    ? Math.round(nicheCompData.reduce((s, c) => s + c.estSales, 0))
+    : Math.round(topCompetitorMonthlySales * 6) // fallback: 6 competitors at top-seller velocity
+  const nicheMonthlyRevenue = nicheCompData
+    ? Math.round(nicheCompData.reduce((s, c) => s + c.estSales * c.price, 0))
+    : Math.round(nicheMonthlyUnits * avgPrice)
+
+  // ── Demand Score (0–100) ─────────────────────────────────────────────────
+  // Pure demand signal — how strong is buyer appetite, independent of competition.
+  // DataForSEO search volume is the strongest signal when available (replaces guesswork).
+  const dfsSearchVol    = input.dataForSEO?.searchVolume ?? null
+  const dfsVolSource    = input.dataForSEO?.searchVolumeSource ?? null
+  const dfsVolLabel     = dfsVolSource === "amazon" ? "Amazon searches/mo" : "Google searches/mo (proxy)"
+  let dScore = 35
+  if (dfsSearchVol != null) {
+    // Real search data — override the sales-velocity proxy
+    dScore += dfsSearchVol >= 40000 ? 30
+            : dfsSearchVol >= 10000 ? 22
+            : dfsSearchVol >= 2000  ? 14
+            : dfsSearchVol >= 500   ? 6
+            : dfsSearchVol >= 100   ? 0
+            : -15 // near-zero demand
+  } else {
+    // Fallback: infer from top competitor sales velocity
+    dScore += topCompetitorMonthlySales >= 600 ? 25 : topCompetitorMonthlySales >= 300 ? 15 : topCompetitorMonthlySales >= 150 ? 8 : 2
+  }
+  if (input.keepaData?.bsrTrend === "improving") dScore += 22
+  else if (input.keepaData?.bsrTrend === "stable") dScore += 10
+  else if (input.keepaData?.bsrTrend === "declining") dScore -= 18
+  // DataForSEO search trend reinforces or tempers the Keepa signal
+  if (input.dataForSEO?.searchTrend === "growing" && input.keepaData?.bsrTrend !== "improving") dScore += 8
+  else if (input.dataForSEO?.searchTrend === "declining" && input.keepaData?.bsrTrend !== "declining") dScore -= 8
+  const reviewVel = input.keepaData?.reviewVelocityMonthly ?? 0
+  dScore += reviewVel >= 50 ? 15 : reviewVel >= 20 ? 8 : reviewVel >= 5 ? 3 : 0
+  if (market?.market_maturity_signal === "emerging") dScore += 12
+  else if (market?.market_maturity_signal === "mature") dScore -= 8
+  dScore += nicheMonthlyRevenue >= 500000 ? 8 : nicheMonthlyRevenue >= 200000 ? 4 : 0
+  const demandScore = Math.max(1, Math.min(99, Math.round(dScore)))
+
   // Review mining — top pain points already extracted above as `painPoints`
   // (sourced from reviewBasedPainPoints when available, else title-inferred)
 
@@ -282,23 +341,28 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const SALES_PER_DAY = _keepaForCapital?.estimatedMonthlySales
     ? Math.min(100, Math.max(1, Math.round(_keepaForCapital.estimatedMonthlySales / 30)))
     : 7
-  const FIRST_ORDER_UNITS = _keepaForCapital?.estimatedMonthlySales
-    ? Math.min(500, Math.max(150, Math.round(SALES_PER_DAY * 60)))  // 2 months, capped 150–500
-    : 300
+  // If user provided an MOQ, use it directly — their real constraint. Otherwise estimate from velocity.
+  const FIRST_ORDER_UNITS = input.moq != null && input.moq > 0
+    ? input.moq
+    : _keepaForCapital?.estimatedMonthlySales
+      ? Math.min(500, Math.max(150, Math.round(SALES_PER_DAY * 60)))  // 2 months, capped 150–500
+      : 300
   const LAUNCH_DAYS = 30
   const VINE_AND_MISC = 500
+  const sampleCostActual = input.sampleCost ?? 0
   const launchInventoryCost = (unitCost + shippingCost) * FIRST_ORDER_UNITS
   const launchPpcBurn = launchAdCostPerUnit * SALES_PER_DAY * LAUNCH_DAYS
   // Storage buffer: 3 months of storage cost on first inventory order
   const storageCostBuffer = _keepaForCapital?.estimatedMonthlyStoragePerUnit
     ? Math.round(_keepaForCapital.estimatedMonthlyStoragePerUnit * FIRST_ORDER_UNITS * 3 * 100) / 100
     : 0
-  const launchCapitalRequired = launchInventoryCost + launchPpcBurn + VINE_AND_MISC + storageCostBuffer
+  const launchCapitalRequired = launchInventoryCost + launchPpcBurn + VINE_AND_MISC + storageCostBuffer + sampleCostActual
   const launchCapitalBreakdown = {
     inventory: launchInventoryCost,
     ppcMarketing: launchPpcBurn,
     vineAndMisc: VINE_AND_MISC,
     storage: storageCostBuffer > 0 ? storageCostBuffer : undefined,
+    sample: sampleCostActual > 0 ? sampleCostActual : undefined,
     total: launchCapitalRequired,
   }
 
@@ -422,9 +486,47 @@ export async function analyzeProduct(input: AnalyzeInput) {
   const hasStrongVisualDiff = validatedDiffsForScore.some((d) => d.verdict === "STRONG")
   const hasAnyDiffText = (differentiationInput ?? "").trim().length > 0
 
+  // Detect vague/generic differentiation — words that mean nothing to a buyer
+  const GENERIC_DIFF_WORDS = ["quality", "premium", "best", "good", "better", "unique", "great", "special", "nice", "excellent", "high quality", "top", "superior", "amazing"]
+  const isVagueDiff = hasAnyDiffText && (
+    differentiationInput.trim().length < 20 ||
+    GENERIC_DIFF_WORDS.every(w => differentiationInput.toLowerCase().includes(w)) ||
+    differentiationInput.trim().split(/\s+/).length <= 2 && GENERIC_DIFF_WORDS.some(w => differentiationInput.toLowerCase().includes(w))
+  )
+
+  // Differentiation warning — surfaces clearly to the user
+  const differentiationStatus: "none" | "vague" | "unverified" | "weak" | "strong" =
+    !hasAnyDiffText ? "none"
+    : isVagueDiff ? "vague"
+    : !hasRealMarketData ? "unverified"
+    : hasStrongVisualDiff ? "strong"
+    : "weak"
+
+  const differentiationWarning: string | null =
+    differentiationStatus === "none"
+      ? "You didn't enter a competitive advantage. Without one, you're competing on price alone — the hardest way to succeed on Amazon. Add a specific differentiator and re-run."
+      : differentiationStatus === "vague"
+        ? `"${differentiationInput.trim()}" is too generic to be a real advantage — every competitor says the same thing. Add something specific: a feature, a problem you solve, a measurable benefit.`
+        : differentiationStatus === "unverified"
+          ? "Your differentiator can't be validated without market data. Add a competitor ASIN to see if it actually stands out on page 1."
+          : null
+
+  // ── Differentiation Suggestions from real market pain points ─────────────
+  // When diff is none/vague AND we have real pain points, give concrete suggestions
+  const differentiationSuggestions: string[] =
+    (differentiationStatus === "none" || differentiationStatus === "vague") && painPoints.length > 0
+      ? painPoints.slice(0, 3).map((p) => String(p).trim()).filter(Boolean)
+      : []
+
   if (hasStrongVisualDiff) {
     score += 20
     scoreBreakdown.differentiation = "+20 (strong differentiation aligned with market pain points)"
+  } else if (!hasAnyDiffText) {
+    score -= 15
+    scoreBreakdown.differentiation = "-15 (no differentiation entered — competing on price alone)"
+  } else if (isVagueDiff) {
+    score -= 12
+    scoreBreakdown.differentiation = "-12 (vague differentiation — too generic to validate)"
   } else if (hasAnyDiffText) {
     score -= 10
     scoreBreakdown.differentiation = "-10 (weak/generic differentiation)"
@@ -470,6 +572,28 @@ export async function analyzeProduct(input: AnalyzeInput) {
     if (keepa.fbaSellerCount != null && keepa.fbaSellerCount >= 8) {
       score -= 5
       scoreBreakdown.keepaFbaSellers = `-5 (Keepa: ${keepa.fbaSellerCount} active FBA sellers — high direct competition in Prime search)`
+    }
+  }
+
+  // Layer 6 — DataForSEO Search Volume (real demand signal)
+  if (dfsSearchVol != null) {
+    if (dfsSearchVol >= 10000) {
+      score += 10
+      scoreBreakdown.dfsVolume = `+10 (${dfsSearchVol.toLocaleString()} ${dfsVolLabel} — strong confirmed demand)`
+    } else if (dfsSearchVol >= 1000) {
+      score += 5
+      scoreBreakdown.dfsVolume = `+5 (${dfsSearchVol.toLocaleString()} ${dfsVolLabel} — moderate demand)`
+    } else if (dfsSearchVol < 200) {
+      score -= 12
+      scoreBreakdown.dfsVolume = `-12 (only ${dfsSearchVol.toLocaleString()} ${dfsVolLabel} — very limited demand)`
+    }
+    // Search trend reinforcement
+    if (input.dataForSEO?.searchTrend === "growing") {
+      score += 5
+      scoreBreakdown.dfsTrend = "+5 (DataForSEO: search volume growing over 12 months)"
+    } else if (input.dataForSEO?.searchTrend === "declining") {
+      score -= 5
+      scoreBreakdown.dfsTrend = "-5 (DataForSEO: search volume declining over 12 months)"
     }
   }
 
@@ -601,6 +725,65 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   const confidence = Math.max(35, Math.min(92, Math.round(55 + (score - 50) * 0.7)))
 
+  // ── Confidence Band ──────────────────────────────────────────────────────
+  // How certain are we? Data quality + score distance from verdict thresholds.
+  let confScore = confidence
+  if (hasRealMarketData) confScore += 5   // real SERP data reduces guesswork
+  if (keepa != null) confScore += 8       // 12-month Keepa adds strong signal
+  const scoreFromThreshold =
+    verdict === "GO"    ? score - 40    // how far above the GO gate
+    : verdict === "NO_GO" ? 40 - score  // how far below the NO-GO gate
+    : 5                                 // IMPROVE is inherently uncertain
+  confScore += Math.min(8, Math.max(0, Math.round(scoreFromThreshold * 0.3)))
+  const verdictConfidencePct = Math.max(50, Math.min(96, Math.round(confScore)))
+  const confidenceBand: "STRONG" | "MODERATE" | "BORDERLINE" =
+    verdictConfidencePct >= 78 ? "STRONG" : verdictConfidencePct >= 64 ? "MODERATE" : "BORDERLINE"
+
+  // ── Break-even Calculator ────────────────────────────────────────────────
+  // Units + months to recoup total launch capital at current profit/unit.
+  const breakEvenUnitsForCapital = profitAfterAds > 0 && launchCapitalRequired > 0
+    ? Math.ceil(launchCapitalRequired / profitAfterAds)
+    : null
+  const breakEvenMonths = breakEvenUnitsForCapital != null && SALES_PER_DAY > 0
+    ? parseFloat((breakEvenUnitsForCapital / (SALES_PER_DAY * 30)).toFixed(1))
+    : null
+
+  // ── Return Rate Estimate ─────────────────────────────────────────────────
+  const complexityStr = (input.complexity ?? "moderate").toLowerCase()
+  const returnRatePct = complexityStr === "complex" ? "10–18%" : complexityStr === "simple" ? "1–4%" : "5–9%"
+  const returnRateLevel: "low" | "moderate" | "high" =
+    complexityStr === "complex" ? "high" : complexityStr === "simple" ? "low" : "moderate"
+
+  // ── Price Position Alert ─────────────────────────────────────────────────
+  // Warn when selling price is outside the market's dominant band.
+  let pricePositionAlert: { type: "TOO_LOW" | "TOO_HIGH"; msg: string } | null = null
+  if (hasRealMarketData && sellingPrice > 0 && avgPrice > 0) {
+    const bandLo = avgPrice * 0.78
+    const bandHi = avgPrice * 1.28
+    if (sellingPrice < bandLo) {
+      pricePositionAlert = {
+        type: "TOO_LOW",
+        msg: `Your price ($${sellingPrice.toFixed(2)}) is below the market's dominant band ($${bandLo.toFixed(0)}–$${bandHi.toFixed(0)}). Thin margins and a perceived quality gap vs established listings.`,
+      }
+    } else if (sellingPrice > bandHi) {
+      pricePositionAlert = {
+        type: "TOO_HIGH",
+        msg: `Your price ($${sellingPrice.toFixed(2)}) is above the market's dominant band ($${bandLo.toFixed(0)}–$${bandHi.toFixed(0)}). Without 100+ reviews, buyers with choices will default to cheaper options.`,
+      }
+    }
+  }
+
+  // ── Niche Saturation ─────────────────────────────────────────────────────
+  const newSellers20num = Number.isFinite(newSellersInTop20) ? (newSellersInTop20 as number) : 0
+  const nicheSaturationLabel =
+    newSellers20num >= 5 ? "Open" : newSellers20num >= 2 ? "Moderate" : "Locked"
+  const nicheSaturationDesc =
+    newSellers20num >= 5
+      ? `${newSellers20num} new sellers in top 20 — market is accepting newcomers`
+      : newSellers20num >= 2
+        ? `${newSellers20num} new sellers in top 20 — possible to enter with strong execution`
+        : "Fewer than 2 new sellers in top 20 — incumbents dominating"
+
   const totalUnitCostForRoi = cogs + referralFee + fbaFee + ppcCostPerUnit
   const estimatedRoiPct = totalUnitCostForRoi > 0 ? (profitAfterAds / totalUnitCostForRoi) * 100 : 0
   const advertisingPressure = market?.sponsoredShare ?? (hasRealMarketData ? 0.4 : 0)
@@ -720,6 +903,21 @@ export async function analyzeProduct(input: AnalyzeInput) {
   }
   const aiInsights = await getAIInsights(aiInput)
   console.log("STEP 1 - RAW AI WHY:", aiInsights?.why_this_decision)
+
+  // ── Advisor Brief — plain-English 3-sentence synthesis (prefer AI, else deterministic fallback) ──
+  const advisorBriefFallback = (() => {
+    const marketLine = hasRealMarketData
+      ? `The "${keyword}" niche averages ${avgReviews.toLocaleString()} reviews per top listing — ${avgReviews >= 3000 ? "entry is expensive and takes time" : avgReviews >= 500 ? "competition is real but winnable with a clear differentiator" : "competition is relatively low and entry is feasible"}.`
+      : `The "${keyword}" niche needs live market data to properly assess competition; the numbers below are based on your inputs only.`
+    const verdictLine = verdict === "NO_GO"
+      ? `Your numbers show $${profitAfterAds.toFixed(2)} profit per unit after all costs — that is too thin to safely absorb advertising, returns, and unexpected fees.`
+      : `Your numbers show $${profitAfterAds.toFixed(2)} profit per unit at ${estimatedMarginPercent.toFixed(1)}% margin — workable for a controlled launch if you manage advertising spend tightly.`
+    const actionLine = verdict === "NO_GO"
+      ? `To move forward, raise your selling price, cut your product cost, or find a less competitive keyword — then re-run this analysis.`
+      : `Start with 100–150 units, enroll in Amazon's Vine review program right away, and run ads only on your exact main keyword for the first 30 days.`
+    return `${marketLine} ${verdictLine} ${actionLine}`
+  })()
+  const advisorBrief = aiInsights?.advisor_brief?.trim() || advisorBriefFallback
 
   // ─── 1. WHY THIS DECISION: prefer AI (Observation → implication), else fallback ───
   const why_this_decision_raw =
@@ -921,9 +1119,13 @@ export async function analyzeProduct(input: AnalyzeInput) {
     "home & lifestyle"
   const launchAcosMin = Math.round(assumedAcos * 100)
   const launchAcosMax = Math.min(75, launchAcosMin + 20)
+  const dfsCpc = input.dataForSEO?.cpcUsd
+  const cpcLine = dfsCpc != null
+    ? `CPC benchmark: $${dfsCpc.toFixed(2)}/click (Google Ads bid data — the most reliable proxy for Amazon PPC competition in this keyword). At ${(LAUNCH_CVR * 100).toFixed(1)}% CVR, that's ~$${(dfsCpc / LAUNCH_CVR).toFixed(2)} in ad spend per unit sold at launch. Verify with your Search Term Report after the first 72 hours — your actual Amazon CPC may be lower or higher depending on bidder density.`
+    : `Finding your real CPC: run a $50 auto campaign for 72 hours, then pull your Search Term Report. That's the only way to know what you're actually paying per click in this market. Pre-launch directional ranges: use Helium 10 Cerebro or Jungle Scout Keyword Scout.`
   const advertising = [
-    `Expected launch ACoS: ${launchAcosMin}–${launchAcosMax}% for the first 30–60 days. This is calibrated to ${categoryLabel} competition depth (${avgReviews.toLocaleString()} avg competitor reviews, ${sponsoredTop10Count} sponsored slots on page 1). ⚠ This is a model estimate — your actual ACoS depends on real auction CPCs.`,
-    `Estimated CPC: ${cpcLabel} — derived from category benchmarks + review depth. Real CPCs vary 30–50% from model. How to find the real number: run a $50 auto campaign for 72 hours and check your Search Term Report, or use Helium 10 Cerebro / Jungle Scout Keyword Scout before launch.`,
+    `Expected launch ACoS: ${launchAcosMin}–${launchAcosMax}% for the first 30–60 days. This is calibrated to ${categoryLabel} competition depth (${avgReviews.toLocaleString()} avg competitor reviews, ${sponsoredTop10Count} sponsored slots on page 1). ⚠ This is a model estimate — your real ACoS depends on your actual cost per click, which you can only know from a live campaign.`,
+    cpcLine,
     `PPC execution: (1) Exact Match only for 30 days — no broad match until conversion is proven. (2) Add negatives daily from the Search Term Report. (3) Scale budget only when ACoS drops below ${launchAcosMin}%. (4) Never run ads to a listing with fewer than 5 reviews.`,
     ...(input.keepaData?.peakSalesMonths?.length
       ? [`📅 Demand calendar: peak sales in ${input.keepaData.peakSalesMonths.join(" & ")}; slowest in ${(input.keepaData.troughSalesMonths ?? []).join(" & ")}. Source your inventory 10–12 weeks before your peak month — running out of stock during peak kills your ranking.`]
@@ -1013,8 +1215,8 @@ export async function analyzeProduct(input: AnalyzeInput) {
 
   const alternative_keywords_with_cost = alternative_keywords.map((kw) => ({
     keyword: String(kw).trim(),
-    estimatedCpc: cpcLabel,
-    estimatedCpcDisplay: cpcLabel,
+    estimatedCpc: null,
+    estimatedCpcDisplay: "Check Helium 10 Cerebro",
   }))
 
   const totalUnitCost = cogs + referralFee + fbaFee + ppcCostPerUnit
@@ -1028,7 +1230,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
     ppcCostPerUnit: Math.round(ppcCostPerUnit * 100) / 100,
     assumedAcosPercent: Math.round(assumedAcos * 100),
     acosRangePercent: `${launchAcosMin}–${launchAcosMax}%`,
-    estimatedCpcRange: cpcLabel,
+    estimatedCpcRange: null,
     profitAfterAds: Math.round(profitAfterAds * 100) / 100,
   }
 
@@ -1042,9 +1244,8 @@ export async function analyzeProduct(input: AnalyzeInput) {
     `Your selling price is $${sellingPrice.toFixed(2)}. Amazon takes: (1) Referral fee — ${(referralFeeRate * 100).toFixed(0)}% = $${referralFee.toFixed(2)} on every sale, no exceptions. ` +
     `(2) FBA fee — ${fbaFeeNote}. ` +
     `(3) COGS — $${cogs.toFixed(2)} (unit + shipping to FBA). ` +
-    `(4) PPC cost — modeled at ${Math.round(assumedAcos * 100)}% ACoS = $${ppcCostPerUnit.toFixed(2)}/unit. ` +
-    `⚠ PPC is an estimate. Real ACoS during launch is typically ${launchAcosMin}–${launchAcosMax}% — it depends on your actual CPC, which you can only know from live campaign data. ` +
-    `Estimated CPC in this niche: ${cpcLabel}. Verify with Helium 10 Cerebro or Jungle Scout Keyword Scout before you launch. ` +
+    `(4) Ad spend — modeled at ${Math.round(assumedAcos * 100)}% ACoS = $${ppcCostPerUnit.toFixed(2)}/unit. ` +
+    `⚠ This is a model estimate. Your real ACoS depends on what you actually pay per click — a number only a live campaign can tell you. Expect ACoS of ${launchAcosMin}–${launchAcosMax}% in your first 30 days until reviews build. ` +
     `After all deductions: $${profitAfterAds.toFixed(2)} profit per unit. Returns (3–8%), storage, and coupons can cut this by another 10–25%.`
 
   const financialStressTest =
@@ -1107,7 +1308,7 @@ export async function analyzeProduct(input: AnalyzeInput) {
   if (early_strategy_guidance) {
     strategicIntelligenceParts.push(early_strategy_guidance)
   }
-  const ppcRealityAudit = `PPC Reality Audit: In this niche, the average CPC is approximately $${baseCpcFinal.toFixed(2)}. At a ${(LAUNCH_CVR * 100).toFixed(1)}% conversion rate (realistic for a new listing with no reviews), your launch ad cost per unit will be $${launchAdCostPerUnit.toFixed(2)}. This requires a daily budget of at least $${Math.max(50, Math.round(launchAdCostPerUnit * 5 / 10) * 10)} to gain any traction.`
+  const ppcRealityAudit = `Ad Spend Reality: At a ${(LAUNCH_CVR * 100).toFixed(1)}% conversion rate (baseline for a new listing with no reviews), your modeled ad cost is $${launchAdCostPerUnit.toFixed(2)}/unit sold. This is a model — your real number depends on your actual CPC, which only a live campaign can tell you. Plan a minimum daily budget of $${Math.max(50, Math.round(launchAdCostPerUnit * 5 / 10) * 10)} for the first two weeks.`
   strategicIntelligenceParts.push(ppcRealityAudit)
   const launchCapitalConsultantInsight = `To hit page 1 in this niche, you need roughly $${launchCapitalRequired.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} for your first 30 days. Don't start with less.`
   strategicIntelligenceParts.push(`Launch Capital Required: $${launchCapitalRequired.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}. ${launchCapitalConsultantInsight}`)
@@ -1173,6 +1374,48 @@ export async function analyzeProduct(input: AnalyzeInput) {
     whatWouldMakeGo: "If the verdict is NO_GO, what would need to change to make it a GO.",
     profitBreakdown: "How we calculate profit after ads: we subtract referral, FBA, COGS, and PPC from your selling price.",
   }
+
+  // ── Fix-It Scenarios — exact math to flip verdict from NO_GO/IMPROVE to GO ─
+  // profit/price >= NET_MARGIN_THRESHOLD
+  // ↔ price >= (fbaFee + cogs) / (1 − referralFeeRate − assumedAcos − threshold)
+  // ↔ cogs <= price*(1 − referralFeeRate − assumedAcos − threshold) − fbaFee
+  const _fitDenom = 1 - referralFeeRate - assumedAcos - NET_MARGIN_THRESHOLD
+  const fixItMinPrice: number | null =
+    _fitDenom > 0.01 ? Math.ceil(((fbaFee + cogs) / _fitDenom) * 100) / 100 : null
+  const fixItMaxCogs: number | null = (() => {
+    const max = sellingPrice * (1 - referralFeeRate - assumedAcos - NET_MARGIN_THRESHOLD) - fbaFee
+    return max > 0 && max < cogs ? Math.floor(max * 100) / 100 : null
+  })()
+  // "Split the difference" — a midpoint price that requires both a smaller price rise AND smaller COGS cut
+  const fixItBothPrice: number | null =
+    fixItMinPrice != null && fixItMinPrice > sellingPrice
+      ? Math.ceil(((sellingPrice + fixItMinPrice) / 2) * 100) / 100
+      : null
+  const fixItBothCogs: number | null = fixItBothPrice
+    ? (() => {
+        const max = fixItBothPrice * (1 - referralFeeRate - assumedAcos - NET_MARGIN_THRESHOLD) - fbaFee
+        return max > 0 && max < cogs ? Math.floor(max * 100) / 100 : null
+      })()
+    : null
+  const fixItProfitAtMinPrice: number | null =
+    fixItMinPrice != null && fixItMinPrice > sellingPrice
+      ? Math.round((fixItMinPrice * (1 - referralFeeRate - assumedAcos) - fbaFee - cogs) * 100) / 100
+      : null
+  const fixItScenarios =
+    verdict !== "GO" && (fixItMinPrice != null && fixItMinPrice > sellingPrice || fixItMaxCogs != null)
+      ? {
+          minPrice:            fixItMinPrice != null && fixItMinPrice > sellingPrice ? fixItMinPrice : null,
+          maxCogs:             fixItMaxCogs,
+          bothPrice:           fixItBothPrice,
+          bothCogs:            fixItBothCogs,
+          profitAtMinPrice:    fixItProfitAtMinPrice,
+          targetMarginPct:     marginThresholdPct,
+          priceIncreaseNeeded: fixItMinPrice != null && fixItMinPrice > sellingPrice
+                                 ? Math.round((fixItMinPrice - sellingPrice) * 100) / 100 : null,
+          cogsReductionNeeded: fixItMaxCogs != null
+                                 ? Math.round((cogs - fixItMaxCogs) * 100) / 100 : null,
+        }
+      : null
 
   const liveMarketComparison =
     hasRealMarketData && (topCompetitors.length > 0 || painPoints.length > 0)
@@ -1302,6 +1545,11 @@ export async function analyzeProduct(input: AnalyzeInput) {
     // ── Compliance & IP ──
     compliance_flags: aiInsights?.compliance_flags ?? undefined,
     ip_risk: aiInsights?.ip_risk ?? undefined,
+    // ── Advisor Brief ──
+    advisor_brief: advisorBrief,
+    // ── Fix-It & Differentiation ──
+    fix_it_scenarios: fixItScenarios ?? undefined,
+    differentiation_suggestions: differentiationSuggestions.length > 0 ? differentiationSuggestions : undefined,
   }
   console.log("STEP 3 - REPORT WHY:", report.why_this_decision)
 
@@ -1430,13 +1678,53 @@ export async function analyzeProduct(input: AnalyzeInput) {
     // ── Market Intelligence ──
     cpr,
     opportunityScore,
+    demandScore,
     topCompetitorMonthlySales,
     topCompetitorRevenue,
+    nicheMonthlyRevenue,
+    nicheMonthlyUnits,
     fiveStarPriceRange: fiveStarPriceRange ?? undefined,
     painPointsList: painPoints.length > 0 ? painPoints : undefined,
     topCompetitorsList: topCompetitors.length > 0 ? topCompetitors : undefined,
+    launchKeywords: aiInsights?.launch_keywords ?? undefined,
     // ── Compliance & IP ──
     complianceFlags: aiInsights?.compliance_flags ?? undefined,
     ipRisk: aiInsights?.ip_risk ?? undefined,
+    // ── Supplier Details (pass-through for display) ──
+    supplierMoq: input.moq ?? undefined,
+    supplierLeadTimeWeeks: input.leadTimeWeeks ?? undefined,
+    supplierSampleCost: input.sampleCost ?? undefined,
+    // ── Verdict Quality ──
+    confidenceBand,
+    verdictConfidencePct,
+    // ── Break-even ──
+    breakEvenUnitsForCapital: breakEvenUnitsForCapital ?? undefined,
+    breakEvenMonths: breakEvenMonths ?? undefined,
+    // ── Return Rate ──
+    returnRatePct,
+    returnRateLevel,
+    // ── Price Alert ──
+    pricePositionAlert: pricePositionAlert ?? undefined,
+    // ── Niche Saturation ──
+    nicheSaturationLabel,
+    nicheSaturationDesc,
+    // ── Advisor Brief ──
+    advisorBrief,
+    // ── Differentiation Quality ──
+    differentiationStatus,
+    differentiationWarning: differentiationWarning ?? undefined,
+    differentiationSuggestions: differentiationSuggestions.length > 0 ? differentiationSuggestions : undefined,
+    // ── Fix-It Scenarios ──
+    fixItScenarios: fixItScenarios ?? undefined,
+    // ── DataForSEO ──
+    dataForSEOData: input.dataForSEO ?? undefined,
+    searchVolume: input.dataForSEO?.searchVolume ?? undefined,
+    searchVolumeSource: input.dataForSEO?.searchVolumeSource ?? undefined,
+    searchVolumeMonthly: input.dataForSEO?.monthlySearches?.length
+      ? input.dataForSEO.monthlySearches
+      : undefined,
+    searchTrend: input.dataForSEO?.searchTrend ?? undefined,
+    realCpcUsd: input.dataForSEO?.cpcUsd ?? undefined,
+    keywordCompetitionLevel: input.dataForSEO?.competitionLevel ?? undefined,
   }
 }

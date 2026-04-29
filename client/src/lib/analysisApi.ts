@@ -7,6 +7,12 @@ export interface RunAnalysisParams {
   complexity?: string
   /** Optional: provide a specific ASIN to fetch real Keepa data instead of top SERP result */
   asin?: string
+  /** Minimum Order Quantity from supplier — improves launch capital calculation */
+  moq?: number
+  /** Supplier lead time in weeks — shown in results for cash-flow planning */
+  leadTimeWeeks?: number
+  /** One-time sample cost in USD */
+  sampleCost?: number
 }
 
 export interface RunAnalysisOptions {
@@ -93,5 +99,6 @@ export function normalizeAnalysisResponse(data: any): Record<string, unknown> {
     advisorImplicationCompetitionReality: data.advisorImplicationCompetitionReality ?? report?.advisor_implication_competition_reality ?? report?.advisorImplicationCompetitionReality,
     advisorImplicationOpportunity: data.advisorImplicationOpportunity ?? report?.advisor_implication_opportunity ?? report?.advisorImplicationOpportunity,
     advisorImplicationEarlyStrategyGuidance: data.advisorImplicationEarlyStrategyGuidance ?? report?.advisor_implication_early_strategy_guidance ?? report?.advisorImplicationEarlyStrategyGuidance,
+    advisorBrief: data.advisorBrief ?? report?.advisorBrief ?? data.advisor_brief ?? report?.advisor_brief,
   } as Record<string, unknown>
 }

@@ -6,6 +6,7 @@ import { analyzeProduct } from "@/lib/analyze/analyzeAgent"
 import { getMarginThreshold } from "@/lib/analyze/openaiService"
 import { getMarketData } from "@/lib/analyze/marketDataProvider"
 import { getKeepaData } from "@/lib/keepa/keepaService"
+import { getDataForSEOData, getRelatedKeywords } from "@/lib/dataforseo/dataForSeoService"
 
 const FREE_TIER_ANALYSIS_LIMIT = 5
 /** Emails that bypass the free-tier limit (unlimited analyses). */
@@ -65,6 +66,10 @@ export async function POST(req: Request) {
     const sellingPrice = Number(body.sellingPrice ?? body.price ?? 44) || 44
     const unitCost = Number(body.unitCost ?? body.cost ?? 4) || 4
     const shippingCost = Number(body.shippingCost ?? body.shipping ?? 2) || 2
+    // Supplier fields — optional, improve launch capital accuracy
+    const moq = body.moq != null && Number(body.moq) > 0 ? Number(body.moq) : undefined
+    const leadTimeWeeks = body.leadTimeWeeks != null && Number(body.leadTimeWeeks) > 0 ? Number(body.leadTimeWeeks) : undefined
+    const sampleCost = body.sampleCost != null && Number(body.sampleCost) > 0 ? Number(body.sampleCost) : undefined
     // ASIN override: if user provides a specific ASIN, use it for Keepa (more accurate than SERP top result)
     const userAsin = typeof body.asin === "string" && /^[A-Z0-9]{10}$/.test(body.asin.trim()) ? body.asin.trim() : null
 
@@ -79,18 +84,23 @@ export async function POST(req: Request) {
       marketData?.painPoints ?? []
     )
 
-    // Fetch Keepa BEFORE analysis so it feeds into the verdict + AI prompt.
-    // Priority: user-provided ASIN > top ASIN from SERP results.
+    // Fetch Keepa + DataForSEO in parallel — both feed into the verdict.
+    // Priority for Keepa: user-provided ASIN > top ASIN from SERP results.
     const keepaAsin = userAsin ?? marketData?.topAsins?.[0]
-    let keepaData = null
+    const kwStr = typeof keyword === "string" ? keyword : "cat cave"
+    const [keepaResult, dataForSEOResult, relatedKwResult] = await Promise.allSettled([
+      keepaAsin ? getKeepaData(keepaAsin) : Promise.resolve(null),
+      getDataForSEOData(kwStr),
+      getRelatedKeywords(kwStr, 8),
+    ])
+    const keepaData       = keepaResult.status === "fulfilled"      ? keepaResult.value       : null
+    const dataForSEOData  = dataForSEOResult.status === "fulfilled"  ? dataForSEOResult.value  : null
+    const relatedKeywords = relatedKwResult.status === "fulfilled"   ? relatedKwResult.value   : []
     if (keepaAsin) {
-      try {
-        keepaData = await getKeepaData(keepaAsin)
-        console.log(`[Keepa] Fetched data for ASIN ${keepaAsin}${userAsin ? " (user-provided)" : " (SERP top)"}:`, keepaData ? `BSR trend: ${keepaData.bsrTrend}, est. sales: ${keepaData.estimatedMonthlySales}` : "null")
-      } catch (e) {
-        console.warn("[Keepa] Fetch failed (analysis continues without it):", e)
-      }
+      console.log(`[Keepa] ASIN ${keepaAsin}${userAsin ? " (user)" : " (SERP)"}:`, keepaData ? `BSR trend: ${keepaData.bsrTrend}, est. sales: ${keepaData.estimatedMonthlySales}` : "null")
     }
+    if (keepaResult.status === "rejected") console.warn("[Keepa] Fetch failed:", keepaResult.reason)
+    if (dataForSEOResult.status === "rejected") console.warn("[DataForSEO] Fetch failed:", dataForSEOResult.reason)
 
     const [result, _unused] = await Promise.allSettled([
       analyzeProduct({
@@ -106,6 +116,10 @@ export async function POST(req: Request) {
       marketData,
       marginThreshold,
       keepaData,
+      dataForSEO: dataForSEOData,
+      moq,
+      leadTimeWeeks,
+      sampleCost,
     }),
       Promise.resolve(null), // placeholder to keep destructuring
     ])
@@ -153,10 +167,13 @@ export async function POST(req: Request) {
       if (error) console.error("Failed to save analysis to Supabase:", error.message)
     })
 
-    // Merge keepaData into response
-    const finalResponse = keepaData
-      ? { ...(analysisData as Record<string, unknown>), keepaData }
-      : analysisData
+    // Merge keepaData + dataForSEOData + relatedKeywords into response
+    const finalResponse = {
+      ...(analysisData as Record<string, unknown>),
+      ...(keepaData       ? { keepaData }       : {}),
+      ...(dataForSEOData  ? { dataForSEOData }  : {}),
+      ...(relatedKeywords?.length ? { relatedKeywords } : {}),
+    }
 
     return NextResponse.json(finalResponse)
   } catch (error) {

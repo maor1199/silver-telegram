@@ -126,6 +126,16 @@ export function Navbar() {
           >
             Analyze
           </Link>
+          {/* Blog */}
+          <Link
+            href="/blog"
+            className={cn(
+              "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              pathname.startsWith("/blog") ? "text-foreground bg-secondary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+            )}
+          >
+            Blog
+          </Link>
           {/* TOOLS dropdown */}
           <ToolsDropdown pathname={pathname} />
           {/* Pricing */}

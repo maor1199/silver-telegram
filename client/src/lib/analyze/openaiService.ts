@@ -116,6 +116,8 @@ export type AIInsights = {
   /** Compliance & IP intelligence */
   compliance_flags?: string[]       // regulatory requirements for this category
   ip_risk?: string                  // one-sentence IP/patent risk assessment
+  /** PPC launch keyword list — exact/phrase match targets for day-1 campaigns */
+  launch_keywords?: { keyword: string; match_type: "EXACT" | "PHRASE"; priority: "HIGH" | "MEDIUM" | "LOW"; bid_note: string }[]
   /** Advisor implication per section: what this data means in money/time/risk and what to do (max 2 sentences, definitive, to "you") */
   advisor_implication_why_this_decision?: string
   advisor_implication_expert_insight?: string
@@ -132,6 +134,8 @@ export type AIInsights = {
   recommended_action?: string
   /** One-sentence explanation for the verdict. */
   verdict_explanation?: string
+  /** 2-3 plain-English sentences: what this market is, what the verdict means for this seller, what to do next. No jargon. */
+  advisor_brief?: string
 }
 
 /** Response structure schema: each section has content key and advisor_implication (string). */
@@ -576,6 +580,34 @@ Examples:
   MEDIUM: "Medium IP risk — design patents are common in this space; search Google Patents before ordering samples."
   HIGH: "High IP risk — this keyword is tied to active utility patent litigation; get a freedom-to-operate search before sourcing."
 Never invent specific patent numbers.
+
+LAUNCH_KEYWORDS (launch_keywords — array of 8–12 objects):
+Generate the PPC launch keyword list a new seller should bid on from day 1.
+Rules:
+- Exactly 8–12 objects. No fewer, no more.
+- 70% EXACT match, 30% PHRASE match
+- HIGH priority = product-intent, high-converting (3–5 word specific terms)
+- MEDIUM priority = category-intent supporting terms
+- LOW priority = broad discovery (max 2 items)
+- bid_note must reference competition level: e.g. "High competition — start at $1.80+" or "Low — test at $0.60"
+- Keywords must be realistic for this specific product, not generic
+- Include: main keyword, long-tail variants, problem/solution angles, bundle/feature angles
+Each object: { "keyword": string, "match_type": "EXACT"|"PHRASE", "priority": "HIGH"|"MEDIUM"|"LOW", "bid_note": string }
+
+ADVISOR_BRIEF (advisor_brief — string):
+2–3 plain-English sentences a new seller can immediately understand. No jargon.
+Sentence 1: What this market looks like right now — demand, competition level, and what it costs to enter (write out dollar amounts, not acronyms).
+Sentence 2: What the verdict means for THIS seller's specific numbers — profit per unit, margin, and whether those numbers work.
+Sentence 3: The single most important thing to do right now. Be direct and specific.
+Rules:
+- Use real numbers from the analysis (profit per unit, margin %, launch capital, avg reviews)
+- Write "advertising costs" not "ACoS", "fulfillment fee" not "FBA fee", "pay-per-click budget" not "PPC budget"
+- Speak like a trusted advisor talking directly to a first-time seller who is about to invest $5,000–$15,000
+- If GO: be encouraging but honest — acknowledge the work ahead
+- If NO_GO: be direct and constructive — name exactly what to fix
+- Max 3 sentences. No bullet points. Just sentences.
+Example GO: "This market has steady demand with about 800 reviews per top listing — competitive but not locked. Your profit of $11.50 per unit at 24% margin means you can afford to run ads and still come out ahead. Start with 150 units, enroll in Amazon's Vine review program immediately, and bid only on your main search term for the first 30 days."
+Example NO_GO: "This market is heavily contested — top sellers average 3,200 reviews each and advertising here costs roughly $14 per sale. Your current numbers show only $2.80 profit per unit, which disappears the moment returns or ad costs spike. Before investing, you need to either raise your selling price by at least $8 or find a supplier who can get your product cost below $5."
 
 Return valid JSON only. No markdown code fences.`
 

@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Target, TrendingUp, Shield, DollarSign, BarChart3, FileText, Zap, CheckCircle2, ArrowRight, AlertTriangle } from "lucide-react"
+import { Target, TrendingUp, Shield, DollarSign, BarChart3, FileText, Zap, CheckCircle2, ArrowRight, AlertTriangle, Wrench, Database, Search } from "lucide-react"
 import {
   Accordion,
   AccordionContent,
@@ -21,8 +21,8 @@ export function HeroSection() {
       <div className="relative mx-auto max-w-[1200px] px-6 pb-24 pt-20 md:pb-32 md:pt-28">
         <div className="mx-auto max-w-3xl text-center">
           <Badge variant="outline" className="mb-6 rounded-full border-primary/20 bg-primary/5 px-4 py-1.5 text-primary">
-            <span className="mr-2 inline-block h-2 w-2 rounded-full bg-primary" />
-            Used by 2,000+ new Amazon sellers
+            <span className="mr-2 inline-block h-2 w-2 rounded-full bg-primary animate-pulse" />
+            Free to start — 5 full analyses, no card required
           </Badge>
 
           <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-6xl text-balance leading-[1.1]">
@@ -207,6 +207,99 @@ export function SuccessFactorsSection() {
             )
           })}
         </Tabs>
+      </div>
+    </section>
+  )
+}
+
+export function HowWereDifferentSection() {
+  return (
+    <section className="border-t border-border">
+      <div className="mx-auto max-w-[1200px] px-6 py-24">
+        <div className="mx-auto max-w-2xl text-center mb-16">
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Why SellerMentor</p>
+          <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl text-balance">
+            Other tools give you data.<br className="hidden sm:block" /> We give you a decision.
+          </h2>
+          <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+            Helium 10 shows you BSR and search volume. Then what? You still don{"'"}t know if you should source the product. SellerMentor closes that gap.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* Card 1 — GO/NO-GO */}
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-7 shadow-sm">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 mb-5">
+              <Target className="h-5 w-5 text-primary" />
+            </div>
+            <h3 className="text-base font-semibold text-foreground mb-2">GO or NO-GO — not just data</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              We run the full unit economics — FBA fees, referral, PPC, return rate — and return a single actionable verdict. No more staring at a spreadsheet wondering if the margins work.
+            </p>
+            <div className="mt-5 flex items-center gap-2">
+              <span className="inline-flex items-center rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-600">✓ GO</span>
+              <span className="inline-flex items-center rounded-lg bg-red-500/10 px-2.5 py-1 text-xs font-bold text-red-500">✗ NO-GO</span>
+              <span className="inline-flex items-center rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-600">~ BORDERLINE</span>
+            </div>
+          </div>
+
+          {/* Card 2 — Fix-It Calculator */}
+          <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-300/50 bg-card p-7 shadow-sm">
+            <div className="absolute top-4 right-4">
+              <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Unique</span>
+            </div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 mb-5">
+              <Wrench className="h-5 w-5 text-emerald-600" />
+            </div>
+            <h3 className="text-base font-semibold text-foreground mb-2">Fix-It Calculator</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Got a NO-GO? We don{"'"}t just reject the idea. We calculate exactly what needs to change — raise price to <span className="font-semibold text-foreground">$X</span>, or cut landed cost to <span className="font-semibold text-foreground">$Y</span> — to flip the verdict to GO.
+            </p>
+            <p className="mt-3 text-xs text-muted-foreground/70 italic">
+              No other tool tells you what to fix. They just tell you it{"'"}s broken.
+            </p>
+          </div>
+
+          {/* Card 3 — Real Data Stack */}
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-7 shadow-sm">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 mb-5">
+              <Database className="h-5 w-5 text-blue-500" />
+            </div>
+            <h3 className="text-base font-semibold text-foreground mb-2">Real data — not guesswork</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+              We stack three data sources into one verdict — so you{"'"}re not paying for 3 separate subscriptions.
+            </p>
+            <ul className="flex flex-col gap-2">
+              {[
+                { label: "Keepa", desc: "12-month BSR trend + sales estimates" },
+                { label: "Amazon Volume", desc: "Real search volume (same source as Helium 10)" },
+                { label: "Google Ads CPC", desc: "Bid pressure proxy for PPC competition" },
+              ].map(({ label, desc }) => (
+                <li key={label} className="flex items-start gap-2.5">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="text-sm text-foreground">
+                    <span className="font-semibold">{label}</span>
+                    <span className="text-muted-foreground"> — {desc}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Bottom CTA strip */}
+        <div className="mt-10 flex flex-col items-center justify-between gap-6 rounded-2xl border border-border bg-secondary/40 p-6 sm:flex-row">
+          <div>
+            <p className="font-semibold text-foreground">Ready to stop guessing?</p>
+            <p className="mt-1 text-sm text-muted-foreground">45 seconds. Free to start. The first GO / NO-GO pays for itself.</p>
+          </div>
+          <Button size="lg" className="h-11 shrink-0 rounded-xl bg-primary px-7 text-sm font-semibold text-primary-foreground hover:bg-primary/90 shadow-sm" asChild>
+            <Link href="/analyze">
+              Run my first analysis
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       </div>
     </section>
   )

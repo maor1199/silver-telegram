@@ -4,6 +4,7 @@ import { Footer } from "@/components/footer"
 import {
   HeroSection,
   SuccessFactorsSection,
+  HowWereDifferentSection,
   WhyTrustSection,
   FAQSection,
   CTASection,
@@ -27,6 +28,7 @@ export default function HomePage() {
       <main className="flex-1">
         <HeroSection />
         <SuccessFactorsSection />
+        <HowWereDifferentSection />
         <WhyTrustSection />
         <FAQSection />
         <CTASection />

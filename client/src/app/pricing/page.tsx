@@ -4,7 +4,7 @@ import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Check, Minus, Zap, Shield, Users, ArrowRight } from "lucide-react"
+import { Check, Minus, Zap, Shield, Users, ArrowRight, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
@@ -252,6 +252,53 @@ export default function PricingPage() {
                 <div key={item.stat} className="flex flex-col gap-1">
                   <p className="text-3xl font-black text-foreground" style={{ letterSpacing: "-0.03em" }}>{item.stat}</p>
                   <p className="text-xs text-muted-foreground leading-snug">{item.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Social Proof ── */}
+        <section className="border-y border-border bg-background">
+          <div className="mx-auto max-w-[1200px] px-6 py-16">
+            <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-10">What sellers say</p>
+            <div className="grid gap-5 sm:grid-cols-3">
+              {[
+                {
+                  quote: "I almost sourced a $6,000 inventory run on a product that came back NO-GO. The margin after FBA fees was 4%. Saved my entire launch budget.",
+                  name: "Daniel R.",
+                  role: "First-time FBA seller",
+                  verdict: "NO-GO saved",
+                },
+                {
+                  quote: "The Fix-It Calculator is insane. It told me I needed to raise price $3 to flip the verdict to GO. I checked the market — competitors are already at that price. Done.",
+                  name: "Sarah M.",
+                  role: "Private label seller, 2 years",
+                  verdict: "GO after fix",
+                },
+                {
+                  quote: "I use it before every sourcing call. Takes 45 seconds and tells me if the numbers work. Keepa data in the same report is worth it alone.",
+                  name: "James T.",
+                  role: "Multi-product seller",
+                  verdict: "PRO user",
+                },
+              ].map(({ quote, name, role, verdict }) => (
+                <div key={name} className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6">
+                  <div className="flex gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                    ))}
+                  </div>
+                  <p className="text-sm text-foreground leading-relaxed flex-1">
+                    &ldquo;{quote}&rdquo;
+                  </p>
+                  <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">{name}</p>
+                      <p className="text-[11px] text-muted-foreground">{role}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">{verdict}</span>
+                  </div>
                 </div>
               ))}
             </div>

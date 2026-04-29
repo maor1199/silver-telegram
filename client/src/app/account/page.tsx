@@ -159,6 +159,42 @@ function ProfileSection({
   const [pwLoading, setPwLoading] = useState(false)
   const [pwError, setPwError] = useState<string | null>(null)
   const [pwSuccess, setPwSuccess] = useState(false)
+  const [saveLoading, setSaveLoading] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [usageCount, setUsageCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    if (!supabase) return
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from("user_usage").select("analysis_count").eq("user_id", user.id).single()
+        .then(({ data }) => { if (data) setUsageCount(data.analysis_count ?? 0) })
+    })
+  }, [])
+
+  const handleSave = async () => {
+    setSaveError(null)
+    setSaveSuccess(false)
+    setSaveLoading(true)
+    const supabase = createClient()
+    if (!supabase) { setSaveError("Auth service unavailable."); setSaveLoading(false); return }
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        first_name: profile.firstName.trim(),
+        last_name:  profile.lastName.trim(),
+        full_name:  `${profile.firstName.trim()} ${profile.lastName.trim()}`.trim(),
+      },
+    })
+    setSaveLoading(false)
+    if (error) {
+      setSaveError(error.message)
+    } else {
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    }
+  }
 
   const handleChangePassword = async () => {
     setPwError(null)
@@ -254,6 +290,37 @@ function ProfileSection({
             />
           </div>
 
+          {saveError && (
+            <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-2.5 text-xs text-destructive">
+              {saveError}
+            </div>
+          )}
+          {saveSuccess && (
+            <div className="rounded-xl border border-[#16a34a]/20 bg-[#16a34a]/5 px-4 py-2.5 text-xs text-[#16a34a]">
+              Profile saved successfully.
+            </div>
+          )}
+
+          {usageCount !== null && (
+            <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/40 px-4 py-3">
+              <span className="text-xs text-muted-foreground">Analyses used (free tier)</span>
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <span
+                      key={i}
+                      className={cn(
+                        "inline-block h-2 w-5 rounded-full transition-colors",
+                        i < usageCount ? "bg-primary" : "bg-secondary"
+                      )}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs font-semibold text-foreground">{usageCount} / 5</span>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between border-t border-border pt-5">
             <Button
               variant="ghost"
@@ -268,8 +335,13 @@ function ProfileSection({
             >
               {showPasswordForm ? "Cancel" : "Change password"}
             </Button>
-            <Button className="rounded-xl bg-primary px-5 text-primary-foreground hover:bg-primary/90">
-              Save changes
+            <Button
+              className="rounded-xl bg-primary px-5 text-primary-foreground hover:bg-primary/90"
+              onClick={handleSave}
+              disabled={saveLoading}
+            >
+              {saveLoading ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+              {saveLoading ? "Saving..." : "Save changes"}
             </Button>
           </div>
 

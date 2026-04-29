@@ -40,6 +40,7 @@ import {
   TrendingUp as TrendUp,
   Search,
   Info,
+  FileText,
 } from "lucide-react"
 import {
   LineChart,
@@ -324,6 +325,7 @@ export default function WarRoom() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [shared, setShared] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [activeTab, setActiveTab] = useState<"overview" | "deep-dive" | "execution" | "market-history">("overview")
@@ -548,6 +550,49 @@ export default function WarRoom() {
   const differentiationScore = safeStr(R?.differentiationScore ?? analysisData?.differentiationScore ?? R?.differentiation_score)
   const launchCapitalRequired = R?.launchCapitalRequired ?? analysisData?.launchCapitalRequired ?? R?.launch_capital_required
   const launchCapitalBreakdown = (R?.launchCapitalBreakdown ?? analysisData?.launchCapitalBreakdown ?? R?.launch_capital_breakdown) as Record<string, unknown> | null
+  const supplierMoq = R?.supplierMoq ?? analysisData?.supplierMoq
+  const supplierLeadTimeWeeks = R?.supplierLeadTimeWeeks ?? analysisData?.supplierLeadTimeWeeks
+  const supplierSampleCost = R?.supplierSampleCost ?? analysisData?.supplierSampleCost
+
+  // ── Verdict Quality ──────────────────────────────────────────────────────
+  const confidenceBand = safeStr(R?.confidenceBand ?? analysisData?.confidenceBand) as "STRONG" | "MODERATE" | "BORDERLINE" | ""
+  const verdictConfidencePct = R?.verdictConfidencePct ?? analysisData?.verdictConfidencePct
+  // ── Break-even ───────────────────────────────────────────────────────────
+  const breakEvenUnitsForCapital = R?.breakEvenUnitsForCapital ?? analysisData?.breakEvenUnitsForCapital
+  const breakEvenMonths = R?.breakEvenMonths ?? analysisData?.breakEvenMonths
+  // ── Return Rate ──────────────────────────────────────────────────────────
+  const returnRatePct = safeStr(R?.returnRatePct ?? analysisData?.returnRatePct)
+  const returnRateLevel = safeStr(R?.returnRateLevel ?? analysisData?.returnRateLevel) as "low" | "moderate" | "high" | ""
+  // ── Price Alert ──────────────────────────────────────────────────────────
+  const pricePositionAlertRaw = R?.pricePositionAlert ?? analysisData?.pricePositionAlert
+  const pricePositionAlert = (pricePositionAlertRaw && typeof pricePositionAlertRaw === "object")
+    ? pricePositionAlertRaw as { type: "TOO_LOW" | "TOO_HIGH"; msg: string }
+    : null
+  // ── Niche Saturation ─────────────────────────────────────────────────────
+  const nicheSaturationLabel = safeStr(R?.nicheSaturationLabel ?? analysisData?.nicheSaturationLabel)
+  const nicheSaturationDesc = safeStr(R?.nicheSaturationDesc ?? analysisData?.nicheSaturationDesc)
+  // ── DataForSEO ───────────────────────────────────────────────────────────
+  const searchVolume = (R?.searchVolume ?? analysisData?.searchVolume) as number | null | undefined
+  const searchTrend  = safeStr(R?.searchTrend ?? analysisData?.searchTrend) as "growing" | "declining" | "stable" | ""
+  const realCpcUsd   = (R?.realCpcUsd ?? analysisData?.realCpcUsd) as number | null | undefined
+  const keywordCompetitionLevel = safeStr(R?.keywordCompetitionLevel ?? analysisData?.keywordCompetitionLevel) as "LOW" | "MEDIUM" | "HIGH" | ""
+  // Related keywords from DataForSEO Amazon
+  type RelatedKw = { keyword: string; searchVolume: number | null; rank: number }
+  const relatedKeywordsRaw = R?.relatedKeywords ?? analysisData?.relatedKeywords
+  const relatedKeywords: RelatedKw[] = Array.isArray(relatedKeywordsRaw)
+    ? (relatedKeywordsRaw as RelatedKw[]).filter((k) => k?.keyword)
+    : []
+  // Source of search volume — "amazon" = Helium-10-equivalent real data, "google_ads" = proxy
+  const searchVolumeSource = safeStr(
+    R?.searchVolumeSource ?? analysisData?.searchVolumeSource
+    ?? (R?.dataForSEOData as Record<string,unknown>)?.searchVolumeSource
+    ?? (analysisData?.dataForSEOData as Record<string,unknown>)?.searchVolumeSource
+  ) as "amazon" | "google_ads" | ""
+  // ── Score Breakdown ──────────────────────────────────────────────────────
+  const scoreBreakdownRaw = R?.scoreBreakdown ?? analysisData?.scoreBreakdown ?? R?.score_breakdown ?? analysisData?.score_breakdown
+  const scoreBreakdown: Record<string, string> = (scoreBreakdownRaw && typeof scoreBreakdownRaw === "object" && !Array.isArray(scoreBreakdownRaw))
+    ? scoreBreakdownRaw as Record<string, string>
+    : {}
   const financialStressTest = safeStr(R?.financialStressTest ?? analysisData?.financialStressTest ?? R?.financial_stress_test)
   const missSource = safeStr(R?.what_most_sellers_miss)
   const whatMostSellersMiss = missSource ? missSource.split(/[.!?](?:\s|$)/)[0].trim() : ""
@@ -587,6 +632,30 @@ export default function WarRoom() {
   const marginThresholdPct =
     R?.marginThresholdPct ?? analysisData?.marginThresholdPct ?? R?.margin_threshold_pct ?? analysisData?.margin_threshold_pct
 
+  // ── Advisor Brief ─────────────────────────────────────────────────
+  const advisorBrief = safeStr(R?.advisorBrief ?? analysisData?.advisorBrief ?? R?.advisor_brief ?? analysisData?.advisor_brief)
+
+  // ── Differentiation status & warning ──────────────────────────────
+  const differentiationWarning = safeStr(R?.differentiationWarning ?? analysisData?.differentiationWarning)
+  const differentiationStatus = safeStr(R?.differentiationStatus ?? analysisData?.differentiationStatus) as "none" | "vague" | "unverified" | "weak" | "strong" | ""
+  const differentiationSuggestions = safeList(R?.differentiationSuggestions ?? analysisData?.differentiationSuggestions)
+
+  // ── Fix-It Scenarios ────────────────────────────────────────────────
+  type FixItScenarios = {
+    minPrice?: number | null
+    maxCogs?: number | null
+    bothPrice?: number | null
+    bothCogs?: number | null
+    profitAtMinPrice?: number | null
+    targetMarginPct?: number
+    priceIncreaseNeeded?: number | null
+    cogsReductionNeeded?: number | null
+  }
+  const fixItScenarios = (
+    R?.fixItScenarios ?? analysisData?.fixItScenarios ??
+    R?.fix_it_scenarios ?? analysisData?.fix_it_scenarios
+  ) as FixItScenarios | null | undefined
+
   // ── Critical Intelligence fields (new — always visible) ───────────
   const tableStakes = safeList(R?.table_stakes ?? analysisData?.table_stakes)
   const whatWinsHere = safeStr(R?.what_wins_here ?? analysisData?.what_wins_here)
@@ -599,12 +668,28 @@ export default function WarRoom() {
   // ── Market Intelligence (CPR, Opportunity Score, sales, 5★ price) ─
   const cpr = R?.cpr ?? analysisData?.cpr
   const opportunityScore = R?.opportunityScore ?? analysisData?.opportunityScore ?? R?.opportunity_score ?? analysisData?.opportunity_score
+  const demandScore = R?.demandScore ?? analysisData?.demandScore ?? R?.demand_score ?? analysisData?.demand_score
   const topCompetitorMonthlySales = R?.topCompetitorMonthlySales ?? analysisData?.topCompetitorMonthlySales ?? R?.top_competitor_monthly_sales ?? analysisData?.top_competitor_monthly_sales
   const topCompetitorRevenue = R?.topCompetitorRevenue ?? analysisData?.topCompetitorRevenue ?? R?.top_competitor_revenue ?? analysisData?.top_competitor_revenue
+  const nicheMonthlyRevenue = R?.nicheMonthlyRevenue ?? analysisData?.nicheMonthlyRevenue ?? R?.niche_monthly_revenue ?? analysisData?.niche_monthly_revenue
+  const nicheMonthlyUnits = R?.nicheMonthlyUnits ?? analysisData?.nicheMonthlyUnits ?? R?.niche_monthly_units ?? analysisData?.niche_monthly_units
   const fiveStarPriceRange = safeStr(R?.fiveStarPriceRange ?? analysisData?.fiveStarPriceRange ?? R?.five_star_price_range ?? analysisData?.five_star_price_range)
   const complianceFlags = safeList(R?.complianceFlags ?? analysisData?.complianceFlags ?? R?.compliance_flags ?? analysisData?.compliance_flags)
   const ipRisk = safeStr(R?.ipRisk ?? analysisData?.ipRisk ?? R?.ip_risk ?? analysisData?.ip_risk)
   const painPointsList = safeList(R?.painPointsList ?? analysisData?.painPointsList ?? R?.pain_points_list ?? analysisData?.pain_points_list)
+  const launchKeywordsRaw = R?.launchKeywords ?? analysisData?.launchKeywords ?? R?.launch_keywords ?? analysisData?.launch_keywords
+  const launchKeywords: { keyword: string; match_type: string; priority: string; bid_note?: string }[] = Array.isArray(launchKeywordsRaw)
+    ? launchKeywordsRaw.map((k: unknown) => {
+        if (typeof k === "string") return { keyword: k, match_type: "EXACT", priority: "MEDIUM" }
+        const o = k as Record<string, unknown>
+        return {
+          keyword: safeStr(o.keyword ?? o.keyword_text, ""),
+          match_type: safeStr(o.match_type, "EXACT"),
+          priority: safeStr(o.priority, "MEDIUM"),
+          bid_note: safeStr(o.bid_note ?? o.bidNote, ""),
+        }
+      }).filter(k => k.keyword.length > 0)
+    : []
   const topCompetitorsList = (() => {
     const raw = R?.topCompetitorsList ?? analysisData?.topCompetitorsList ?? R?.top_competitors ?? analysisData?.top_competitors ?? (R?.marketSnapshot as Record<string,unknown> | undefined)?.topCompetitors ?? (analysisData?.marketSnapshot as Record<string,unknown> | undefined)?.topCompetitors
     if (!Array.isArray(raw)) return []
@@ -625,6 +710,30 @@ export default function WarRoom() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
     })
+  }
+
+  const handleShare = () => {
+    if (!data) return
+    try {
+      const payload = {
+        product: safeStr((data as Record<string,unknown>)?.keyword ?? (data as Record<string,unknown>)?.product ?? (data as Record<string,unknown>)?.report && typeof (data as Record<string,unknown>).report === "object" ? ((data as Record<string,unknown>).report as Record<string,unknown>)?.keyword : ""),
+        verdict,
+        score: score ?? null,
+        margin: safeStr((data as Record<string,unknown>)?.estimatedMargin ?? ((data as Record<string,unknown>)?.report as Record<string,unknown>)?.estimatedMargin ?? ""),
+        date: new Date().toISOString().slice(0, 10),
+      }
+      const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+      const url = `${window.location.origin}/share?d=${encoded}`
+      navigator.clipboard.writeText(url).then(() => {
+        setShared(true)
+        setTimeout(() => setShared(false), 3000)
+      })
+    } catch {
+      // fallback: copy current page URL
+      navigator.clipboard.writeText(window.location.href)
+      setShared(true)
+      setTimeout(() => setShared(false), 3000)
+    }
   }
 
   const handleSaveToMyReports = async () => {
@@ -690,6 +799,13 @@ export default function WarRoom() {
                   {saveSuccess ? "Saved" : saving ? "Saving…" : "Save to My Reports"}
                 </button>
                 <button
+                  onClick={handleShare}
+                  className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-1 text-[10px] font-semibold text-primary hover:bg-primary/10 transition-colors"
+                >
+                  {shared ? <Check className="h-3 w-3 text-emerald-500" /> : <ArrowRight className="h-3 w-3" />}
+                  {shared ? "Link copied!" : "Share result"}
+                </button>
+                <button
                   onClick={handleCopyJson}
                   className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
                 >
@@ -711,6 +827,26 @@ export default function WarRoom() {
                 </div>
               </div>
 
+              {/* Confidence Band pill */}
+              {confidenceBand && (
+                <div className="mt-4 flex justify-center">
+                  <span className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider",
+                    confidenceBand === "STRONG"
+                      ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
+                      : confidenceBand === "MODERATE"
+                        ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                        : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                  )}>
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                    {confidenceBand === "STRONG" ? "High confidence" : confidenceBand === "MODERATE" ? "Moderate confidence" : "Borderline — verify inputs"}
+                    {verdictConfidencePct != null && (
+                      <span className="ml-1 opacity-70">({Number(verdictConfidencePct)}%)</span>
+                    )}
+                  </span>
+                </div>
+              )}
+
               {/* GO-BUT explanation */}
               {verdict === "GO-BUT" && (
                 <p className="mt-4 text-sm text-amber-700 dark:text-amber-400 font-medium max-w-md mx-auto">
@@ -718,6 +854,42 @@ export default function WarRoom() {
                 </p>
               )}
 
+              {/* Price Position Alert */}
+              {pricePositionAlert && (
+                <div className={cn(
+                  "mt-5 mx-auto max-w-md rounded-xl border px-4 py-3 text-sm text-left",
+                  pricePositionAlert.type === "TOO_LOW"
+                    ? "border-amber-200/60 bg-amber-50/60 dark:border-amber-800/40 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300"
+                    : "border-orange-200/60 bg-orange-50/60 dark:border-orange-800/40 dark:bg-orange-950/20 text-orange-800 dark:text-orange-300"
+                )}>
+                  <span className="font-semibold">{pricePositionAlert.type === "TOO_LOW" ? "⚠ Price too low" : "⚠ Price above market"}</span>
+                  <span className="ml-1">{pricePositionAlert.msg}</span>
+                </div>
+              )}
+
+              {/* No-ASIN data quality warning */}
+              {!keepaData && (
+                <div className="mt-5 mx-auto max-w-md rounded-xl border border-blue-200/60 bg-blue-50/40 dark:border-blue-800/40 dark:bg-blue-950/20 px-4 py-3 text-xs text-blue-800 dark:text-blue-300">
+                  <span className="font-semibold">Estimates only</span> — no ASIN was provided so market data is based on averages.{" "}
+                  <Link href="/analyze" className="underline underline-offset-2 font-semibold hover:opacity-80">Re-run with a competitor ASIN</Link> for Keepa-verified numbers.
+                </div>
+              )}
+
+
+              {/* ── Advisor Brief ─────────────────────────────────── */}
+              {advisorBrief && (
+                <div className="mt-6 mx-auto max-w-2xl rounded-2xl border-2 border-primary/20 bg-primary/5 dark:bg-primary/10 px-6 py-5 text-left shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                      <Brain className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="mb-1 text-[10px] font-black uppercase tracking-[0.15em] text-primary/70">Advisor Summary</p>
+                      <p className="text-sm text-foreground leading-relaxed font-medium">{advisorBrief}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Key Metrics Row */}
               <div className="mt-8 flex items-center justify-center gap-8 flex-wrap">
@@ -787,47 +959,147 @@ export default function WarRoom() {
                 )}
               </div>
 
+              {/* ── Score Breakdown ────────────────────────────── */}
+              {Object.keys(scoreBreakdown).filter(k => k !== "base").length > 0 && (
+                <div className="mt-6 mx-auto max-w-lg">
+                  <details className="group">
+                    <summary className="cursor-pointer list-none flex items-center justify-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors select-none">
+                      <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                      Score breakdown ({Object.keys(scoreBreakdown).filter(k => k !== "base").length} signals)
+                    </summary>
+                    <div className="mt-3 flex flex-col gap-1.5 rounded-xl border border-border bg-card/60 p-4">
+                      {Object.entries(scoreBreakdown)
+                        .filter(([k]) => k !== "base")
+                        .map(([, v]) => {
+                          const isPos = String(v).startsWith("+")
+                          const isNeg = String(v).startsWith("-")
+                          return (
+                            <div key={v} className="flex items-start gap-2 text-xs">
+                              <span className={cn(
+                                "mt-0.5 shrink-0 rounded px-1.5 py-0.5 font-bold tabular-nums text-[10px]",
+                                isPos ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
+                                  : isNeg ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                                    : "bg-muted text-muted-foreground"
+                              )}>
+                                {String(v).split(" ")[0]}
+                              </span>
+                              <span className="text-muted-foreground leading-relaxed">
+                                {String(v).split("(")[1]?.replace(")", "") ?? String(v).split(" ").slice(1).join(" ")}
+                              </span>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </details>
+                </div>
+              )}
+
               {/* ── Market Intel Strip ─────────────────────────── */}
-              {(cpr != null || opportunityScore != null || topCompetitorMonthlySales != null || fiveStarPriceRange) && (
-                <div className="mt-8 mx-auto max-w-2xl grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {(cpr != null || opportunityScore != null || demandScore != null || nicheMonthlyRevenue != null || topCompetitorMonthlySales != null || fiveStarPriceRange || searchVolume != null || realCpcUsd != null) && (
+                <div className="mt-8 mx-auto max-w-2xl grid grid-cols-3 sm:grid-cols-6 gap-2">
+
+                  {/* 0a — Search Volume (DataForSEO) */}
+                  {searchVolume != null && (() => {
+                    const trendColor = searchTrend === "growing" ? "text-emerald-600 dark:text-emerald-400"
+                      : searchTrend === "declining" ? "text-red-500 dark:text-red-400"
+                      : "text-foreground"
+                    const trendBorder = searchTrend === "growing" ? "border-emerald-200/60 dark:border-emerald-800/30"
+                      : searchTrend === "declining" ? "border-red-200/60 dark:border-red-800/30"
+                      : "border-border"
+                    const trendIcon = searchTrend === "growing" ? "↑" : searchTrend === "declining" ? "↓" : "→"
+                    const volDisplay = searchVolume >= 1000
+                      ? `${(searchVolume / 1000).toFixed(searchVolume >= 10000 ? 0 : 1)}K`
+                      : String(searchVolume)
+                    return (
+                      <div className={cn("rounded-xl border p-2.5 text-center bg-card", trendBorder)}>
+                        <p className={cn("text-xl font-black tabular-nums", trendColor)}>
+                          {volDisplay}
+                          <span className="text-xs ml-0.5">{trendIcon}</span>
+                        </p>
+                        <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Searches/mo</p>
+                        <p className="text-[8px] text-muted-foreground/50 leading-tight">
+                          {searchVolumeSource === "amazon" ? "Amazon data" : searchVolumeSource === "google_ads" ? "Google proxy" : "real data"}
+                        </p>
+                      </div>
+                    )
+                  })()}
+
+                  {/* 0b — Real CPC (DataForSEO) */}
+                  {realCpcUsd != null && (() => {
+                    const cpcColor = realCpcUsd >= 2 ? "text-red-500 dark:text-red-400"
+                      : realCpcUsd >= 0.8 ? "text-amber-600 dark:text-amber-400"
+                      : "text-emerald-600 dark:text-emerald-400"
+                    return (
+                      <div className="rounded-xl border border-border p-2.5 text-center bg-card">
+                        <p className={cn("text-xl font-black tabular-nums", cpcColor)}>
+                          ${realCpcUsd.toFixed(2)}
+                        </p>
+                        <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">CPC</p>
+                        <p className="text-[8px] text-muted-foreground/50 leading-tight">real data</p>
+                      </div>
+                    )
+                  })()}
+
+                  {/* 1 — Opportunity Score */}
                   {opportunityScore != null && (() => {
                     const os = Number(opportunityScore)
                     const osColor = os >= 65 ? "text-emerald-600 dark:text-emerald-400" : os >= 40 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
                     const osBorder = os >= 65 ? "border-emerald-200/60 dark:border-emerald-800/30" : os >= 40 ? "border-amber-200/60 dark:border-amber-800/30" : "border-red-200/60 dark:border-red-800/30"
                     return (
-                      <div className={cn("rounded-xl border p-3 text-center bg-card", osBorder)}>
-                        <p className={cn("text-2xl font-black", osColor)}>{os}</p>
-                        <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Opportunity</p>
-                        <p className="text-[9px] text-muted-foreground/60">demand vs competition</p>
+                      <div className={cn("rounded-xl border p-2.5 text-center bg-card", osBorder)}>
+                        <p className={cn("text-xl font-black tabular-nums", osColor)}>{os}</p>
+                        <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Opp. Score</p>
+                        <p className="text-[8px] text-muted-foreground/50 leading-tight">demand vs comp.</p>
                       </div>
                     )
                   })()}
+                  {/* 2 — Demand Score */}
+                  {demandScore != null && (() => {
+                    const ds = Number(demandScore)
+                    const dsColor = ds >= 65 ? "text-emerald-600 dark:text-emerald-400" : ds >= 40 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
+                    const dsBorder = ds >= 65 ? "border-emerald-200/60 dark:border-emerald-800/30" : ds >= 40 ? "border-amber-200/60 dark:border-amber-800/30" : "border-red-200/60 dark:border-red-800/30"
+                    return (
+                      <div className={cn("rounded-xl border p-2.5 text-center bg-card", dsBorder)}>
+                        <p className={cn("text-xl font-black tabular-nums", dsColor)}>{ds}</p>
+                        <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Demand</p>
+                        <p className="text-[8px] text-muted-foreground/50 leading-tight">buyer appetite</p>
+                      </div>
+                    )
+                  })()}
+                  {/* 3 — CPR */}
                   {cpr != null && (
-                    <div className="rounded-xl border border-border bg-card p-3 text-center">
-                      <p className="text-2xl font-black text-foreground">~{Number(cpr)}</p>
-                      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">CPR</p>
-                      <p className="text-[9px] text-muted-foreground/60">units in 8 days → page 1</p>
+                    <div className="rounded-xl border border-border bg-card p-2.5 text-center">
+                      <p className="text-xl font-black tabular-nums text-foreground">~{Number(cpr)}</p>
+                      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">CPR</p>
+                      <p className="text-[8px] text-muted-foreground/50 leading-tight">units → pg 1</p>
                     </div>
                   )}
+                  {/* 4 — Niche Monthly Revenue */}
+                  {nicheMonthlyRevenue != null && (
+                    <div className="rounded-xl border border-border bg-card p-2.5 text-center">
+                      <p className="text-xl font-black tabular-nums text-foreground">
+                        ${Number(nicheMonthlyRevenue) >= 1000000
+                          ? `${(Number(nicheMonthlyRevenue) / 1000000).toFixed(1)}M`
+                          : `${(Number(nicheMonthlyRevenue) / 1000).toFixed(0)}k`}
+                      </p>
+                      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Niche / mo</p>
+                      <p className="text-[8px] text-muted-foreground/50 leading-tight">total top-10 rev.</p>
+                    </div>
+                  )}
+                  {/* 5 — Top Seller units */}
                   {topCompetitorMonthlySales != null && (
-                    <div className="rounded-xl border border-border bg-card p-3 text-center">
-                      <p className="text-2xl font-black text-foreground">~{Number(topCompetitorMonthlySales).toLocaleString()}</p>
-                      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Top Seller</p>
-                      <p className="text-[9px] text-muted-foreground/60">units / month (est.)</p>
+                    <div className="rounded-xl border border-border bg-card p-2.5 text-center">
+                      <p className="text-xl font-black tabular-nums text-foreground">~{Number(topCompetitorMonthlySales).toLocaleString()}</p>
+                      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">#1 Units</p>
+                      <p className="text-[8px] text-muted-foreground/50 leading-tight">top seller / mo</p>
                     </div>
                   )}
-                  {topCompetitorRevenue != null && (
-                    <div className="rounded-xl border border-border bg-card p-3 text-center">
-                      <p className="text-2xl font-black text-foreground">${(Number(topCompetitorRevenue) / 1000).toFixed(0)}k</p>
-                      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Revenue</p>
-                      <p className="text-[9px] text-muted-foreground/60">top seller / month (est.)</p>
-                    </div>
-                  )}
-                  {fiveStarPriceRange && !topCompetitorRevenue && (
-                    <div className="rounded-xl border border-border bg-card p-3 text-center">
-                      <p className="text-xl font-black text-foreground">{fiveStarPriceRange}</p>
-                      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">5★ Price Zone</p>
-                      <p className="text-[9px] text-muted-foreground/60">price range of 4.5★+ listings</p>
+                  {/* 6 — 5★ Price Zone */}
+                  {fiveStarPriceRange && (
+                    <div className="rounded-xl border border-border bg-card p-2.5 text-center">
+                      <p className="text-base font-black text-foreground leading-tight">{fiveStarPriceRange}</p>
+                      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">5★ Zone</p>
+                      <p className="text-[8px] text-muted-foreground/50 leading-tight">4.5★+ price range</p>
                     </div>
                   )}
                 </div>
@@ -837,9 +1109,9 @@ export default function WarRoom() {
               <div className="mt-8 flex items-center justify-center gap-1 rounded-xl bg-secondary/50 p-1 w-fit mx-auto flex-wrap">
                 {([
                   { id: "overview",        label: "Overview" },
-                  { id: "deep-dive",       label: "Deep Dive" },
-                  { id: "execution",       label: "Execution Plan" },
-                  { id: "market-history",  label: keepaData ? "Market History ✓" : "Market History" },
+                  { id: "deep-dive",       label: "Market Data" },
+                  { id: "execution",       label: "Launch Plan" },
+                  { id: "market-history",  label: keepaData ? "12-Month History ✓" : "12-Month History" },
                 ] as const).map((tab) => (
                   <button
                     key={tab.id}
@@ -872,7 +1144,7 @@ export default function WarRoom() {
             <section className="mt-8">
               <div className="mb-3 flex items-center gap-2">
                 <Crosshair className="h-4 w-4 text-primary" />
-                <h2 className="text-sm font-black uppercase tracking-[0.12em] text-foreground">Critical Intelligence</h2>
+                <h2 className="text-sm font-black uppercase tracking-[0.12em] text-foreground">Before You Decide</h2>
                 <span className="rounded-md bg-primary/10 border border-primary/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-primary">Must Read</span>
               </div>
 
@@ -913,9 +1185,9 @@ export default function WarRoom() {
                   <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-3">
                     <div className="flex items-center gap-2">
                       <Shield className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Table Stakes</span>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">What Every Top Seller Has</span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground/70 -mt-1">Every top competitor has this — you must too</p>
+                    <p className="text-[10px] text-muted-foreground/70 -mt-1">You must match all of these just to compete</p>
                     <ul className="flex flex-col gap-2">
                       {tableStakes.slice(0, 5).map((item, i) => (
                         <li key={i} className="flex items-start gap-2 text-[12px] text-foreground/85 leading-snug">
@@ -932,7 +1204,7 @@ export default function WarRoom() {
                   <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3">
                     <div className="flex items-center gap-2">
                       <Zap className="h-3.5 w-3.5 text-primary shrink-0" />
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">What Wins Here</span>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Why the Top 3 Are Winning</span>
                     </div>
                     <p className="text-[13px] text-foreground leading-relaxed font-medium">{whatWinsHere}</p>
                   </div>
@@ -968,13 +1240,101 @@ export default function WarRoom() {
           {activeTab === "overview" && (
             <div className="mt-10 flex flex-col gap-8 animate-in fade-in duration-300">
 
+              {/* ── Fix-It: Calculated paths to GO ──────────────────── */}
+              {verdict !== "GO" && fixItScenarios && (fixItScenarios.minPrice || fixItScenarios.maxCogs) && (
+                <div className="rounded-2xl border-2 border-emerald-300/60 dark:border-emerald-700/40 bg-emerald-50/50 dark:bg-emerald-950/20 px-5 py-5">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/15">
+                      <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div className="w-full">
+                      <p className="mb-3 text-[10px] font-black uppercase tracking-[0.15em] text-emerald-700/70 dark:text-emerald-400/70">
+                        What it takes to reach GO
+                      </p>
+                      <div className="flex flex-col gap-3">
+                        {fixItScenarios.minPrice != null && fixItScenarios.minPrice > 0 && (
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm mt-0.5 shrink-0">→</span>
+                            <p className="text-sm text-foreground leading-relaxed">
+                              <strong>Raise price to ${fixItScenarios.minPrice.toFixed(2)}</strong>
+                              {fixItScenarios.priceIncreaseNeeded != null && (
+                                <span className="text-muted-foreground"> (+${fixItScenarios.priceIncreaseNeeded.toFixed(2)} from current)</span>
+                              )}
+                              {fixItScenarios.profitAtMinPrice != null && (
+                                <span className="text-emerald-700 dark:text-emerald-400"> → profit becomes ${fixItScenarios.profitAtMinPrice.toFixed(2)}/unit</span>
+                              )}
+                            </p>
+                          </div>
+                        )}
+                        {fixItScenarios.maxCogs != null && fixItScenarios.maxCogs > 0 && (
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm mt-0.5 shrink-0">→</span>
+                            <p className="text-sm text-foreground leading-relaxed">
+                              <strong>Cut your landed cost to ${fixItScenarios.maxCogs.toFixed(2)}</strong>
+                              {fixItScenarios.cogsReductionNeeded != null && (
+                                <span className="text-muted-foreground"> (reduce by ${fixItScenarios.cogsReductionNeeded.toFixed(2)})</span>
+                              )}
+                              <span className="text-muted-foreground"> — at your current price</span>
+                            </p>
+                          </div>
+                        )}
+                        {fixItScenarios.bothPrice != null && fixItScenarios.bothCogs != null && (
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm mt-0.5 shrink-0">→</span>
+                            <p className="text-sm text-foreground leading-relaxed">
+                              <strong>Split the difference:</strong> price to ${fixItScenarios.bothPrice.toFixed(2)} <span className="text-muted-foreground">+</span> landed cost to ${fixItScenarios.bothCogs.toFixed(2)}<span className="text-muted-foreground"> — a smaller change on each side</span>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <p className="mt-4 text-[11px] text-muted-foreground leading-relaxed border-t border-emerald-200/60 dark:border-emerald-700/30 pt-3">
+                        Target: {fixItScenarios.targetMarginPct ?? 15}% net margin after all fees and estimated ad spend.
+                        Update your numbers and re-run to confirm.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Differentiation Warning ──────────────────────────── */}
+              {(differentiationStatus === "none" || differentiationStatus === "vague" || differentiationStatus === "unverified") && differentiationWarning && (
+                <div className="rounded-2xl border-2 border-amber-300/70 dark:border-amber-700/50 bg-amber-50/60 dark:bg-amber-950/30 px-5 py-4 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="w-full">
+                    <p className="text-sm font-bold text-amber-800 dark:text-amber-300 mb-1">
+                      {differentiationStatus === "none"
+                        ? "No competitive advantage entered"
+                        : differentiationStatus === "vague"
+                          ? "Your differentiator is too generic"
+                          : "Advantage can't be verified without market data"}
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-400 leading-relaxed">{differentiationWarning}</p>
+                    {differentiationSuggestions.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-amber-300/40 dark:border-amber-700/30">
+                        <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 mb-2 uppercase tracking-wider">
+                          Based on what buyers complain about in this market:
+                        </p>
+                        <ul className="flex flex-col gap-1.5">
+                          {differentiationSuggestions.map((s, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400">
+                              <span className="font-bold mt-0.5 shrink-0">→</span>
+                              <span>Address <strong>"{s}"</strong> — this appears in 1–2★ competitor reviews. Lead with your solution for this in bullet 1 and image 2.</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Why This Decision — 3 bullets (DATA → IMPLICATION) */}
               {cleanedWhy.length > 0 && (
                 <section>
                   <SectionHeader
                     icon={<Shield className="h-5 w-5 text-primary" />}
-                    title="Why This Decision"
-                    sub="Observation → implication"
+                    title="Why This Verdict"
+                    sub="The key signals behind the decision"
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <ul className="flex flex-col gap-2.5">
@@ -995,8 +1355,8 @@ export default function WarRoom() {
                 <section>
                   <SectionHeader
                     icon={<Lightbulb className="h-5 w-5 text-emerald-600" />}
-                    title="Differentiation Verdict"
-                    sub="Your differentiators validated against real competitor data"
+                    title="Your Competitive Edge"
+                    sub="Which of your advantages actually matters in this market"
                   />
                   <div className="rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-6">
                     {validatedDifferentiators.length > 0 ? (
@@ -1040,8 +1400,8 @@ export default function WarRoom() {
                 <section>
                   <SectionHeader
                     icon={<Brain className="h-5 w-5 text-amber-600" />}
-                    title="Market Reality"
-                    sub="How this niche actually behaves"
+                    title="How This Market Works"
+                    sub="What actually drives sales — and costs — in this niche"
                     badge="Expert"
                   />
                   <div className="rounded-2xl border-2 border-amber-300/60 dark:border-amber-700/40 bg-amber-50/50 dark:bg-amber-950/20 p-6 shadow-sm">
@@ -1057,8 +1417,8 @@ export default function WarRoom() {
                 <section>
                   <SectionHeader
                     icon={<Eye className="h-5 w-5 text-primary" />}
-                    title="What Most Sellers Miss"
-                    sub="Hidden dynamic in the niche"
+                    title="The Trap Most Sellers Fall Into"
+                    sub="The hidden pattern that kills most new launches in this niche"
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <p className="text-sm text-foreground leading-relaxed">{whatMostSellersMiss}</p>
@@ -1071,8 +1431,8 @@ export default function WarRoom() {
                 <section>
                   <SectionHeader
                     icon={<Target className="h-5 w-5 text-primary" />}
-                    title="Recommended Action"
-                    sub="One clear next move based on this verdict"
+                    title="What to Do Next"
+                    sub="One clear action based on this verdict"
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <p className="text-sm text-foreground leading-relaxed">
@@ -1082,9 +1442,9 @@ export default function WarRoom() {
                 </section>
               )}
 
-              {/* Core Metrics Snapshot — profit breakdown table + cards */}
+              {/* Your Numbers — profit breakdown table + cards */}
               <section>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Core Metrics Snapshot</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Your Numbers</h3>
                 {pb && typeof pb === "object" && (
                   <div className="mb-6 overflow-hidden rounded-2xl border border-border bg-card">
                     <table className="w-full text-sm">
@@ -1094,7 +1454,11 @@ export default function WarRoom() {
                           <td className="py-3 pr-4 text-right tabular-nums text-foreground">${(Number(pb.sellingPrice) || 0).toFixed(2)}</td>
                         </tr>
                         <tr className="border-b border-border">
-                          <td className="py-2 pl-4 text-muted-foreground">− Referral fee (15%)</td>
+                          <td className="py-2 pl-4 text-muted-foreground">
+                            − Referral fee ({(Number(pb.sellingPrice) || 0) > 0
+                              ? Math.round(((Number(pb.referralFee) || 0) / (Number(pb.sellingPrice) || 1)) * 100)
+                              : 15}%)
+                          </td>
                           <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">−${(Number(pb.referralFee) || 0).toFixed(2)}</td>
                         </tr>
                         <tr className="border-b border-border">
@@ -1107,10 +1471,8 @@ export default function WarRoom() {
                         </tr>
                         <tr className="border-b border-border">
                           <td className="py-2 pl-4 text-muted-foreground">
-                            − PPC cost
-                            <span className="ml-1 text-xs opacity-70">
-                              ({String(pb.acosRangePercent ?? `${Number(pb.assumedAcosPercent) || 0}%`)} ACoS est.)
-                            </span>
+                            − Ad spend
+                            <span className="ml-1 text-xs opacity-70">(modeled est.)</span>
                           </td>
                           <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">−${(Number(pb.ppcCostPerUnit) || 0).toFixed(2)}</td>
                         </tr>
@@ -1120,18 +1482,109 @@ export default function WarRoom() {
                         </tr>
                       </tbody>
                     </table>
-                    {pb.estimatedCpcRange != null && (
-                      <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed px-1">
-                        ⚠ PPC is estimated — actual ACoS depends on real CPC from live auction data.
-                        Est. CPC: <strong>{String(pb.estimatedCpcRange)}</strong>.
-                        Verify with Helium 10 Cerebro or Jungle Scout before launch.
-                      </p>
-                    )}
+                    <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed px-1">
+                      ⚠ Ad spend above is a model estimate — your real cost per click can only be found from a live campaign. Run a $50 auto campaign for 72 hours, then check your Search Term Report.
+                    </p>
+                    {/* Break-even + Return Rate row */}
+                    <div className="mt-3 flex flex-wrap gap-2 px-1">
+                      {breakEvenUnitsForCapital != null && (
+                        <div className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs">
+                          <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-muted-foreground">Break-even</span>
+                          <span className="font-semibold text-foreground">
+                            {Number(breakEvenUnitsForCapital).toLocaleString()} units
+                            {breakEvenMonths != null && <span className="text-muted-foreground"> (~{Number(breakEvenMonths).toFixed(1)} mo)</span>}
+                          </span>
+                        </div>
+                      )}
+                      {returnRatePct && (
+                        <div className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs">
+                          <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-muted-foreground">Est. returns</span>
+                          <span className={cn(
+                            "font-semibold",
+                            returnRateLevel === "high" ? "text-red-600 dark:text-red-400"
+                              : returnRateLevel === "moderate" ? "text-amber-600 dark:text-amber-400"
+                              : "text-emerald-600 dark:text-emerald-400"
+                          )}>{returnRatePct}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </section>
 
-              {/* What Would Flip This Decision — hidden for now */}
+              {/* ── What Would Flip This Decision ─────────────────── */}
+              {(verdict === "NO-GO" || verdict === "GO-BUT") && whatWouldMakeGo.length > 0 && (
+                <section>
+                  <SectionHeader
+                    icon={<TrendingUp className="h-5 w-5 text-emerald-500" />}
+                    title="How to Turn This Into a GO"
+                    sub="Fix these specific things, then re-run the analysis"
+                  />
+                  <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50/30 dark:border-emerald-800/40 dark:bg-emerald-950/20 p-6">
+                    <ul className="flex flex-col gap-3">
+                      {whatWouldMakeGo.map((item, i) => (
+                        <li key={i} className="flex items-start gap-3 text-sm text-foreground/90">
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                            {i + 1}
+                          </span>
+                          <span>{String(item)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </section>
+              )}
+
+              {/* ── What's Next — clear post-verdict CTA ─── */}
+              <section className="rounded-2xl border-2 border-primary/20 bg-primary/5 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Zap className="h-4 w-4 text-primary" />
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary">What to do next</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {/* CTA 1 — Listing Builder */}
+                  <a
+                    href={`/listing-builder`}
+                    className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:shadow-sm group"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <FileText className="h-4 w-4 text-primary" />
+                    </div>
+                    <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">Write your listing</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Turn your keyword into an A9-optimized title, 5 bullets & description — ready to paste into Seller Central.
+                    </p>
+                  </a>
+                  {/* CTA 2 — PPC Wizard */}
+                  <a
+                    href="/ppc-wizard"
+                    className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:shadow-sm group"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+                      <Target className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">Build your PPC campaign</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Calculate exact launch bids, daily budget, and break-even ACoS for your first campaign — before you go live.
+                    </p>
+                  </a>
+                  {/* CTA 3 — New analysis */}
+                  <a
+                    href="/analyze"
+                    className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:shadow-sm group"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
+                      <RefreshCw className="h-4 w-4 text-emerald-600" />
+                    </div>
+                    <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">Analyze another product</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Compare options before committing capital. Most sellers check 3–5 ideas before picking one to source.
+                    </p>
+                  </a>
+                </div>
+              </section>
             </div>
           )}
 
@@ -1142,13 +1595,58 @@ export default function WarRoom() {
           {activeTab === "deep-dive" && (
             <div className="mt-10 flex flex-col gap-8 animate-in fade-in duration-300">
 
+              {/* ── Niche Size ─────────────────────────────────────── */}
+              {(nicheMonthlyRevenue != null || nicheMonthlyUnits != null) && (
+                <section>
+                  <SectionHeader
+                    icon={<BarChart3 className="h-5 w-5 text-primary" />}
+                    title="How Big Is This Market?"
+                    sub="Total sales happening in the top 10 results every month"
+                    badge="Market Size"
+                  />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {nicheMonthlyRevenue != null && (
+                      <div className="rounded-2xl border border-border bg-card p-5 text-center">
+                        <p className="text-3xl font-black text-foreground">
+                          ${Number(nicheMonthlyRevenue) >= 1000000
+                            ? `${(Number(nicheMonthlyRevenue) / 1000000).toFixed(1)}M`
+                            : `${(Number(nicheMonthlyRevenue) / 1000).toFixed(0)}k`}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Revenue / month</p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground/60">top 10 organic listings</p>
+                      </div>
+                    )}
+                    {nicheMonthlyUnits != null && (
+                      <div className="rounded-2xl border border-border bg-card p-5 text-center">
+                        <p className="text-3xl font-black text-foreground">
+                          {Number(nicheMonthlyUnits) >= 10000
+                            ? `${(Number(nicheMonthlyUnits) / 1000).toFixed(0)}k`
+                            : Number(nicheMonthlyUnits).toLocaleString()}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Units / month</p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground/60">combined niche volume</p>
+                      </div>
+                    )}
+                    {nicheMonthlyRevenue != null && nicheMonthlyUnits != null && Number(nicheMonthlyUnits) > 0 && (
+                      <div className="rounded-2xl border border-border bg-card p-5 text-center">
+                        <p className="text-3xl font-black text-foreground">
+                          ${(Number(nicheMonthlyRevenue) / Number(nicheMonthlyUnits)).toFixed(0)}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Avg Rev / Unit</p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground/60">avg selling price in niche</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
+
               {/* ── Competitor X-Ray Table ─────────────────────────── */}
               {topCompetitorsList.length > 0 && (
                 <section>
                   <SectionHeader
                     icon={<BarChart3 className="h-5 w-5 text-primary" />}
-                    title="Competitor X-Ray"
-                    sub={`${topCompetitorsList.length} results from page 1 — position, price, reviews, PPC`}
+                    title="What's Already Selling"
+                    sub={`${topCompetitorsList.length} products on page 1 right now — their prices, reviews, and whether they're running ads`}
                     badge="Live Data"
                   />
                   <div className="overflow-x-auto rounded-2xl border border-border bg-card">
@@ -1215,8 +1713,8 @@ export default function WarRoom() {
                 <section>
                   <SectionHeader
                     icon={<Star className="h-5 w-5 text-amber-500" />}
-                    title="Review Mining"
-                    sub="Top pain points extracted from competitor reviews — what buyers hate"
+                    title="What Buyers Complain About"
+                    sub="Real problems buyers mention in competitor reviews — fix these and you win"
                     badge="Voice of Customer"
                   />
                   <div className="rounded-2xl border border-amber-200/40 dark:border-amber-800/20 bg-amber-50/20 dark:bg-amber-950/10 p-5">
@@ -1239,8 +1737,8 @@ export default function WarRoom() {
                 <section>
                   <SectionHeader
                     icon={<Shield className="h-5 w-5 text-red-500" />}
-                    title="Compliance & IP Risk"
-                    sub="Regulatory requirements and IP exposure for this category"
+                    title="Legal Requirements"
+                    sub="What you must check before ordering samples — certifications, patents, regulations"
                     badge="Must Check"
                   />
                   <div className="rounded-2xl border border-red-200/40 dark:border-red-800/20 bg-red-50/15 dark:bg-red-950/10 p-5 flex flex-col gap-4">
@@ -1263,6 +1761,26 @@ export default function WarRoom() {
                         <p className="text-[13px] text-foreground/85 leading-relaxed">{ipRisk}</p>
                       </div>
                     )}
+                    {/* Google Patents validation link */}
+                    {(() => {
+                      const kw = safeStr(R?.keyword ?? analysisData?.keyword ?? R?.product_name ?? analysisData?.product_name)
+                      if (!kw) return null
+                      const url = `https://patents.google.com/?q=${encodeURIComponent(kw)}&assignee=&country=US`
+                      return (
+                        <div className="border-t border-red-200/30 dark:border-red-800/20 pt-3">
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+                          >
+                            <Search className="h-3 w-3" />
+                            Verify on Google Patents →
+                          </a>
+                          <p className="mt-0.5 text-[10px] text-muted-foreground/50">Search US patents for "{kw}" before ordering samples</p>
+                        </div>
+                      )
+                    })()}
                   </div>
                 </section>
               )}
@@ -1271,8 +1789,8 @@ export default function WarRoom() {
               <section>
                 <SectionHeader
                   icon={<BarChart3 className="h-5 w-5 text-primary" />}
-                  title="Market Signals"
-                  sub="Full first page (up to 30 listings) — price, reviews, brand distribution, ad presence"
+                  title="Page 1 Snapshot"
+                  sub="What Amazon's first page looks like — prices, reviews, brand spread, and ad saturation"
                 />
                 <div className="rounded-2xl border border-border bg-card p-6">
                   {(() => {
@@ -1289,6 +1807,24 @@ export default function WarRoom() {
                     const dominantBrand = snap?.dominantBrand === true
                     return (
                       <div className="flex flex-col gap-4">
+                        {/* Niche saturation badge */}
+                        {nicheSaturationLabel && (
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <span className={cn(
+                              "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider",
+                              nicheSaturationLabel === "Open"
+                                ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
+                                : nicheSaturationLabel === "Moderate"
+                                  ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                                  : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                            )}>
+                              {nicheSaturationLabel === "Open" ? "🟢" : nicheSaturationLabel === "Moderate" ? "🟡" : "🔴"} {nicheSaturationLabel} Market
+                            </span>
+                            {nicheSaturationDesc && (
+                              <span className="text-xs text-muted-foreground">{nicheSaturationDesc}</span>
+                            )}
+                          </div>
+                        )}
                         <div className="grid gap-3 sm:grid-cols-2">
                           {avgPrice != null && <div><span className="text-xs text-muted-foreground">Avg price</span><p className="font-semibold text-foreground">${avgPrice.toFixed(2)}</p></div>}
                           {avgReviews != null && <div><span className="text-xs text-muted-foreground">Avg reviews</span><p className="font-semibold text-foreground">{avgReviews.toLocaleString()}</p></div>}
@@ -1333,8 +1869,8 @@ export default function WarRoom() {
                 <section>
                   <SectionHeader
                     icon={<Users className="h-5 w-5 text-primary" />}
-                    title="Competition"
-                    sub="Brand landscape and how listings compete on page 1"
+                    title="Who You're Up Against"
+                    sub="Which brands dominate, how they win, and where a new seller can break in"
                   />
                   <div className="rounded-2xl border border-border bg-card p-6 flex flex-col gap-4">
                     {marketDominationAnalysis && (
@@ -1359,8 +1895,8 @@ export default function WarRoom() {
                 <section>
                   <SectionHeader
                     icon={<Lightbulb className="h-5 w-5 text-emerald-600" />}
-                    title="Opportunity"
-                    sub="One realistic differentiation angle based on market gaps"
+                    title="Your Best Opening"
+                    sub="The most realistic way to differentiate and stand out in this niche"
                   />
                   <div className="rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-6">
                     <p className="text-sm text-foreground leading-relaxed">
@@ -1374,8 +1910,8 @@ export default function WarRoom() {
               <section>
                 <SectionHeader
                   icon={<DollarSign className="h-5 w-5 text-primary" />}
-                  title="Launch Capital"
-                  sub="Estimated inventory, PPC, and misc"
+                  title="How Much Money You Need"
+                  sub="Total investment to get to page 1 — inventory, ads, and setup costs"
                   badge="Investment"
                 />
                 <div className="rounded-2xl border border-border bg-card p-6">
@@ -1402,6 +1938,38 @@ export default function WarRoom() {
                               <span className="font-semibold text-foreground">${Number(launchCapitalBreakdown.vineAndMisc).toLocaleString()}</span>
                             </div>
                           )}
+                          {launchCapitalBreakdown.sample != null && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Samples</span>
+                              <span className="font-semibold text-foreground">${Number(launchCapitalBreakdown.sample).toLocaleString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* Supplier meta — MOQ + lead time if provided */}
+                      {(supplierMoq != null || supplierLeadTimeWeeks != null) && (
+                        <div className="mt-4 flex flex-wrap gap-3 border-t border-border pt-4">
+                          {supplierMoq != null && (
+                            <div className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs">
+                              <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-muted-foreground">MOQ</span>
+                              <span className="font-semibold text-foreground">{Number(supplierMoq).toLocaleString()} units</span>
+                            </div>
+                          )}
+                          {supplierLeadTimeWeeks != null && (
+                            <div className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-muted-foreground">Lead time</span>
+                              <span className="font-semibold text-foreground">{Number(supplierLeadTimeWeeks)} wks</span>
+                            </div>
+                          )}
+                          {supplierSampleCost != null && (
+                            <div className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs">
+                              <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-muted-foreground">Samples</span>
+                              <span className="font-semibold text-foreground">${Number(supplierSampleCost).toLocaleString()}</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </>
@@ -1410,6 +1978,50 @@ export default function WarRoom() {
                   )}
                 </div>
               </section>
+
+              {/* ── Related Keywords (DataForSEO Amazon) ───────────────────── */}
+              {relatedKeywords.length > 0 && (
+                <section>
+                  <SectionHeader
+                    icon={<Search className="h-5 w-5 text-primary" />}
+                    title="Related Amazon Keywords"
+                    sub={`${relatedKeywords.length} related searches with real Amazon volume — expand your keyword strategy`}
+                  />
+                  <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {relatedKeywords.map((kw) => {
+                      const vol = kw.searchVolume
+                      const volStr = vol == null ? "—"
+                        : vol >= 10000 ? `${(vol / 1000).toFixed(0)}K/mo`
+                        : vol >= 1000  ? `${(vol / 1000).toFixed(1)}K/mo`
+                        : `${vol}/mo`
+                      const volColor = vol == null ? "text-muted-foreground"
+                        : vol >= 10000 ? "text-emerald-600 dark:text-emerald-400"
+                        : vol >= 3000  ? "text-primary"
+                        : vol >= 500   ? "text-amber-600 dark:text-amber-400"
+                        : "text-muted-foreground"
+                      return (
+                        <div
+                          key={kw.keyword}
+                          className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 gap-3"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-secondary text-[10px] font-bold text-muted-foreground">
+                              {kw.rank}
+                            </span>
+                            <span className="truncate text-sm font-medium text-foreground">{kw.keyword}</span>
+                          </div>
+                          <span className={cn("shrink-0 text-xs font-bold tabular-nums", volColor)}>
+                            {volStr}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <p className="mt-3 text-[11px] text-muted-foreground/60">
+                    Source: DataForSEO Amazon search volume (US). Use these as Exact Match targets in your PPC campaign after launch.
+                  </p>
+                </section>
+              )}
             </div>
           )}
 
@@ -1424,8 +2036,8 @@ export default function WarRoom() {
               <section>
                 <SectionHeader
                   icon={<Calendar className="h-5 w-5 text-primary" />}
-                  title="30-Day Launch Plan"
-                  sub="Week 1 · Week 2 · Week 3–4"
+                  title="Your First 30 Days"
+                  sub="Exactly what to do — week by week — from day one to your first sales"
                 />
                 {(() => {
                   const steps = honeymoonRoadmap?.length ? honeymoonRoadmap : fActionPlan
@@ -1467,13 +2079,79 @@ export default function WarRoom() {
                 })()}
               </section>
 
+              {/* ── PPC Launch Keywords ─────────────────────────── */}
+              {launchKeywords.length > 0 && (
+                <section>
+                  <SectionHeader
+                    icon={<Crosshair className="h-5 w-5 text-primary" />}
+                    title="Ad Keywords to Bid on Day 1"
+                    sub={`${launchKeywords.length} ready-to-use search terms — copy directly into your Amazon ad campaign`}
+                    badge="Launch Ready"
+                  />
+                  <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/40">
+                          <th className="py-2 pl-4 text-left font-semibold text-muted-foreground">Keyword</th>
+                          <th className="py-2 px-3 text-left font-semibold text-muted-foreground w-20">Match</th>
+                          <th className="py-2 px-3 text-left font-semibold text-muted-foreground w-20">Priority</th>
+                          <th className="py-2 pr-4 text-left font-semibold text-muted-foreground hidden sm:table-cell">Bid Note</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {launchKeywords.map((kw, i) => {
+                          const priorityStyle =
+                            kw.priority === "HIGH"
+                              ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
+                              : kw.priority === "MEDIUM"
+                                ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                                : "bg-muted text-muted-foreground"
+                          const matchStyle =
+                            kw.match_type === "EXACT"
+                              ? "bg-primary/10 text-primary"
+                              : "bg-secondary text-muted-foreground"
+                          return (
+                            <tr
+                              key={i}
+                              className={cn(
+                                "border-b border-border last:border-0 transition-colors hover:bg-muted/20 cursor-pointer group"
+                              )}
+                              onClick={() => navigator.clipboard.writeText(kw.keyword)}
+                              title={`Copy: ${kw.keyword}`}
+                            >
+                              <td className="py-2.5 pl-4 font-medium text-foreground group-hover:text-primary transition-colors">
+                                {kw.keyword}
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", matchStyle)}>
+                                  {kw.match_type}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", priorityStyle)}>
+                                  {kw.priority}
+                                </span>
+                              </td>
+                              <td className="py-2.5 pr-4 text-muted-foreground/70 hidden sm:table-cell max-w-[200px] truncate">
+                                {kw.bid_note}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                    <p className="px-4 py-2 text-[10px] text-muted-foreground/50 border-t border-border">Click any row to copy keyword.</p>
+                  </div>
+                </section>
+              )}
+
               {/* Alternative Keywords — maximum 3 */}
               {altKeywords.length > 0 && (
                 <section>
                   <SectionHeader
                     icon={<Target className="h-5 w-5 text-primary" />}
-                    title="Alternative Keywords"
-                    sub="Up to 3 keyword angles"
+                    title="Other Keywords to Test"
+                    sub="Related search terms — click to copy"
                   />
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <div className="flex flex-wrap gap-2.5">
@@ -1500,8 +2178,8 @@ export default function WarRoom() {
               <section>
                 <SectionHeader
                   icon={<Zap className="h-5 w-5 text-primary" />}
-                  title="Early Strategy Guidance"
-                  sub="How to approach this niche"
+                  title="How to Approach This Niche"
+                  sub="The one strategic move that matters most at the start"
                 />
                 <div className="rounded-2xl border border-border bg-card p-6">
                   {(() => {
@@ -1518,6 +2196,46 @@ export default function WarRoom() {
                   })()}
                 </div>
               </section>
+
+              {/* ── Trend & Seasonality Check ────────────────── */}
+              {(() => {
+                const kw = safeStr(R?.keyword ?? analysisData?.keyword ?? R?.product_name ?? analysisData?.product_name)
+                const trendsUrl = kw ? `https://trends.google.com/trends/explore?q=${encodeURIComponent(kw)}&geo=US&date=today%2012-m` : null
+                const isSeasonal = keepaData?.isSeasonalWarning
+                const seasonNote = keepaData?.seasonalityNote
+                return (
+                  <section>
+                    <SectionHeader
+                      icon={<Activity className="h-5 w-5 text-primary" />}
+                      title="Is Demand Going Up or Down?"
+                      sub="Check before you order — one click opens the trend data"
+                    />
+                    <div className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-3">
+                      {isSeasonal && seasonNote && (
+                        <div className="flex items-start gap-2.5 rounded-xl border border-amber-200/60 bg-amber-50/40 dark:border-amber-800/40 dark:bg-amber-950/20 p-3">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                          <p className="text-sm text-amber-800 dark:text-amber-300 leading-relaxed">{String(seasonNote)}</p>
+                        </div>
+                      )}
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Check Google Trends before ordering inventory — confirms whether demand is rising, falling, or seasonal.
+                        {keepaData && !isSeasonal && " Keepa shows no strong seasonality signal for this ASIN, but verify with Trends."}
+                      </p>
+                      {trendsUrl && (
+                        <a
+                          href={trendsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex w-fit items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
+                        >
+                          <TrendingUp className="h-4 w-4" />
+                          Open Google Trends →
+                        </a>
+                      )}
+                    </div>
+                  </section>
+                )
+              })()}
             </div>
           )}
 
