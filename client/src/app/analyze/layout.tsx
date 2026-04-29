@@ -1,12 +1,21 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Analyze Your Product",
-  description: "Run a full GO / NO-GO analysis on any Amazon FBA product. Get profitability, PPC cost, competition score, review barrier, and Keepa market intelligence in under 60 seconds.",
+  title: "Amazon FBA Product Validator — GO / NO-GO Analysis in 45 Seconds",
+  description: "Enter your product, price, and cost. Get a data-driven GO / NO-GO verdict with real profit math, PPC cost estimate, competition score, and Keepa market intelligence — free, no card required.",
+  keywords: [
+    "Amazon product validator",
+    "FBA product analysis",
+    "Amazon GO NO-GO",
+    "FBA profit calculator",
+    "Amazon product research tool",
+    "FBA viability test",
+    "Amazon product checker",
+  ],
   alternates: { canonical: "/analyze" },
   openGraph: {
-    title: "Analyze Your Amazon Product — SellerMentor",
-    description: "GO / NO-GO verdict with real economics, PPC pressure, review barrier, and Keepa market data. Built for new Amazon FBA sellers.",
+    title: "Amazon FBA Product Validator — GO / NO-GO in 45 Seconds",
+    description: "Real profit math, PPC estimate, competition score, and Keepa market data. Free. No credit card. Built for Amazon FBA sellers.",
     url: "/analyze",
   },
 }

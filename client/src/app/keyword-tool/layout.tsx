@@ -1,14 +1,21 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Keyword Tool — SellerMentor",
-  description:
-    "Enter a product idea and get an AI-generated list of Amazon search keywords, ranked by priority with suggested placements for title, bullets, and backend fields.",
+  title: "Amazon Keyword Research Tool — Find High-Volume Search Terms Free",
+  description: "Enter any product idea and get Amazon search keywords ranked by priority — with exact placement guidance for title, bullets, and backend search terms. Powered by AI.",
+  keywords: [
+    "Amazon keyword research tool",
+    "Amazon keyword tool free",
+    "Amazon search terms",
+    "Amazon keyword finder",
+    "FBA keyword research",
+    "Amazon product keywords",
+    "Amazon backend keywords",
+  ],
   alternates: { canonical: "/keyword-tool" },
   openGraph: {
-    title: "Keyword Tool — SellerMentor",
-    description:
-      "Enter a product idea and get an AI-generated list of Amazon search keywords, ranked by priority with suggested placements for title, bullets, and backend fields.",
+    title: "Amazon Keyword Research Tool — Find High-Volume Search Terms Free",
+    description: "Get AI-generated Amazon keywords ranked by priority with placement guidance. Free to start.",
     url: "/keyword-tool",
   },
 }

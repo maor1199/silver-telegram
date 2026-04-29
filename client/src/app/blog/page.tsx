@@ -8,12 +8,23 @@ import { ArrowRight, Clock, Calendar } from "lucide-react"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Amazon FBA Blog — SellerMentor",
-  description: "Expert guides on Amazon product research, listing optimization, and FBA strategy. Everything new sellers need to launch and grow on Amazon in 2026.",
+  title: "Amazon FBA Blog — Product Research, PPC & Seller Guides 2026",
+  description: "Free Amazon FBA guides: how to find products, calculate profit, run PPC, build listings, and avoid the mistakes that kill new sellers. Updated for 2026.",
+  keywords: [
+    "Amazon FBA blog",
+    "Amazon seller guides",
+    "Amazon FBA tips",
+    "Amazon product research guide",
+    "FBA for beginners",
+    "Amazon PPC guide",
+    "how to sell on Amazon 2026",
+  ],
+  alternates: { canonical: "/blog" },
   openGraph: {
-    title: "Amazon FBA Blog — SellerMentor",
-    description: "Expert guides on Amazon product research, listing optimization, and FBA strategy.",
+    title: "Amazon FBA Blog — Product Research, PPC & Seller Guides 2026",
+    description: "Free Amazon FBA guides on product research, PPC, listings, and launch strategy. Updated for 2026.",
     type: "website",
+    url: "/blog",
   },
 }
 

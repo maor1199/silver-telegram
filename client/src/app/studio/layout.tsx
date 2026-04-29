@@ -1,12 +1,20 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Listing Studio",
-  description: "Create professional Amazon product images, lifestyle photos, and A+ content with AI. Stand out on the search results page and convert more buyers.",
-  keywords: ["Amazon product images", "lifestyle photos", "A+ content", "Amazon listing images", "product photography AI"],
+  title: "Amazon Listing Studio — AI Product Images & A+ Content Generator",
+  description: "Create professional Amazon product images, lifestyle photos, and A+ content with AI. No photoshoot needed — generate scroll-stopping visuals and convert more buyers.",
+  keywords: [
+    "Amazon product image generator",
+    "Amazon A+ content creator",
+    "Amazon listing images AI",
+    "Amazon lifestyle photos generator",
+    "Amazon product photography",
+    "FBA listing visuals",
+    "Amazon image studio",
+  ],
   alternates: { canonical: "/studio" },
   openGraph: {
-    title: "Listing Studio — Amazon Product Images with AI — SellerMentor",
+    title: "Amazon Listing Studio — AI Product Images & A+ Content Generator",
     description: "AI-generated product images, lifestyle photos, and A+ content for your Amazon listing. No photoshoot needed.",
     url: "/studio",
   },

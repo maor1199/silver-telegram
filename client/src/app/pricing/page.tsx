@@ -8,12 +8,18 @@ import { Check, Minus, Zap, Shield, Users, ArrowRight, Star } from "lucide-react
 import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
-  title: "Pricing",
-  description: "Start free with 5 analyses. Upgrade to SellerMentor PRO for unlimited Amazon product research, Keepa intelligence, and expert GO / NO-GO verdicts.",
+  title: "Pricing — Free Amazon FBA Product Research Tool | SellerMentor",
+  description: "SellerMentor is free to start — 5 full analyses, no credit card. Upgrade to PRO for unlimited Amazon product research, Keepa 12-month intelligence, and expert GO / NO-GO verdicts.",
+  keywords: [
+    "Amazon FBA tool pricing",
+    "free Amazon product research",
+    "Amazon seller tool free",
+    "FBA product validator price",
+  ],
   alternates: { canonical: "/pricing" },
   openGraph: {
-    title: "Pricing — SellerMentor",
-    description: "Start free with 5 analyses. Upgrade to PRO for unlimited Amazon product research and expert verdicts.",
+    title: "Pricing — Free Amazon FBA Product Research Tool | SellerMentor",
+    description: "Free to start. 5 analyses, no card. Upgrade to PRO for unlimited research and Keepa intelligence.",
     url: "/pricing",
   },
 }

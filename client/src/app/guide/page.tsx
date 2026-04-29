@@ -1,8 +1,31 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+
+export const metadata: Metadata = {
+  title: "Amazon FBA Beginner's Guide 2026 — How to Start Selling on Amazon",
+  description: "The complete Amazon FBA guide for new sellers. Learn how Amazon FBA works, how to calculate profits, find winning products, and launch your first product — step by step.",
+  keywords: [
+    "Amazon FBA guide",
+    "how to start selling on Amazon",
+    "Amazon FBA for beginners",
+    "Amazon FBA 2026",
+    "how to sell on Amazon",
+    "Amazon FBA tutorial",
+    "FBA fees explained",
+    "Amazon seller guide",
+  ],
+  alternates: { canonical: "/guide" },
+  openGraph: {
+    title: "Amazon FBA Beginner's Guide 2026 — How to Start Selling on Amazon",
+    description: "The complete step-by-step guide to launching your first Amazon FBA product — fees, profit math, product research, and launch strategy.",
+    url: "/guide",
+    type: "website",
+  },
+}
 import { ArrowRight } from "lucide-react"
 
 const CHAPTERS = [
