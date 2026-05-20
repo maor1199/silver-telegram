@@ -24,19 +24,30 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
+  // Short-circuit public paths — no Supabase call needed at all
+  if (isPublicPath(pathname) || isResultsPath(pathname)) {
+    return response
+  }
+
   try {
     const supabase = createMiddlewareClient(request, response)
-    const { data: { session } } = await supabase.auth.getSession()
+
+    // Race against 1 s timeout — Edge Runtime budget is ~1.5 s.
+    // If Supabase is unreachable we treat the session as absent and
+    // redirect to login rather than hanging the whole request.
+    const result = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise<{ data: { session: null }; error: null }>(resolve =>
+        setTimeout(() => resolve({ data: { session: null }, error: null }), 1000)
+      ),
+    ])
+    const session = result.data.session
 
     if (isAuthPath(pathname)) {
       if (session) {
         const redirectTo = request.nextUrl.searchParams.get('redirect') || '/analyze'
         return NextResponse.redirect(new URL(redirectTo, request.url))
       }
-      return response
-    }
-
-    if (isPublicPath(pathname) || isResultsPath(pathname)) {
       return response
     }
 
