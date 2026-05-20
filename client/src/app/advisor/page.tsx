@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
@@ -189,7 +189,7 @@ ${skuSummaries}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function AdvisorPage() {
+function AdvisorInner() {
   const { skus, hydrated } = useSkus()
   const searchParams = useSearchParams()
   const [messages, setMessages] = useState<Message[]>([])
@@ -355,5 +355,24 @@ export default function AdvisorPage() {
 
       <Footer />
     </div>
+  )
+}
+
+export default function AdvisorPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen flex-col bg-background">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Loading...</span>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    }>
+      <AdvisorInner />
+    </Suspense>
   )
 }
