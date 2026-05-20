@@ -17,11 +17,11 @@ import {
 import { useSkus } from "@/lib/intelligence/store"
 import { generateRiskAlerts } from "@/lib/intelligence/risk-engine"
 import { getBusinessHealthScore } from "@/lib/intelligence/health-score"
-import type { BusinessHealthScore } from "@/lib/intelligence/health-score"
-import { computeDeltas } from "@/lib/intelligence/delta-engine"
+import type { BusinessHealthScore, ScoreContribution } from "@/lib/intelligence/health-score"
+import { computeDeltas, DEMO_YESTERDAY_SCORE, loadYesterdayScore } from "@/lib/intelligence/delta-engine"
 import type { DeltaChange } from "@/lib/intelligence/delta-engine"
 import { getPriorityFeed } from "@/lib/intelligence/priority-feed"
-import type { PriorityItem } from "@/lib/intelligence/priority-feed"
+import type { PriorityItem, AlertState } from "@/lib/intelligence/priority-feed"
 import { cn } from "@/lib/utils"
 
 // ─── Severity config ──────────────────────────────────────────────────────────
@@ -77,7 +77,7 @@ function ScoreBar({ score, label }: { score: number; label: string }) {
   )
 }
 
-function HealthCard({ health }: { health: BusinessHealthScore }) {
+function HealthCard({ health, yesterdayScore }: { health: BusinessHealthScore; yesterdayScore: number | null }) {
   const gradeColor =
     health.grade === "A" ? "text-green-600" :
     health.grade === "B" ? "text-blue-600" :
@@ -108,9 +108,20 @@ function HealthCard({ health }: { health: BusinessHealthScore }) {
             </div>
           </div>
         </div>
-        <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold mt-1", labelColor)}>
-          {health.label}
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold", labelColor)}>
+            {health.label}
+          </span>
+          {typeof yesterdayScore === "number" && (
+            <span className={cn(
+              "text-[11px] font-semibold tabular-nums",
+              health.overall > yesterdayScore ? "text-green-600" :
+              health.overall < yesterdayScore ? "text-red-500" : "text-muted-foreground"
+            )}>
+              {health.overall > yesterdayScore ? "+" : ""}{health.overall - yesterdayScore} vs yesterday
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-2.5">
@@ -126,6 +137,48 @@ function HealthCard({ health }: { health: BusinessHealthScore }) {
           {worstDim.detail}
         </p>
       )}
+    </div>
+  )
+}
+
+// ─── Score Decomposition ──────────────────────────────────────────────────────
+
+function ScoreDecomposition({ contributions }: { contributions: ScoreContribution[] }) {
+  // Only show items that actually cost points (negative) or are notable positives
+  const visible = contributions.filter(c => c.points < 0).slice(0, 5)
+  if (visible.length === 0) return null
+
+  const dimColor: Record<string, string> = {
+    inventory:  "text-blue-600 bg-blue-50 border-blue-200",
+    profit:     "text-orange-600 bg-orange-50 border-orange-200",
+    cashflow:   "text-purple-600 bg-purple-50 border-purple-200",
+    operations: "text-red-600 bg-red-50 border-red-200",
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
+        Why your score is this low
+      </p>
+      <div className="flex flex-col divide-y divide-border/50">
+        {visible.map((c, i) => (
+          <div key={i} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
+            <span className={cn(
+              "shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+              dimColor[c.dimension] ?? "text-muted-foreground bg-muted border-border"
+            )}>
+              {c.dimension.slice(0, 3).toUpperCase()}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground leading-snug">{c.label}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{c.reason}</p>
+            </div>
+            <span className="shrink-0 text-xs font-bold tabular-nums text-red-500">
+              {c.points} pts
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -204,9 +257,24 @@ function PriorityItemCard({ item }: { item: PriorityItem }) {
               <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", cfg.dot)} />
               {cfg.label}
             </span>
+            {/* Alert state */}
+            {item.state === "escalating" && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-red-100 border border-red-200 px-2 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wider">
+                ↑ Escalating
+              </span>
+            )}
+            {item.state === "new" && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-100 border border-yellow-200 px-2 py-0.5 text-[10px] font-bold text-yellow-700 uppercase tracking-wider">
+                New
+              </span>
+            )}
             <span className="inline-flex items-center gap-1 rounded-full bg-muted border border-border/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground capitalize">
               {categoryIcon(item.category)}
               {item.category}
+            </span>
+            {/* Time horizon */}
+            <span className="inline-flex items-center rounded-full bg-primary/8 border border-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
+              {item.timeHorizon}
             </span>
           </div>
 
@@ -224,6 +292,7 @@ function PriorityItemCard({ item }: { item: PriorityItem }) {
                 <p className="text-sm font-semibold text-foreground leading-snug">{item.action}</p>
               </div>
               <p className="text-xs text-muted-foreground mt-1.5 pl-5">{item.impact}</p>
+              <p className="text-[10px] text-muted-foreground/60 mt-1 pl-5">Signal confidence: {item.confidence}%</p>
             </div>
 
             <button
@@ -309,6 +378,11 @@ export default function DashboardPage() {
   const deltas = hydrated ? computeDeltas(skus, meta.source === "demo")    : []
   const feed   = hydrated ? getPriorityFeed(skus, alerts)                  : []
 
+  // Yesterday score: demo uses hardcoded constant; live reads from snapshot
+  const yesterdayScore = hydrated
+    ? meta.source === "demo" ? DEMO_YESTERDAY_SCORE : loadYesterdayScore()
+    : null
+
   const activeSkus   = skus.filter(s => s.status === "active")
   const totalRevenue = activeSkus.reduce((s, k) => s + k.monthlyRevenue,   0)
   const totalProfit  = activeSkus.reduce((s, k) => s + k.netProfitMonthly, 0)
@@ -374,10 +448,17 @@ export default function DashboardPage() {
           {hydrated && (
             <>
               {/* Row 1: Health Score + Since Yesterday */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                {health && <HealthCard health={health} />}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {health && <HealthCard health={health} yesterdayScore={yesterdayScore} />}
                 <SinceYesterdayCard deltas={deltas} />
               </div>
+
+              {/* Score decomposition — why the score is what it is */}
+              {health && health.overall < 75 && (
+                <div className="mb-8">
+                  <ScoreDecomposition contributions={health.contributions} />
+                </div>
+              )}
 
               {/* Priority Feed */}
               <div className="mb-2">
