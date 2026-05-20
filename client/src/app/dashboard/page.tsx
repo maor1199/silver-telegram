@@ -276,13 +276,47 @@ function PriorityItemCard({ item }: { item: PriorityItem }) {
             <span className="inline-flex items-center rounded-full bg-primary/8 border border-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
               {item.timeHorizon}
             </span>
+            {/* Persistence badge */}
+            {item.persistenceLabel && (
+              <span className={cn(
+                "inline-flex items-center rounded-full border border-border/60 bg-muted px-2 py-0.5 text-[10px] font-semibold",
+                item.persistenceColorClass ?? "text-muted-foreground"
+              )}>
+                {item.persistenceLabel}
+              </span>
+            )}
           </div>
+
+          {/* Causal chain label — compact chip */}
+          {item.chainLabel && (
+            <div className="mb-2.5">
+              <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                ⛓ {item.chainLabel}
+              </span>
+            </div>
+          )}
 
           {/* Headline */}
           <p className="text-[15px] font-bold text-foreground leading-snug mb-1.5">{item.headline}</p>
 
           {/* Context */}
           <p className="text-sm text-muted-foreground leading-relaxed mb-3">{item.context}</p>
+
+          {/* Causal chain context */}
+          {(item.causedBy || item.impacts) && (
+            <div className="mb-3 rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5 flex flex-col gap-1.5">
+              {item.causedBy && (
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  <span className="font-semibold text-foreground">← Driven by:</span> {item.causedBy}
+                </p>
+              )}
+              {item.impacts && (
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  <span className="font-semibold text-foreground">→ Compounding:</span> {item.impacts}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Action + CTA */}
           <div className="flex flex-col sm:flex-row sm:items-end gap-3">
@@ -376,7 +410,7 @@ export default function DashboardPage() {
   const alerts = hydrated ? generateRiskAlerts(skus)                       : []
   const health = hydrated ? getBusinessHealthScore(skus, alerts)            : null
   const deltas = hydrated ? computeDeltas(skus, meta.source === "demo")    : []
-  const feed   = hydrated ? getPriorityFeed(skus, alerts)                  : []
+  const feed   = hydrated ? getPriorityFeed(skus, alerts, meta.source === "demo") : []
 
   // Yesterday score: demo uses hardcoded constant; live reads from snapshot
   const yesterdayScore = hydrated
