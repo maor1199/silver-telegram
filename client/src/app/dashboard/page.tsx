@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import { Zap, Upload, ChevronDown } from "lucide-react"
+import { Zap, Upload, ChevronDown, X } from "lucide-react"
 import { useSkus } from "@/lib/intelligence/store"
 import { generateRiskAlerts } from "@/lib/intelligence/risk-engine"
 import { getBusinessHealthScore } from "@/lib/intelligence/health-score"
@@ -21,9 +21,172 @@ import {
   trackAlertCollapsed,
   trackAiClicked,
   trackFeedback,
+  trackSessionSurvey,
   type FeedbackValue,
+  type SurveyValue,
 } from "@/lib/intelligence/engagement-tracker"
 import { cn } from "@/lib/utils"
+
+// ─── First-Run Overlay ────────────────────────────────────────────────────────
+// Shown once to demo users. 3 steps. Stored in localStorage.
+
+const INTRO_KEY = "sellermentor_intro_v1"
+
+const INTRO_STEPS = [
+  {
+    icon: "📡",
+    title: "Monitors operational deterioration",
+    body: "SellerMentor watches your SKUs continuously — inventory, margin, ad efficiency, returns. It surfaces issues before they become expensive problems.",
+  },
+  {
+    icon: "📉",
+    title: "Shows what happens if nothing changes",
+    body: "Every alert carries a projected impact. Not vague warnings — concrete estimates of what drifts away if the issue goes unaddressed.",
+  },
+  {
+    icon: "🎯",
+    title: "Helps you decide what to act on first",
+    body: "Issues are ranked by severity and trajectory. Expand any card to see the causal chain, confidence level, and a precise recommended action.",
+  },
+]
+
+function FirstRunOverlay({ onDone }: { onDone: () => void }) {
+  const [step, setStep] = useState(0)
+  const isLast = step === INTRO_STEPS.length - 1
+  const current = INTRO_STEPS[step]
+
+  function handleNext() {
+    if (isLast) {
+      try { localStorage.setItem(INTRO_KEY, "1") } catch { /* ignore */ }
+      onDone()
+    } else {
+      setStep(s => s + 1)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="relative w-full max-w-[400px] rounded-2xl border border-border bg-card shadow-2xl px-8 py-8">
+
+        {/* Step dots */}
+        <div className="flex items-center gap-1.5 mb-6">
+          {INTRO_STEPS.map((_, i) => (
+            <div
+              key={i}
+              className={cn(
+                "h-1.5 rounded-full transition-all duration-300",
+                i === step ? "w-6 bg-primary" : "w-1.5 bg-border"
+              )}
+            />
+          ))}
+        </div>
+
+        {/* Icon */}
+        <div className="text-3xl mb-4">{current.icon}</div>
+
+        {/* Content */}
+        <h2 className="text-[17px] font-bold text-foreground leading-snug mb-2">
+          {current.title}
+        </h2>
+        <p className="text-sm text-muted-foreground leading-relaxed mb-8">
+          {current.body}
+        </p>
+
+        {/* CTA */}
+        <button
+          onClick={handleNext}
+          className="w-full rounded-xl bg-primary text-primary-foreground py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors"
+        >
+          {isLast ? "Got it — show me the feed" : "Next →"}
+        </button>
+
+        {/* Skip */}
+        {!isLast && (
+          <button
+            onClick={() => {
+              try { localStorage.setItem(INTRO_KEY, "1") } catch { /* ignore */ }
+              onDone()
+            }}
+            className="w-full mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Skip intro
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Session Survey ───────────────────────────────────────────────────────────
+// Fixed bottom-right. Fires after 2+ interactions + 3 s delay.
+
+const SURVEY_OPTIONS: { value: SurveyValue; label: string }[] = [
+  { value: "yes",      label: "Yes"      },
+  { value: "somewhat", label: "Somewhat" },
+  { value: "no",       label: "No"       },
+]
+
+function SessionSurvey({ onClose }: { onClose: () => void }) {
+  const [selected, setSelected] = useState<SurveyValue | null>(null)
+
+  function handleSelect(value: SurveyValue) {
+    if (selected) return
+    setSelected(value)
+    trackSessionSurvey(value)
+    setTimeout(onClose, 1800)
+  }
+
+  return (
+    <div className="fixed bottom-6 right-6 z-40 w-[280px] rounded-2xl border border-border bg-card shadow-xl px-5 py-4">
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-sm font-semibold text-foreground leading-snug">
+          Did SellerMentor help you understand what needs attention?
+        </p>
+        <button onClick={onClose} className="ml-3 shrink-0 text-muted-foreground hover:text-foreground transition-colors">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {selected ? (
+        <p className="text-[11px] text-muted-foreground">Thanks for the feedback.</p>
+      ) : (
+        <div className="flex gap-2">
+          {SURVEY_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => handleSelect(opt.value)}
+              className="flex-1 rounded-lg border border-border bg-background hover:border-primary/40 hover:text-foreground px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors"
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Test with your business CTA ─────────────────────────────────────────────
+// Demo-only. Shown below the priority feed.
+
+function TestCTA() {
+  return (
+    <div className="mt-6 rounded-2xl border border-dashed border-border bg-card px-6 py-6 flex items-center justify-between gap-4 flex-wrap">
+      <div>
+        <p className="text-sm font-semibold text-foreground">Test this with your business</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Upload your SKU export — the risk engine runs entirely on your own data.
+        </p>
+      </div>
+      <Link
+        href="/data"
+        className="inline-flex items-center gap-1.5 rounded-xl bg-foreground text-background px-4 py-2 text-sm font-semibold hover:bg-foreground/80 transition-colors shrink-0"
+      >
+        <Upload className="h-3.5 w-3.5" />
+        Import my data
+      </Link>
+    </div>
+  )
+}
 
 // ─── Operational State Bar ────────────────────────────────────────────────────
 
@@ -155,7 +318,6 @@ const TRAJECTORY_CONFIG: Record<Trajectory, { label: string; color: string }> = 
 }
 
 // ─── Expanded Detail Panel ────────────────────────────────────────────────────
-// Revealed on demand. Calm on the surface, deep underneath.
 
 function DetailSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -169,8 +331,6 @@ function DetailSection({ label, children }: { label: string; children: React.Rea
 }
 
 // ─── Feedback widget ──────────────────────────────────────────────────────────
-// One small question at the bottom of the detail panel.
-// Lightweight, non-intrusive, stores locally.
 
 const FEEDBACK_OPTIONS: { value: FeedbackValue; label: string }[] = [
   { value: "useful",       label: "Useful"       },
@@ -273,8 +433,14 @@ function ExpandedDetail({ item }: { item: PriorityItem }) {
 
 // ─── Priority Item Card ───────────────────────────────────────────────────────
 
-function PriorityItemCard({ item }: { item: PriorityItem }) {
-  const router               = useRouter()
+function PriorityItemCard({
+  item,
+  onInteract,
+}: {
+  item: PriorityItem
+  onInteract: () => void
+}) {
+  const router                  = useRouter()
   const [expanded, setExpanded] = useState(false)
 
   const borderColor =
@@ -291,12 +457,17 @@ function PriorityItemCard({ item }: { item: PriorityItem }) {
   function handleToggle() {
     const next = !expanded
     setExpanded(next)
-    if (next) trackAlertExpanded(item.alertId, item.category, item.severity, item.trajectory, item.rank)
-    else      trackAlertCollapsed(item.alertId)
+    if (next) {
+      trackAlertExpanded(item.alertId, item.category, item.severity, item.trajectory, item.rank)
+      onInteract()
+    } else {
+      trackAlertCollapsed(item.alertId)
+    }
   }
 
   function handleAiClick() {
     trackAiClicked(item.alertId, item.category, item.rank)
+    onInteract()
     router.push(`/advisor?q=${encodeURIComponent(item.advisorQ)}`)
   }
 
@@ -376,19 +547,31 @@ function PriorityItemCard({ item }: { item: PriorityItem }) {
   )
 }
 
-function PriorityFeed({ items }: { items: PriorityItem[] }) {
+function PriorityFeed({
+  items,
+  onInteract,
+}: {
+  items: PriorityItem[]
+  onInteract: () => void
+}) {
   if (items.length === 0) {
+    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     return (
       <div className="rounded-2xl border border-border bg-card px-6 py-10 text-center">
-        <div className="mx-auto mb-3 h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">✓</div>
-        <p className="text-sm font-semibold text-foreground">No actions required</p>
-        <p className="text-sm text-muted-foreground mt-1">All SKUs are operating within healthy parameters.</p>
+        <div className="mx-auto mb-3 h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-base">✓</div>
+        <p className="text-sm font-semibold text-foreground">No material deterioration detected</p>
+        <p className="text-sm text-muted-foreground mt-1 leading-relaxed max-w-[320px] mx-auto">
+          We&apos;ll surface issues when something becomes operationally meaningful.
+        </p>
+        <p className="text-[11px] text-muted-foreground/60 mt-3">Last checked: {now}</p>
       </div>
     )
   }
   return (
     <div className="rounded-2xl border border-border bg-card px-6">
-      {items.map(item => <PriorityItemCard key={item.id} item={item} />)}
+      {items.map(item => (
+        <PriorityItemCard key={item.id} item={item} onInteract={onInteract} />
+      ))}
     </div>
   )
 }
@@ -454,7 +637,39 @@ export default function DashboardPage() {
   const totalProfit  = activeSkus.reduce((s, k) => s + k.netProfitMonthly, 0)
   const totalAdSpend = activeSkus.reduce((s, k) => s + k.monthlyAdSpend,   0)
 
-  // Trust instrumentation — record feed visits + what was rendered
+  // ─── Intro overlay state ───────────────────────────────────────────────────
+  const [showIntro, setShowIntro] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (meta.source === "demo") {
+      try {
+        const seen = localStorage.getItem(INTRO_KEY)
+        if (!seen) setShowIntro(true)
+      } catch { /* ignore */ }
+    }
+  }, [meta.source])
+
+  // ─── Session survey state ──────────────────────────────────────────────────
+  const interactionCount  = useRef(0)
+  const surveyScheduled   = useRef(false)
+  const [showSurvey, setShowSurvey] = useState(false)
+  const [surveyDone, setSurveyDone] = useState(false)
+
+  function handleInteract() {
+    interactionCount.current += 1
+    if (interactionCount.current >= 2 && !surveyScheduled.current && !surveyDone) {
+      surveyScheduled.current = true
+      setTimeout(() => setShowSurvey(true), 3000)
+    }
+  }
+
+  function handleSurveyClose() {
+    setShowSurvey(false)
+    setSurveyDone(true)
+  }
+
+  // ─── Trust instrumentation ─────────────────────────────────────────────────
   const didTrackRender = useRef(false)
   useEffect(() => {
     if (!hydrated) return
@@ -469,12 +684,21 @@ export default function DashboardPage() {
     }
   }, [hydrated]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const isDemo = meta.source === "demo"
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
+
+      {/* First-run overlay */}
+      {showIntro && <FirstRunOverlay onDone={() => setShowIntro(false)} />}
+
+      {/* Session survey */}
+      {showSurvey && !surveyDone && <SessionSurvey onClose={handleSurveyClose} />}
+
       <Navbar />
 
       {/* Data source banners */}
-      {hydrated && meta.source === "demo" && (
+      {hydrated && isDemo && (
         <div className="border-b border-yellow-200 bg-yellow-50 px-6 py-2.5">
           <div className="mx-auto max-w-[1200px] flex items-center justify-between">
             <p className="text-xs text-yellow-800">
@@ -509,7 +733,7 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground mt-0.5">
                 {!hydrated
                   ? "Loading your business state..."
-                  : meta.source === "demo"
+                  : isDemo
                   ? `Demo portfolio · ${activeSkus.length} SKUs`
                   : `${activeSkus.length} active SKU${activeSkus.length !== 1 ? "s" : ""}${meta.filename ? ` · ${meta.filename}` : ""}`
                 }
@@ -550,8 +774,11 @@ export default function DashboardPage() {
                     </span>
                   )}
                 </div>
-                <PriorityFeed items={feed} />
+                <PriorityFeed items={feed} onInteract={handleInteract} />
               </div>
+
+              {/* "Test with your business" CTA — demo only */}
+              {isDemo && <TestCTA />}
 
               <KpiStrip revenue={totalRevenue} profit={totalProfit} adSpend={totalAdSpend} />
             </>

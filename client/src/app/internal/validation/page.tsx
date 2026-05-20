@@ -186,6 +186,32 @@ export default function ValidationPage() {
             )}
           </Section>
 
+          {/* Session survey */}
+          <Section title="Session Survey">
+            {Object.values(summary.surveyCounts).some(n => n > 0) ? (
+              <>
+                <div className="rounded-xl border border-border bg-card px-4 divide-y divide-border/50 mb-2">
+                  {(Object.entries(summary.surveyCounts) as [string, number][]).map(([key, count]) => {
+                    const total = Object.values(summary.surveyCounts).reduce((a, b) => a + b, 0)
+                    return (
+                      <StatRow
+                        key={key}
+                        label={key.charAt(0).toUpperCase() + key.slice(1)}
+                        value={count}
+                        sub={total > 0 ? `${Math.round((count / total) * 100)}%` : undefined}
+                      />
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  "Did SellerMentor help you understand what needs attention?"
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No survey responses yet.</p>
+            )}
+          </Section>
+
           {/* Last 10 events */}
           <Section title="Last 10 Events">
             {events.length === 0 ? (
