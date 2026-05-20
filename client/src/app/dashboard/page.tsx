@@ -4,186 +4,122 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import {
-  ArrowRight,
-  Zap,
-  Activity,
-  ShoppingCart,
-  BarChart3,
-  RotateCcw,
-  Archive,
-  Upload,
-} from "lucide-react"
+import { Zap, Upload } from "lucide-react"
 import { useSkus } from "@/lib/intelligence/store"
 import { generateRiskAlerts } from "@/lib/intelligence/risk-engine"
 import { getBusinessHealthScore } from "@/lib/intelligence/health-score"
-import type { BusinessHealthScore, ScoreContribution } from "@/lib/intelligence/health-score"
+import type { BusinessHealthScore } from "@/lib/intelligence/health-score"
 import { computeDeltas, DEMO_YESTERDAY_SCORE, loadYesterdayScore } from "@/lib/intelligence/delta-engine"
 import type { DeltaChange } from "@/lib/intelligence/delta-engine"
 import { getPriorityFeed } from "@/lib/intelligence/priority-feed"
-import type { PriorityItem, AlertState } from "@/lib/intelligence/priority-feed"
+import type { PriorityItem, Trajectory } from "@/lib/intelligence/priority-feed"
 import { cn } from "@/lib/utils"
 
-// ─── Severity config ──────────────────────────────────────────────────────────
+// ─── Operational State Bar ────────────────────────────────────────────────────
+// Replaces the Health Score card. Translates numerical score into
+// operational language. The number is gone — only the meaning remains.
 
-function severityConfig(s: "critical" | "high" | "medium") {
-  switch (s) {
-    case "critical": return {
-      pill: "bg-red-100 text-red-700 border-red-200",
-      dot: "bg-red-500 animate-pulse",
-      bar: "border-red-200 bg-red-50/40",
-      label: "CRITICAL",
-    }
-    case "high": return {
-      pill: "bg-orange-100 text-orange-700 border-orange-200",
-      dot: "bg-orange-500",
-      bar: "border-orange-200 bg-orange-50/20",
-      label: "HIGH",
-    }
-    default: return {
-      pill: "bg-yellow-100 text-yellow-700 border-yellow-200",
-      dot: "bg-yellow-500",
-      bar: "border-yellow-200 bg-yellow-50/20",
-      label: "MEDIUM",
-    }
+function deriveOperationalState(
+  health: BusinessHealthScore,
+  feed: PriorityItem[],
+  deltas: DeltaChange[]
+) {
+  const criticalCount     = feed.filter(f => f.severity === "critical").length
+  const acceleratingCount = feed.filter(f => f.trajectory === "accelerating").length
+
+  const stabilityLabel =
+    health.overall >= 68 ? "Stable" :
+    health.overall >= 52 ? "Weak"   :
+    health.overall >= 38 ? "Fragile" : "Critical"
+  const stabilityColor =
+    health.overall >= 68 ? "text-green-700" :
+    health.overall >= 52 ? "text-orange-600" : "text-red-600"
+
+  const riskLabel =
+    criticalCount > 0                          ? "Elevated" :
+    feed.some(f => f.severity === "high")      ? "Moderate" : "Managed"
+  const riskColor =
+    criticalCount > 0                          ? "text-red-600" :
+    feed.some(f => f.severity === "high")      ? "text-orange-600" : "text-green-700"
+
+  const marginLabel =
+    health.profit.score < 52 ? "Increasing" :
+    health.profit.score < 68 ? "Present"    : "Stable"
+  const marginColor =
+    health.profit.score < 52 ? "text-red-600" :
+    health.profit.score < 68 ? "text-orange-600" : "text-green-700"
+
+  const trajectoryLabel =
+    acceleratingCount > 0 ? "Deteriorating" :
+    deltas.length > 2     ? "Shifting"      :
+    deltas.length > 0     ? "In motion"     : "Holding"
+
+  return {
+    stabilityLabel, stabilityColor,
+    riskLabel,      riskColor,
+    marginLabel,    marginColor,
+    trajectoryLabel,
   }
 }
 
-function categoryIcon(cat: PriorityItem["category"]) {
-  switch (cat) {
-    case "stockout": return <ShoppingCart className="h-3.5 w-3.5" />
-    case "margin":   return <BarChart3    className="h-3.5 w-3.5" />
-    case "ppc":      return <Activity     className="h-3.5 w-3.5" />
-    case "returns":  return <RotateCcw    className="h-3.5 w-3.5" />
-    case "overstock":return <Archive      className="h-3.5 w-3.5" />
-  }
-}
-
-// ─── Business Health Card ─────────────────────────────────────────────────────
-
-function ScoreBar({ score, label }: { score: number; label: string }) {
-  const color =
-    score >= 68 ? "bg-green-500" :
-    score >= 52 ? "bg-yellow-400" :
-    score >= 38 ? "bg-orange-400" : "bg-red-500"
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs text-muted-foreground w-20 shrink-0">{label}</span>
-      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-        <div className={cn("h-full rounded-full transition-all duration-700", color)} style={{ width: `${score}%` }} />
-      </div>
-      <span className="text-xs tabular-nums font-semibold text-foreground w-7 text-right">{score}</span>
-    </div>
-  )
-}
-
-function HealthCard({ health, yesterdayScore }: { health: BusinessHealthScore; yesterdayScore: number | null }) {
-  const gradeColor =
-    health.grade === "A" ? "text-green-600" :
-    health.grade === "B" ? "text-blue-600" :
-    health.grade === "C" ? "text-yellow-600" :
-    health.grade === "D" ? "text-orange-600" : "text-red-600"
-
-  const labelColor =
-    health.overall >= 68 ? "text-green-700 bg-green-100 border-green-200" :
-    health.overall >= 52 ? "text-yellow-700 bg-yellow-100 border-yellow-200" :
-    health.overall >= 38 ? "text-orange-700 bg-orange-100 border-orange-200" :
-                           "text-red-700 bg-red-100 border-red-200"
-
-  const dims = [health.inventory, health.profit, health.cashflow, health.operations]
-  const worstDim = dims.reduce((a, b) => a.score < b.score ? a : b)
+function OperationalStateBar({
+  health,
+  feed,
+  deltas,
+  yesterdayScore,
+}: {
+  health: BusinessHealthScore
+  feed: PriorityItem[]
+  deltas: DeltaChange[]
+  yesterdayScore: number | null
+}) {
+  const state      = deriveOperationalState(health, feed, deltas)
+  const scoreDelta = yesterdayScore !== null ? health.overall - yesterdayScore : null
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 flex flex-col gap-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Business Health</p>
-          <div className="flex items-baseline gap-3">
-            <span className={cn("text-5xl font-black leading-none", gradeColor)}>{health.grade}</span>
-            <div className="flex flex-col">
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-foreground">{health.overall}</span>
-                <span className="text-sm text-muted-foreground">/100</span>
-              </div>
+    <div className="rounded-2xl border border-border bg-card px-6 py-5 mb-6">
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        {/* Operational status */}
+        <div className="flex gap-8 flex-wrap">
+          {[
+            { label: "Business Stability", value: state.stabilityLabel, color: state.stabilityColor },
+            { label: "Operational Risk",   value: state.riskLabel,      color: state.riskColor      },
+            { label: "Margin Pressure",    value: state.marginLabel,    color: state.marginColor    },
+          ].map(s => (
+            <div key={s.label}>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
+                {s.label}
+              </p>
+              <p className={cn("text-xl font-bold leading-none", s.color)}>{s.value}</p>
             </div>
-          </div>
+          ))}
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold", labelColor)}>
-            {health.label}
-          </span>
-          {typeof yesterdayScore === "number" && (
-            <span className={cn(
-              "text-[11px] font-semibold tabular-nums",
-              health.overall > yesterdayScore ? "text-green-600" :
-              health.overall < yesterdayScore ? "text-red-500" : "text-muted-foreground"
-            )}>
-              {health.overall > yesterdayScore ? "+" : ""}{health.overall - yesterdayScore} vs yesterday
-            </span>
+
+        {/* Right: issue count + trajectory */}
+        <div className="text-right text-xs space-y-0.5">
+          {feed.length > 0 && (
+            <p className="font-semibold text-foreground">
+              {feed.length} issue{feed.length !== 1 ? "s" : ""} need attention
+            </p>
+          )}
+          {deltas.length > 0 && (
+            <p className="text-orange-600 font-medium">
+              {deltas.length} change{deltas.length !== 1 ? "s" : ""} since yesterday · {state.trajectoryLabel}
+            </p>
+          )}
+          {scoreDelta !== null && scoreDelta !== 0 && (
+            <p className={cn("tabular-nums", scoreDelta > 0 ? "text-green-600" : "text-red-500")}>
+              Health {scoreDelta > 0 ? "+" : ""}{scoreDelta} vs yesterday
+            </p>
           )}
         </div>
       </div>
-
-      <div className="flex flex-col gap-2.5">
-        <ScoreBar score={health.inventory.score}  label="Inventory"  />
-        <ScoreBar score={health.profit.score}     label="Profit"     />
-        <ScoreBar score={health.cashflow.score}   label="Cashflow"   />
-        <ScoreBar score={health.operations.score} label="Operations" />
-      </div>
-
-      {worstDim.score < 68 && (
-        <p className="text-xs text-muted-foreground border-t border-border/60 pt-3 leading-relaxed">
-          <span className="font-semibold text-foreground">{worstDim.label}: </span>
-          {worstDim.detail}
-        </p>
-      )}
     </div>
   )
 }
 
-// ─── Score Decomposition ──────────────────────────────────────────────────────
-
-function ScoreDecomposition({ contributions }: { contributions: ScoreContribution[] }) {
-  // Only show items that actually cost points (negative) or are notable positives
-  const visible = contributions.filter(c => c.points < 0).slice(0, 5)
-  if (visible.length === 0) return null
-
-  const dimColor: Record<string, string> = {
-    inventory:  "text-blue-600 bg-blue-50 border-blue-200",
-    profit:     "text-orange-600 bg-orange-50 border-orange-200",
-    cashflow:   "text-purple-600 bg-purple-50 border-purple-200",
-    operations: "text-red-600 bg-red-50 border-red-200",
-  }
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
-        Why your score is this low
-      </p>
-      <div className="flex flex-col divide-y divide-border/50">
-        {visible.map((c, i) => (
-          <div key={i} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
-            <span className={cn(
-              "shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
-              dimColor[c.dimension] ?? "text-muted-foreground bg-muted border-border"
-            )}>
-              {c.dimension.slice(0, 3).toUpperCase()}
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-foreground leading-snug">{c.label}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{c.reason}</p>
-            </div>
-            <span className="shrink-0 text-xs font-bold tabular-nums text-red-500">
-              {c.points} pts
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── Since Yesterday Card ─────────────────────────────────────────────────────
+// ─── Since Yesterday ──────────────────────────────────────────────────────────
+// Only rendered when there are actual changes — no empty state card.
 
 function DeltaRow({ change }: { change: DeltaChange }) {
   const isWorse = change.delta < 0 || change.type === "acos_spike" || change.type === "return_spike"
@@ -205,139 +141,99 @@ function DeltaRow({ change }: { change: DeltaChange }) {
 }
 
 function SinceYesterdayCard({ deltas }: { deltas: DeltaChange[] }) {
+  if (deltas.length === 0) return null
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 flex flex-col">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Since Yesterday</p>
-        {deltas.length > 0 ? (
-          <span className="rounded-full bg-orange-100 text-orange-700 border border-orange-200 text-xs font-semibold px-2 py-0.5">
-            {deltas.length} change{deltas.length !== 1 ? "s" : ""}
-          </span>
-        ) : (
-          <span className="rounded-full bg-green-100 text-green-700 border border-green-200 text-xs font-semibold px-2 py-0.5">
-            Stable
-          </span>
-        )}
+    <div className="rounded-2xl border border-border bg-card px-6 py-5 mb-6">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
+        Changes since yesterday
+      </p>
+      <div>
+        {deltas.map(d => <DeltaRow key={`${d.skuId}-${d.type}`} change={d} />)}
       </div>
-
-      {deltas.length === 0 ? (
-        <div className="flex-1 flex flex-col justify-center items-center gap-2 text-center py-8">
-          <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-base">✓</div>
-          <p className="text-sm font-semibold text-foreground">No significant changes</p>
-          <p className="text-xs text-muted-foreground max-w-[240px]">Your key metrics are stable since the last session.</p>
-        </div>
-      ) : (
-        <div className="mt-1">
-          {deltas.map(d => <DeltaRow key={`${d.skuId}-${d.type}`} change={d} />)}
-        </div>
-      )}
     </div>
   )
 }
 
 // ─── Priority Feed ────────────────────────────────────────────────────────────
 
+const TRAJECTORY_CONFIG: Record<Trajectory, { label: string; color: string }> = {
+  accelerating:  { label: "↑ Accelerating",  color: "text-red-600"    },
+  deteriorating: { label: "Deteriorating",   color: "text-orange-600" },
+  stabilizing:   { label: "Stabilizing",     color: "text-yellow-600" },
+  recovering:    { label: "Recovering",      color: "text-green-600"  },
+}
+
 function PriorityItemCard({ item }: { item: PriorityItem }) {
-  const cfg = severityConfig(item.severity)
   const router = useRouter()
 
+  const borderColor =
+    item.severity === "critical" ? "border-l-red-500"    :
+    item.severity === "high"     ? "border-l-orange-400" :
+                                   "border-l-yellow-400"
+
+  const traj = TRAJECTORY_CONFIG[item.trajectory]
+
+  // Only surface persistence when it's notable (Recurring+)
+  const showPersistence =
+    item.persistenceLabel &&
+    item.persistenceColorClass !== "text-muted-foreground"
+
   return (
-    <div className={cn("rounded-2xl border p-5 transition-colors hover:shadow-sm", cfg.bar)}>
-      <div className="flex items-start gap-4">
-        {/* Rank number */}
-        <span className="text-xl font-black text-muted-foreground/25 leading-none pt-1 w-6 text-center shrink-0">
-          {item.rank}
-        </span>
+    <div className={cn("border-l-2 pl-5 py-5 border-b border-border/60 last:border-b-0", borderColor)}>
 
-        {/* Main content */}
-        <div className="flex-1 min-w-0">
-          {/* Badges */}
-          <div className="flex items-center gap-2 mb-2.5 flex-wrap">
-            <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold tracking-wide", cfg.pill)}>
-              <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", cfg.dot)} />
-              {cfg.label}
+      {/* Meta row: SKU · category | trajectory */}
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">{item.skuName}</span>
+          <span className="text-xs text-muted-foreground/40">·</span>
+          <span className="text-xs text-muted-foreground capitalize">{item.category}</span>
+          {item.state === "new" && (
+            <span className="text-[10px] font-bold uppercase tracking-wide text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-1.5 py-0.5">
+              New
             </span>
-            {/* Alert state */}
-            {item.state === "escalating" && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-red-100 border border-red-200 px-2 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-wider">
-                ↑ Escalating
-              </span>
-            )}
-            {item.state === "new" && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-100 border border-yellow-200 px-2 py-0.5 text-[10px] font-bold text-yellow-700 uppercase tracking-wider">
-                New
-              </span>
-            )}
-            <span className="inline-flex items-center gap-1 rounded-full bg-muted border border-border/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground capitalize">
-              {categoryIcon(item.category)}
-              {item.category}
-            </span>
-            {/* Time horizon */}
-            <span className="inline-flex items-center rounded-full bg-primary/8 border border-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
-              {item.timeHorizon}
-            </span>
-            {/* Persistence badge */}
-            {item.persistenceLabel && (
-              <span className={cn(
-                "inline-flex items-center rounded-full border border-border/60 bg-muted px-2 py-0.5 text-[10px] font-semibold",
-                item.persistenceColorClass ?? "text-muted-foreground"
-              )}>
-                {item.persistenceLabel}
-              </span>
-            )}
-          </div>
-
-          {/* Causal chain label — compact chip */}
-          {item.chainLabel && (
-            <div className="mb-2.5">
-              <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                ⛓ {item.chainLabel}
-              </span>
-            </div>
           )}
-
-          {/* Headline */}
-          <p className="text-[15px] font-bold text-foreground leading-snug mb-1.5">{item.headline}</p>
-
-          {/* Context */}
-          <p className="text-sm text-muted-foreground leading-relaxed mb-3">{item.context}</p>
-
-          {/* Causal chain context */}
-          {(item.causedBy || item.impacts) && (
-            <div className="mb-3 rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5 flex flex-col gap-1.5">
-              {item.causedBy && (
-                <p className="text-[11px] text-muted-foreground leading-snug">
-                  <span className="font-semibold text-foreground">← Driven by:</span> {item.causedBy}
-                </p>
-              )}
-              {item.impacts && (
-                <p className="text-[11px] text-muted-foreground leading-snug">
-                  <span className="font-semibold text-foreground">→ Compounding:</span> {item.impacts}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Action + CTA */}
-          <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-            <div className="flex-1">
-              <div className="flex items-start gap-2">
-                <ArrowRight className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
-                <p className="text-sm font-semibold text-foreground leading-snug">{item.action}</p>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1.5 pl-5">{item.impact}</p>
-              <p className="text-[10px] text-muted-foreground/60 mt-1 pl-5">Signal confidence: {item.confidence}%</p>
-            </div>
-
-            <button
-              onClick={() => router.push(`/advisor?q=${encodeURIComponent(item.advisorQ)}`)}
-              className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-primary/25 bg-primary/8 hover:bg-primary/15 px-3 py-2 text-xs font-semibold text-primary transition-colors"
-            >
-              <Zap className="h-3.5 w-3.5" />
-              Ask AI
-            </button>
-          </div>
         </div>
+        <span className={cn("text-xs font-semibold", traj.color)}>{traj.label}</span>
+      </div>
+
+      {/* Headline */}
+      <p className="text-[15px] font-bold text-foreground leading-snug mb-1.5">{item.headline}</p>
+
+      {/* Context */}
+      <p className="text-sm text-muted-foreground leading-relaxed mb-3">{item.context}</p>
+
+      {/* If nothing changes — only shown when confidence supports it */}
+      {item.projectedImpact && (
+        <div className="mb-3 rounded-lg bg-amber-50/70 border border-amber-200/60 px-3 py-2">
+          <p className="text-[11px] text-amber-800 leading-snug">
+            <span className="font-semibold">If nothing changes:</span> {item.projectedImpact}
+          </p>
+        </div>
+      )}
+
+      {/* Causal context — only causedBy, not both, keeps it readable */}
+      {item.causedBy && (
+        <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
+          <span className="font-semibold text-foreground/80">Driven by:</span> {item.causedBy}
+        </p>
+      )}
+
+      {/* Action + Ask AI */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground leading-snug">→ {item.action}</p>
+          {showPersistence && (
+            <p className={cn("text-[11px] mt-1.5 leading-snug", item.persistenceColorClass)}>
+              {item.persistenceLabel}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => router.push(`/advisor?q=${encodeURIComponent(item.advisorQ)}`)}
+          className="shrink-0 text-xs font-medium text-primary hover:text-primary/70 transition-colors whitespace-nowrap py-0.5"
+        >
+          Ask AI →
+        </button>
       </div>
     </div>
   )
@@ -346,41 +242,53 @@ function PriorityItemCard({ item }: { item: PriorityItem }) {
 function PriorityFeed({ items }: { items: PriorityItem[] }) {
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-10 text-center">
-        <div className="mx-auto mb-3 h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl">✓</div>
-        <p className="text-base font-semibold text-foreground">No actions required</p>
-        <p className="text-sm text-muted-foreground mt-1">All SKUs are operating within healthy parameters.</p>
+      <div className="rounded-2xl border border-border bg-card px-6 py-10 text-center">
+        <div className="mx-auto mb-3 h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+          ✓
+        </div>
+        <p className="text-sm font-semibold text-foreground">No actions required</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          All SKUs are operating within healthy parameters.
+        </p>
       </div>
     )
   }
   return (
-    <div className="flex flex-col gap-3">
+    <div className="rounded-2xl border border-border bg-card px-6">
       {items.map(item => <PriorityItemCard key={item.id} item={item} />)}
     </div>
   )
 }
 
 // ─── KPI Strip ────────────────────────────────────────────────────────────────
+// Three numbers, no chrome — just context at the bottom.
 
-function KpiStrip({ revenue, profit, adSpend }: { revenue: number; profit: number; adSpend: number }) {
+function KpiStrip({ revenue, profit, adSpend }: {
+  revenue: number; profit: number; adSpend: number
+}) {
   const margin = revenue > 0 ? (profit / revenue) * 100 : 0
   return (
-    <div className="grid grid-cols-3 gap-4 mt-8 pt-8 border-t border-border/50">
-      <div className="text-center">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Monthly Revenue</p>
-        <p className="text-xl font-bold text-foreground">${revenue.toLocaleString()}</p>
-      </div>
-      <div className="text-center">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Net Profit</p>
-        <p className={cn("text-xl font-bold", profit >= 0 ? "text-green-600" : "text-red-600")}>
-          {profit >= 0 ? "$" : "-$"}{Math.abs(Math.round(profit)).toLocaleString()}
+    <div className="flex items-center gap-8 mt-8 pt-6 border-t border-border/50">
+      <div>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Revenue</p>
+        <p className="text-base font-bold text-foreground">
+          ${revenue.toLocaleString()}
+          <span className="text-xs font-normal text-muted-foreground ml-1">/mo</span>
         </p>
-        <p className={cn("text-xs mt-0.5", profit >= 0 ? "text-green-600" : "text-red-500")}>{margin.toFixed(1)}% margin</p>
       </div>
-      <div className="text-center">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Ad Spend</p>
-        <p className="text-xl font-bold text-foreground">${adSpend.toLocaleString()}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{revenue > 0 ? ((adSpend / revenue) * 100).toFixed(0) : 0}% of revenue</p>
+      <div>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Net Profit</p>
+        <p className={cn("text-base font-bold", profit >= 0 ? "text-green-700" : "text-red-600")}>
+          {profit >= 0 ? "$" : "-$"}{Math.abs(Math.round(profit)).toLocaleString()}
+          <span className="text-xs font-normal text-muted-foreground ml-1">{margin.toFixed(1)}%</span>
+        </p>
+      </div>
+      <div>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Ad Spend</p>
+        <p className="text-base font-bold text-foreground">
+          ${adSpend.toLocaleString()}
+          <span className="text-xs font-normal text-muted-foreground ml-1">/mo</span>
+        </p>
       </div>
     </div>
   )
@@ -391,10 +299,7 @@ function KpiStrip({ revenue, profit, adSpend }: { revenue: number; profit: numbe
 function LoadingSkeleton() {
   return (
     <div className="animate-pulse space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-2xl bg-muted/40 h-56" />
-        <div className="rounded-2xl bg-muted/40 h-56" />
-      </div>
+      <div className="rounded-2xl bg-muted/40 h-24" />
       {[...Array(3)].map((_, i) => (
         <div key={i} className="rounded-2xl bg-muted/40 h-28" />
       ))}
@@ -407,12 +312,11 @@ function LoadingSkeleton() {
 export default function DashboardPage() {
   const { skus, meta, hydrated } = useSkus()
 
-  const alerts = hydrated ? generateRiskAlerts(skus)                       : []
-  const health = hydrated ? getBusinessHealthScore(skus, alerts)            : null
-  const deltas = hydrated ? computeDeltas(skus, meta.source === "demo")    : []
-  const feed   = hydrated ? getPriorityFeed(skus, alerts, meta.source === "demo") : []
+  const alerts = hydrated ? generateRiskAlerts(skus)                                    : []
+  const health = hydrated ? getBusinessHealthScore(skus, alerts)                         : null
+  const deltas = hydrated ? computeDeltas(skus, meta.source === "demo")                  : []
+  const feed   = hydrated ? getPriorityFeed(skus, alerts, meta.source === "demo")        : []
 
-  // Yesterday score: demo uses hardcoded constant; live reads from snapshot
   const yesterdayScore = hydrated
     ? meta.source === "demo" ? DEMO_YESTERDAY_SCORE : loadYesterdayScore()
     : null
@@ -426,14 +330,17 @@ export default function DashboardPage() {
     <div className="flex min-h-screen flex-col bg-background">
       <Navbar />
 
-      {/* Data banners */}
+      {/* Data source banners */}
       {hydrated && meta.source === "demo" && (
         <div className="border-b border-yellow-200 bg-yellow-50 px-6 py-2.5">
           <div className="mx-auto max-w-[1200px] flex items-center justify-between">
             <p className="text-xs text-yellow-800">
               <span className="font-semibold">Demo data</span> — Upload your CSV to run the risk engine on your real SKUs
             </p>
-            <Link href="/data" className="inline-flex items-center gap-1 text-xs font-semibold text-yellow-900 underline underline-offset-2 hover:text-yellow-700">
+            <Link
+              href="/data"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-yellow-900 underline underline-offset-2 hover:text-yellow-700"
+            >
               <Upload className="h-3 w-3" />
               Import my data
             </Link>
@@ -481,21 +388,21 @@ export default function DashboardPage() {
 
           {hydrated && (
             <>
-              {/* Row 1: Health Score + Since Yesterday */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                {health && <HealthCard health={health} yesterdayScore={yesterdayScore} />}
-                <SinceYesterdayCard deltas={deltas} />
-              </div>
-
-              {/* Score decomposition — why the score is what it is */}
-              {health && health.overall < 75 && (
-                <div className="mb-8">
-                  <ScoreDecomposition contributions={health.contributions} />
-                </div>
+              {/* Operational state — replaces Health Score card */}
+              {health && (
+                <OperationalStateBar
+                  health={health}
+                  feed={feed}
+                  deltas={deltas}
+                  yesterdayScore={yesterdayScore}
+                />
               )}
 
-              {/* Priority Feed */}
-              <div className="mb-2">
+              {/* Changes since yesterday — only shown when there are actual changes */}
+              <SinceYesterdayCard deltas={deltas} />
+
+              {/* Priority feed — the core experience */}
+              <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xs font-bold text-foreground uppercase tracking-widest">
                     What needs attention now
@@ -509,7 +416,7 @@ export default function DashboardPage() {
                 <PriorityFeed items={feed} />
               </div>
 
-              {/* KPI strip */}
+              {/* KPI strip — supporting context only */}
               <KpiStrip revenue={totalRevenue} profit={totalProfit} adSpend={totalAdSpend} />
             </>
           )}
