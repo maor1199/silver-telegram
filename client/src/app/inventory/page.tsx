@@ -15,10 +15,11 @@ import {
   ChevronUp,
   ArrowRight,
 } from "lucide-react"
-import { MOCK_SKUS } from "@/lib/intelligence/mock-data"
-import { getInventorySnapshots, assessStockoutRisk, assessOverstockRisk } from "@/lib/intelligence/risk-engine"
+import { useSkus } from "@/lib/intelligence/store"
+import { getInventorySnapshots } from "@/lib/intelligence/risk-engine"
 import type { InventorySnapshot, InventoryStatus } from "@/lib/intelligence/types"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -77,22 +78,46 @@ function DaysBar({ days, leadTime }: { days: number; leadTime: number }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function InventoryPage() {
-  const snapshots = getInventorySnapshots(MOCK_SKUS)
+  const { skus, meta, hydrated } = useSkus()
+  const snapshots = hydrated ? getInventorySnapshots(skus) : []
 
   const orderNow = snapshots.filter(s => s.status === "order_now")
   const reorderSoon = snapshots.filter(s => s.status === "reorder_soon")
-  const watch = snapshots.filter(s => s.status === "watch")
-  const healthy = snapshots.filter(s => s.status === "ok")
   const risky = snapshots.filter(s => s.status === "overstock" || s.status === "dead")
 
-  const totalUnits = MOCK_SKUS.filter(s => s.status === "active").reduce((sum, s) => sum + s.currentInventory, 0)
-  const avgDailySales = MOCK_SKUS.filter(s => s.status === "active").reduce((sum, s) => sum + s.avgDailySales, 0)
+  const activeSkus = skus.filter(s => s.status === "active")
+  const totalUnits = activeSkus.reduce((sum, s) => sum + s.currentInventory, 0)
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Navbar />
 
       <main className="flex-1">
+        {/* Demo banner */}
+        {hydrated && meta.source === "demo" && (
+          <div className="border-b border-yellow-200 bg-yellow-50 px-6 py-2.5">
+            <div className="mx-auto max-w-[1200px] flex items-center justify-between">
+              <p className="text-xs text-yellow-800">
+                <span className="font-semibold">Demo data</span> — Showing sample SKUs. Upload your own CSV to see real inventory signals.
+              </p>
+              <Link href="/data" className="text-xs font-semibold text-yellow-900 underline underline-offset-2 hover:text-yellow-700">
+                Import my data →
+              </Link>
+            </div>
+          </div>
+        )}
+        {hydrated && meta.source === "live" && (
+          <div className="border-b border-green-200 bg-green-50 px-6 py-2.5">
+            <div className="mx-auto max-w-[1200px]">
+              <p className="text-xs text-green-800">
+                <span className="font-semibold">Live data</span>
+                {meta.filename && ` — ${meta.filename}`}
+                {meta.rowCount && ` · ${meta.rowCount} SKUs`}
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="mx-auto max-w-[1200px] px-6 py-8">
 
           {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -107,28 +132,36 @@ export default function InventoryPage() {
           </div>
 
           {/* ── KPI Row ────────────────────────────────────────────────────── */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-              <p className="text-xs font-semibold text-red-700 uppercase tracking-wider mb-2">Order Now</p>
-              <p className="text-3xl font-bold text-red-700">{orderNow.length}</p>
-              <p className="text-xs text-red-600 mt-1">SKUs past reorder point</p>
+          {!hydrated ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 animate-pulse">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="rounded-2xl border border-border bg-muted/40 h-20" />
+              ))}
             </div>
-            <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
-              <p className="text-xs font-semibold text-orange-700 uppercase tracking-wider mb-2">Reorder Soon</p>
-              <p className="text-3xl font-bold text-orange-700">{reorderSoon.length}</p>
-              <p className="text-xs text-orange-600 mt-1">Within 14-day buffer</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                <p className="text-xs font-semibold text-red-700 uppercase tracking-wider mb-2">Order Now</p>
+                <p className="text-3xl font-bold text-red-700">{orderNow.length}</p>
+                <p className="text-xs text-red-600 mt-1">SKUs past reorder point</p>
+              </div>
+              <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
+                <p className="text-xs font-semibold text-orange-700 uppercase tracking-wider mb-2">Reorder Soon</p>
+                <p className="text-3xl font-bold text-orange-700">{reorderSoon.length}</p>
+                <p className="text-xs text-orange-600 mt-1">Within 14-day buffer</p>
+              </div>
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Total Units</p>
+                <p className="text-3xl font-bold text-foreground">{totalUnits.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground mt-1">Across all active SKUs</p>
+              </div>
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2">Overstock Risk</p>
+                <p className="text-3xl font-bold text-blue-700">{risky.length}</p>
+                <p className="text-xs text-blue-600 mt-1">SKUs with 90+ days stock</p>
+              </div>
             </div>
-            <div className="rounded-2xl border border-border bg-card p-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Total Units</p>
-              <p className="text-3xl font-bold text-foreground">{totalUnits.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-1">Across all active SKUs</p>
-            </div>
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
-              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2">Overstock Risk</p>
-              <p className="text-3xl font-bold text-blue-700">{risky.length}</p>
-              <p className="text-xs text-blue-600 mt-1">SKUs with 90+ days stock</p>
-            </div>
-          </div>
+          )}
 
           {/* ── Inventory Table ─────────────────────────────────────────────── */}
           <div className="rounded-2xl border border-border bg-card overflow-hidden">

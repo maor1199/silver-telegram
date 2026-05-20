@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Menu, X, LogOut, ChevronDown, Sparkles, BookOpen, Package, BarChart3, Zap, Activity } from "lucide-react"
+import { Menu, X, LogOut, ChevronDown, Sparkles, BookOpen, Package, BarChart3, Zap, Activity, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import type { Session } from "@supabase/supabase-js"
@@ -34,6 +34,12 @@ const PLATFORM_MENU_ITEMS = [
     href: "/advisor",
     description: "Ask operational questions about your business",
     icon: Zap,
+  },
+  {
+    name: "Import Data",
+    href: "/data",
+    description: "Upload your CSV to run the risk engine on real SKU data",
+    icon: Upload,
   },
 ]
 

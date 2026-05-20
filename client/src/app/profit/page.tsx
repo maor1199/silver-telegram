@@ -10,10 +10,11 @@ import {
   DollarSign,
   AlertCircle,
 } from "lucide-react"
-import { MOCK_SKUS } from "@/lib/intelligence/mock-data"
+import { useSkus } from "@/lib/intelligence/store"
 import { getProfitSnapshots } from "@/lib/intelligence/risk-engine"
 import type { ProfitSnapshot, ProfitStatus } from "@/lib/intelligence/types"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -66,7 +67,8 @@ function AcosBar({ acos }: { acos: number }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProfitPage() {
-  const snapshots = getProfitSnapshots(MOCK_SKUS)
+  const { skus, meta, hydrated } = useSkus()
+  const snapshots = hydrated ? getProfitSnapshots(skus) : []
 
   const totalRevenue = snapshots.reduce((s, p) => s + p.monthlyRevenue, 0)
   const totalProfit = snapshots.reduce((s, p) => s + p.netProfitMonthly, 0)
@@ -75,8 +77,6 @@ export default function ProfitPage() {
   const overallAcos = totalRevenue > 0 ? (totalAdSpend / totalRevenue) * 100 : 0
 
   const unprofitable = snapshots.filter(s => s.status === "unprofitable")
-  const atRisk = snapshots.filter(s => s.status === "at_risk")
-  const declining = snapshots.filter(s => s.status === "watch")
   const healthy = snapshots.filter(s => s.status === "healthy")
 
   const sortedByProfit = [...snapshots].sort((a, b) => a.netProfitMonthly - b.netProfitMonthly)
@@ -86,6 +86,31 @@ export default function ProfitPage() {
       <Navbar />
 
       <main className="flex-1">
+        {/* Demo banner */}
+        {hydrated && meta.source === "demo" && (
+          <div className="border-b border-yellow-200 bg-yellow-50 px-6 py-2.5">
+            <div className="mx-auto max-w-[1200px] flex items-center justify-between">
+              <p className="text-xs text-yellow-800">
+                <span className="font-semibold">Demo data</span> — Showing sample SKUs. Upload your CSV to see real profitability.
+              </p>
+              <Link href="/data" className="text-xs font-semibold text-yellow-900 underline underline-offset-2 hover:text-yellow-700">
+                Import my data →
+              </Link>
+            </div>
+          </div>
+        )}
+        {hydrated && meta.source === "live" && (
+          <div className="border-b border-green-200 bg-green-50 px-6 py-2.5">
+            <div className="mx-auto max-w-[1200px]">
+              <p className="text-xs text-green-800">
+                <span className="font-semibold">Live data</span>
+                {meta.filename && ` — ${meta.filename}`}
+                {meta.rowCount && ` · ${meta.rowCount} SKUs`}
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="mx-auto max-w-[1200px] px-6 py-8">
 
           {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -100,6 +125,13 @@ export default function ProfitPage() {
           </div>
 
           {/* ── Portfolio KPIs ──────────────────────────────────────────────── */}
+          {!hydrated ? (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8 animate-pulse">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="rounded-2xl border border-border bg-muted/40 h-20" />
+              ))}
+            </div>
+          ) : (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
             <div className="rounded-2xl border border-border bg-card p-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Revenue</p>
@@ -129,6 +161,7 @@ export default function ProfitPage() {
               <p className="text-xs text-muted-foreground mt-1">margin ≥ 18%</p>
             </div>
           </div>
+          )}
 
           {/* ── Profit Table ────────────────────────────────────────────────── */}
           <div className="rounded-2xl border border-border bg-card overflow-hidden mb-8">
