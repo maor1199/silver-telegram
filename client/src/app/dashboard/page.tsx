@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
@@ -16,9 +16,12 @@ import { getPriorityFeed } from "@/lib/intelligence/priority-feed"
 import type { PriorityItem, Trajectory } from "@/lib/intelligence/priority-feed"
 import {
   trackFeedVisit,
+  trackFeedRendered,
   trackAlertExpanded,
   trackAlertCollapsed,
   trackAiClicked,
+  trackFeedback,
+  type FeedbackValue,
 } from "@/lib/intelligence/engagement-tracker"
 import { cn } from "@/lib/utils"
 
@@ -165,6 +168,50 @@ function DetailSection({ label, children }: { label: string; children: React.Rea
   )
 }
 
+// ─── Feedback widget ──────────────────────────────────────────────────────────
+// One small question at the bottom of the detail panel.
+// Lightweight, non-intrusive, stores locally.
+
+const FEEDBACK_OPTIONS: { value: FeedbackValue; label: string }[] = [
+  { value: "useful",       label: "Useful"       },
+  { value: "not_useful",   label: "Not useful"   },
+  { value: "too_obvious",  label: "Too obvious"  },
+  { value: "not_accurate", label: "Not accurate" },
+]
+
+function FeedbackWidget({ item }: { item: PriorityItem }) {
+  const [selected, setSelected] = useState<FeedbackValue | null>(null)
+
+  function handleFeedback(value: FeedbackValue) {
+    if (selected) return
+    setSelected(value)
+    trackFeedback(item.alertId, item.category, value)
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border/30">
+      <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">
+        Was this useful?
+      </p>
+      {selected ? (
+        <p className="text-[11px] text-muted-foreground">Recorded — thanks.</p>
+      ) : (
+        <div className="flex gap-2 flex-wrap">
+          {FEEDBACK_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => handleFeedback(opt.value)}
+              className="text-[11px] rounded-md border border-border bg-background hover:border-primary/30 hover:text-foreground px-2.5 py-1 text-muted-foreground transition-colors"
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ExpandedDetail({ item }: { item: PriorityItem }) {
   const hasCausal = item.causedBy || item.impacts || item.chainLabel
 
@@ -216,6 +263,9 @@ function ExpandedDetail({ item }: { item: PriorityItem }) {
       <DetailSection label="Quantified Impact">
         <p className="text-xs text-muted-foreground leading-relaxed">{item.impact}</p>
       </DetailSection>
+
+      {/* Feedback */}
+      <FeedbackWidget item={item} />
 
     </div>
   )
@@ -404,10 +454,20 @@ export default function DashboardPage() {
   const totalProfit  = activeSkus.reduce((s, k) => s + k.netProfitMonthly, 0)
   const totalAdSpend = activeSkus.reduce((s, k) => s + k.monthlyAdSpend,   0)
 
-  // Trust instrumentation — record feed visits
+  // Trust instrumentation — record feed visits + what was rendered
+  const didTrackRender = useRef(false)
   useEffect(() => {
-    if (hydrated) trackFeedVisit()
-  }, [hydrated])
+    if (!hydrated) return
+    trackFeedVisit()
+    if (feed.length > 0 && !didTrackRender.current) {
+      trackFeedRendered(feed.map(i => ({
+        alertId:  i.alertId,
+        category: i.category,
+        severity: i.severity,
+      })))
+      didTrackRender.current = true
+    }
+  }, [hydrated]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
