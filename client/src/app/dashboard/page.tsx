@@ -1,10 +1,11 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import { Zap, Upload } from "lucide-react"
+import { Zap, Upload, ChevronDown } from "lucide-react"
 import { useSkus } from "@/lib/intelligence/store"
 import { generateRiskAlerts } from "@/lib/intelligence/risk-engine"
 import { getBusinessHealthScore } from "@/lib/intelligence/health-score"
@@ -13,11 +14,15 @@ import { computeDeltas, DEMO_YESTERDAY_SCORE, loadYesterdayScore } from "@/lib/i
 import type { DeltaChange } from "@/lib/intelligence/delta-engine"
 import { getPriorityFeed } from "@/lib/intelligence/priority-feed"
 import type { PriorityItem, Trajectory } from "@/lib/intelligence/priority-feed"
+import {
+  trackFeedVisit,
+  trackAlertExpanded,
+  trackAlertCollapsed,
+  trackAiClicked,
+} from "@/lib/intelligence/engagement-tracker"
 import { cn } from "@/lib/utils"
 
 // ─── Operational State Bar ────────────────────────────────────────────────────
-// Replaces the Health Score card. Translates numerical score into
-// operational language. The number is gone — only the meaning remains.
 
 function deriveOperationalState(
   health: BusinessHealthScore,
@@ -28,25 +33,25 @@ function deriveOperationalState(
   const acceleratingCount = feed.filter(f => f.trajectory === "accelerating").length
 
   const stabilityLabel =
-    health.overall >= 68 ? "Stable" :
-    health.overall >= 52 ? "Weak"   :
-    health.overall >= 38 ? "Fragile" : "Critical"
+    health.overall >= 68 ? "Stable"   :
+    health.overall >= 52 ? "Weak"     :
+    health.overall >= 38 ? "Fragile"  : "Critical"
   const stabilityColor =
     health.overall >= 68 ? "text-green-700" :
     health.overall >= 52 ? "text-orange-600" : "text-red-600"
 
   const riskLabel =
-    criticalCount > 0                          ? "Elevated" :
-    feed.some(f => f.severity === "high")      ? "Moderate" : "Managed"
+    criticalCount > 0                     ? "Elevated" :
+    feed.some(f => f.severity === "high") ? "Moderate" : "Managed"
   const riskColor =
-    criticalCount > 0                          ? "text-red-600" :
-    feed.some(f => f.severity === "high")      ? "text-orange-600" : "text-green-700"
+    criticalCount > 0                     ? "text-red-600"    :
+    feed.some(f => f.severity === "high") ? "text-orange-600" : "text-green-700"
 
   const marginLabel =
     health.profit.score < 52 ? "Increasing" :
     health.profit.score < 68 ? "Present"    : "Stable"
   const marginColor =
-    health.profit.score < 52 ? "text-red-600" :
+    health.profit.score < 52 ? "text-red-600"    :
     health.profit.score < 68 ? "text-orange-600" : "text-green-700"
 
   const trajectoryLabel =
@@ -54,19 +59,11 @@ function deriveOperationalState(
     deltas.length > 2     ? "Shifting"      :
     deltas.length > 0     ? "In motion"     : "Holding"
 
-  return {
-    stabilityLabel, stabilityColor,
-    riskLabel,      riskColor,
-    marginLabel,    marginColor,
-    trajectoryLabel,
-  }
+  return { stabilityLabel, stabilityColor, riskLabel, riskColor, marginLabel, marginColor, trajectoryLabel }
 }
 
 function OperationalStateBar({
-  health,
-  feed,
-  deltas,
-  yesterdayScore,
+  health, feed, deltas, yesterdayScore,
 }: {
   health: BusinessHealthScore
   feed: PriorityItem[]
@@ -79,7 +76,6 @@ function OperationalStateBar({
   return (
     <div className="rounded-2xl border border-border bg-card px-6 py-5 mb-6">
       <div className="flex items-start justify-between flex-wrap gap-4">
-        {/* Operational status */}
         <div className="flex gap-8 flex-wrap">
           {[
             { label: "Business Stability", value: state.stabilityLabel, color: state.stabilityColor },
@@ -87,15 +83,11 @@ function OperationalStateBar({
             { label: "Margin Pressure",    value: state.marginLabel,    color: state.marginColor    },
           ].map(s => (
             <div key={s.label}>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
-                {s.label}
-              </p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">{s.label}</p>
               <p className={cn("text-xl font-bold leading-none", s.color)}>{s.value}</p>
             </div>
           ))}
         </div>
-
-        {/* Right: issue count + trajectory */}
         <div className="text-right text-xs space-y-0.5">
           {feed.length > 0 && (
             <p className="font-semibold text-foreground">
@@ -119,14 +111,12 @@ function OperationalStateBar({
 }
 
 // ─── Since Yesterday ──────────────────────────────────────────────────────────
-// Only rendered when there are actual changes — no empty state card.
 
 function DeltaRow({ change }: { change: DeltaChange }) {
-  const isWorse = change.delta < 0 || change.type === "acos_spike" || change.type === "return_spike"
+  const isWorse    = change.delta < 0 || change.type === "acos_spike" || change.type === "return_spike"
   const arrowColor =
-    change.severity === "critical" ? "text-red-500" :
+    change.severity === "critical" ? "text-red-500"    :
     change.severity === "high"     ? "text-orange-500" : "text-yellow-500"
-
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-border/50 last:border-0">
       <span className={cn("text-sm font-bold leading-tight mt-0.5 shrink-0", arrowColor)}>
@@ -147,9 +137,7 @@ function SinceYesterdayCard({ deltas }: { deltas: DeltaChange[] }) {
       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
         Changes since yesterday
       </p>
-      <div>
-        {deltas.map(d => <DeltaRow key={`${d.skuId}-${d.type}`} change={d} />)}
-      </div>
+      {deltas.map(d => <DeltaRow key={`${d.skuId}-${d.type}`} change={d} />)}
     </div>
   )
 }
@@ -157,14 +145,87 @@ function SinceYesterdayCard({ deltas }: { deltas: DeltaChange[] }) {
 // ─── Priority Feed ────────────────────────────────────────────────────────────
 
 const TRAJECTORY_CONFIG: Record<Trajectory, { label: string; color: string }> = {
-  accelerating:  { label: "↑ Accelerating",  color: "text-red-600"    },
-  deteriorating: { label: "Deteriorating",   color: "text-orange-600" },
-  stabilizing:   { label: "Stabilizing",     color: "text-yellow-600" },
-  recovering:    { label: "Recovering",      color: "text-green-600"  },
+  accelerating:  { label: "↑ Accelerating", color: "text-red-600"    },
+  deteriorating: { label: "Deteriorating",  color: "text-orange-600" },
+  stabilizing:   { label: "Stabilizing",    color: "text-yellow-600" },
+  recovering:    { label: "Recovering",     color: "text-green-600"  },
 }
 
+// ─── Expanded Detail Panel ────────────────────────────────────────────────────
+// Revealed on demand. Calm on the surface, deep underneath.
+
+function DetailSection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
+        {label}
+      </p>
+      {children}
+    </div>
+  )
+}
+
+function ExpandedDetail({ item }: { item: PriorityItem }) {
+  const hasCausal = item.causedBy || item.impacts || item.chainLabel
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border/50 flex flex-col gap-4">
+
+      {/* Causal chain */}
+      {hasCausal && (
+        <DetailSection label="Causal Chain">
+          {item.chainLabel && (
+            <p className="text-xs font-semibold text-foreground mb-1.5">{item.chainLabel}</p>
+          )}
+          {item.causedBy && (
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              <span className="text-foreground/70 font-medium">← Driven by:</span> {item.causedBy}
+            </p>
+          )}
+          {item.impacts && (
+            <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+              <span className="text-foreground/70 font-medium">→ Compounding:</span> {item.impacts}
+            </p>
+          )}
+        </DetailSection>
+      )}
+
+      {/* Issue history */}
+      {item.persistenceSince && (
+        <DetailSection label="Issue History">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Active for {item.persistenceSince}.{" "}
+            {item.persistenceLabel
+              ? <span className={cn("font-semibold", item.persistenceColorClass)}>{item.persistenceLabel}.</span>
+              : "First occurrence."
+            }{" "}
+            Persistent issues compound operational risk — resolution becomes more disruptive the longer this runs.
+          </p>
+        </DetailSection>
+      )}
+
+      {/* Signal quality */}
+      <DetailSection label="Signal Quality">
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          <span className="font-semibold text-foreground">{item.confidence}% confidence</span> —{" "}
+          {item.confidenceReason}
+        </p>
+      </DetailSection>
+
+      {/* Quantified impact */}
+      <DetailSection label="Quantified Impact">
+        <p className="text-xs text-muted-foreground leading-relaxed">{item.impact}</p>
+      </DetailSection>
+
+    </div>
+  )
+}
+
+// ─── Priority Item Card ───────────────────────────────────────────────────────
+
 function PriorityItemCard({ item }: { item: PriorityItem }) {
-  const router = useRouter()
+  const router               = useRouter()
+  const [expanded, setExpanded] = useState(false)
 
   const borderColor =
     item.severity === "critical" ? "border-l-red-500"    :
@@ -173,15 +234,26 @@ function PriorityItemCard({ item }: { item: PriorityItem }) {
 
   const traj = TRAJECTORY_CONFIG[item.trajectory]
 
-  // Only surface persistence when it's notable (Recurring+)
   const showPersistence =
     item.persistenceLabel &&
     item.persistenceColorClass !== "text-muted-foreground"
 
+  function handleToggle() {
+    const next = !expanded
+    setExpanded(next)
+    if (next) trackAlertExpanded(item.alertId, item.category, item.severity, item.trajectory, item.rank)
+    else      trackAlertCollapsed(item.alertId)
+  }
+
+  function handleAiClick() {
+    trackAiClicked(item.alertId, item.category, item.rank)
+    router.push(`/advisor?q=${encodeURIComponent(item.advisorQ)}`)
+  }
+
   return (
     <div className={cn("border-l-2 pl-5 py-5 border-b border-border/60 last:border-b-0", borderColor)}>
 
-      {/* Meta row: SKU · category | trajectory */}
+      {/* Meta: SKU · category | trajectory */}
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">{item.skuName}</span>
@@ -202,7 +274,7 @@ function PriorityItemCard({ item }: { item: PriorityItem }) {
       {/* Context */}
       <p className="text-sm text-muted-foreground leading-relaxed mb-3">{item.context}</p>
 
-      {/* If nothing changes — only shown when confidence supports it */}
+      {/* Projected impact — the "If nothing changes" hook */}
       {item.projectedImpact && (
         <div className="mb-3 rounded-lg bg-amber-50/70 border border-amber-200/60 px-3 py-2">
           <p className="text-[11px] text-amber-800 leading-snug">
@@ -211,30 +283,45 @@ function PriorityItemCard({ item }: { item: PriorityItem }) {
         </div>
       )}
 
-      {/* Causal context — only causedBy, not both, keeps it readable */}
-      {item.causedBy && (
+      {/* Causal context (surface) — only causedBy, full chain in expanded */}
+      {item.causedBy && !expanded && (
         <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
           <span className="font-semibold text-foreground/80">Driven by:</span> {item.causedBy}
         </p>
       )}
 
-      {/* Action + Ask AI */}
+      {/* Action row */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-foreground leading-snug">→ {item.action}</p>
-          {showPersistence && (
+          {showPersistence && !expanded && (
             <p className={cn("text-[11px] mt-1.5 leading-snug", item.persistenceColorClass)}>
               {item.persistenceLabel}
             </p>
           )}
         </div>
-        <button
-          onClick={() => router.push(`/advisor?q=${encodeURIComponent(item.advisorQ)}`)}
-          className="shrink-0 text-xs font-medium text-primary hover:text-primary/70 transition-colors whitespace-nowrap py-0.5"
-        >
-          Ask AI →
-        </button>
+        {/* Controls: expand + Ask AI */}
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={handleToggle}
+            className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            aria-label={expanded ? "Collapse detail" : "Expand detail"}
+          >
+            Details
+            <ChevronDown className={cn("h-3 w-3 transition-transform duration-200", expanded && "rotate-180")} />
+          </button>
+          <button
+            onClick={handleAiClick}
+            className="text-xs font-medium text-primary hover:text-primary/70 transition-colors whitespace-nowrap"
+          >
+            Ask AI →
+          </button>
+        </div>
       </div>
+
+      {/* Progressive disclosure — expanded detail */}
+      {expanded && <ExpandedDetail item={item} />}
+
     </div>
   )
 }
@@ -243,13 +330,9 @@ function PriorityFeed({ items }: { items: PriorityItem[] }) {
   if (items.length === 0) {
     return (
       <div className="rounded-2xl border border-border bg-card px-6 py-10 text-center">
-        <div className="mx-auto mb-3 h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-          ✓
-        </div>
+        <div className="mx-auto mb-3 h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">✓</div>
         <p className="text-sm font-semibold text-foreground">No actions required</p>
-        <p className="text-sm text-muted-foreground mt-1">
-          All SKUs are operating within healthy parameters.
-        </p>
+        <p className="text-sm text-muted-foreground mt-1">All SKUs are operating within healthy parameters.</p>
       </div>
     )
   }
@@ -261,7 +344,6 @@ function PriorityFeed({ items }: { items: PriorityItem[] }) {
 }
 
 // ─── KPI Strip ────────────────────────────────────────────────────────────────
-// Three numbers, no chrome — just context at the bottom.
 
 function KpiStrip({ revenue, profit, adSpend }: {
   revenue: number; profit: number; adSpend: number
@@ -272,8 +354,7 @@ function KpiStrip({ revenue, profit, adSpend }: {
       <div>
         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Revenue</p>
         <p className="text-base font-bold text-foreground">
-          ${revenue.toLocaleString()}
-          <span className="text-xs font-normal text-muted-foreground ml-1">/mo</span>
+          ${revenue.toLocaleString()}<span className="text-xs font-normal text-muted-foreground ml-1">/mo</span>
         </p>
       </div>
       <div>
@@ -286,8 +367,7 @@ function KpiStrip({ revenue, profit, adSpend }: {
       <div>
         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Ad Spend</p>
         <p className="text-base font-bold text-foreground">
-          ${adSpend.toLocaleString()}
-          <span className="text-xs font-normal text-muted-foreground ml-1">/mo</span>
+          ${adSpend.toLocaleString()}<span className="text-xs font-normal text-muted-foreground ml-1">/mo</span>
         </p>
       </div>
     </div>
@@ -300,9 +380,7 @@ function LoadingSkeleton() {
   return (
     <div className="animate-pulse space-y-6">
       <div className="rounded-2xl bg-muted/40 h-24" />
-      {[...Array(3)].map((_, i) => (
-        <div key={i} className="rounded-2xl bg-muted/40 h-28" />
-      ))}
+      {[...Array(3)].map((_, i) => <div key={i} className="rounded-2xl bg-muted/40 h-28" />)}
     </div>
   )
 }
@@ -312,10 +390,10 @@ function LoadingSkeleton() {
 export default function DashboardPage() {
   const { skus, meta, hydrated } = useSkus()
 
-  const alerts = hydrated ? generateRiskAlerts(skus)                                    : []
-  const health = hydrated ? getBusinessHealthScore(skus, alerts)                         : null
-  const deltas = hydrated ? computeDeltas(skus, meta.source === "demo")                  : []
-  const feed   = hydrated ? getPriorityFeed(skus, alerts, meta.source === "demo")        : []
+  const alerts = hydrated ? generateRiskAlerts(skus)                             : []
+  const health = hydrated ? getBusinessHealthScore(skus, alerts)                  : null
+  const deltas = hydrated ? computeDeltas(skus, meta.source === "demo")           : []
+  const feed   = hydrated ? getPriorityFeed(skus, alerts, meta.source === "demo") : []
 
   const yesterdayScore = hydrated
     ? meta.source === "demo" ? DEMO_YESTERDAY_SCORE : loadYesterdayScore()
@@ -325,6 +403,11 @@ export default function DashboardPage() {
   const totalRevenue = activeSkus.reduce((s, k) => s + k.monthlyRevenue,   0)
   const totalProfit  = activeSkus.reduce((s, k) => s + k.netProfitMonthly, 0)
   const totalAdSpend = activeSkus.reduce((s, k) => s + k.monthlyAdSpend,   0)
+
+  // Trust instrumentation — record feed visits
+  useEffect(() => {
+    if (hydrated) trackFeedVisit()
+  }, [hydrated])
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -337,10 +420,7 @@ export default function DashboardPage() {
             <p className="text-xs text-yellow-800">
               <span className="font-semibold">Demo data</span> — Upload your CSV to run the risk engine on your real SKUs
             </p>
-            <Link
-              href="/data"
-              className="inline-flex items-center gap-1 text-xs font-semibold text-yellow-900 underline underline-offset-2 hover:text-yellow-700"
-            >
+            <Link href="/data" className="inline-flex items-center gap-1 text-xs font-semibold text-yellow-900 underline underline-offset-2 hover:text-yellow-700">
               <Upload className="h-3 w-3" />
               Import my data
             </Link>
@@ -388,7 +468,6 @@ export default function DashboardPage() {
 
           {hydrated && (
             <>
-              {/* Operational state — replaces Health Score card */}
               {health && (
                 <OperationalStateBar
                   health={health}
@@ -398,10 +477,8 @@ export default function DashboardPage() {
                 />
               )}
 
-              {/* Changes since yesterday — only shown when there are actual changes */}
               <SinceYesterdayCard deltas={deltas} />
 
-              {/* Priority feed — the core experience */}
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xs font-bold text-foreground uppercase tracking-widest">
@@ -416,7 +493,6 @@ export default function DashboardPage() {
                 <PriorityFeed items={feed} />
               </div>
 
-              {/* KPI strip — supporting context only */}
               <KpiStrip revenue={totalRevenue} profit={totalProfit} adSpend={totalAdSpend} />
             </>
           )}
