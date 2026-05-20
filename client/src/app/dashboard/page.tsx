@@ -1,342 +1,403 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import {
-  AlertCircle, AlertTriangle, Info, TrendingDown, TrendingUp,
-  Package, DollarSign, Activity, ChevronRight, CheckCircle2,
-  BarChart3, Zap, Database, Upload,
+  ArrowRight,
+  Zap,
+  Activity,
+  ShoppingCart,
+  BarChart3,
+  RotateCcw,
+  Archive,
+  Upload,
 } from "lucide-react"
 import { useSkus } from "@/lib/intelligence/store"
-import { generateRiskAlerts, getBusinessHealthSummary } from "@/lib/intelligence/risk-engine"
-import type { RiskAlert, RiskSeverity, BusinessHealthSummary } from "@/lib/intelligence/types"
+import { generateRiskAlerts } from "@/lib/intelligence/risk-engine"
+import { getBusinessHealthScore } from "@/lib/intelligence/health-score"
+import type { BusinessHealthScore } from "@/lib/intelligence/health-score"
+import { computeDeltas } from "@/lib/intelligence/delta-engine"
+import type { DeltaChange } from "@/lib/intelligence/delta-engine"
+import { getPriorityFeed } from "@/lib/intelligence/priority-feed"
+import type { PriorityItem } from "@/lib/intelligence/priority-feed"
 import { cn } from "@/lib/utils"
 
 // ─── Severity config ──────────────────────────────────────────────────────────
 
-function severityConfig(s: RiskSeverity) {
+function severityConfig(s: "critical" | "high" | "medium") {
   switch (s) {
-    case "critical": return { bg: "bg-red-50 border-red-200",    badge: "bg-red-100 text-red-700 border-red-200",    icon: AlertCircle,   iconColor: "text-red-500",    iconBg: "bg-red-100",    dot: "bg-red-500 animate-pulse", label: "Critical" }
-    case "high":     return { bg: "bg-orange-50 border-orange-200", badge: "bg-orange-100 text-orange-700 border-orange-200", icon: AlertTriangle, iconColor: "text-orange-500", iconBg: "bg-orange-100", dot: "bg-orange-500",            label: "High" }
-    case "medium":   return { bg: "bg-yellow-50 border-yellow-200", badge: "bg-yellow-100 text-yellow-700 border-yellow-200", icon: Info,          iconColor: "text-yellow-600", iconBg: "bg-yellow-100", dot: "bg-yellow-500",            label: "Medium" }
-    default:         return { bg: "bg-blue-50 border-blue-200",   badge: "bg-blue-100 text-blue-700 border-blue-200",   icon: Info,          iconColor: "text-blue-500",   iconBg: "bg-blue-100",   dot: "bg-blue-400",              label: "Info" }
+    case "critical": return {
+      pill: "bg-red-100 text-red-700 border-red-200",
+      dot: "bg-red-500 animate-pulse",
+      bar: "border-red-200 bg-red-50/40",
+      label: "CRITICAL",
+    }
+    case "high": return {
+      pill: "bg-orange-100 text-orange-700 border-orange-200",
+      dot: "bg-orange-500",
+      bar: "border-orange-200 bg-orange-50/20",
+      label: "HIGH",
+    }
+    default: return {
+      pill: "bg-yellow-100 text-yellow-700 border-yellow-200",
+      dot: "bg-yellow-500",
+      bar: "border-yellow-200 bg-yellow-50/20",
+      label: "MEDIUM",
+    }
   }
 }
 
-function healthConfig(status: BusinessHealthSummary["healthStatus"]) {
-  switch (status) {
-    case "critical": return { color: "text-red-600",    bg: "bg-red-50 border-red-200",       dot: "bg-red-500 animate-pulse" }
-    case "at_risk":  return { color: "text-orange-600", bg: "bg-orange-50 border-orange-200", dot: "bg-orange-500" }
-    case "watch":    return { color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-200", dot: "bg-yellow-500" }
-    default:         return { color: "text-green-600",  bg: "bg-green-50 border-green-200",   dot: "bg-green-500" }
+function categoryIcon(cat: PriorityItem["category"]) {
+  switch (cat) {
+    case "stockout": return <ShoppingCart className="h-3.5 w-3.5" />
+    case "margin":   return <BarChart3    className="h-3.5 w-3.5" />
+    case "ppc":      return <Activity     className="h-3.5 w-3.5" />
+    case "returns":  return <RotateCcw    className="h-3.5 w-3.5" />
+    case "overstock":return <Archive      className="h-3.5 w-3.5" />
   }
 }
 
-// ─── Risk Card ────────────────────────────────────────────────────────────────
+// ─── Business Health Card ─────────────────────────────────────────────────────
 
-function RiskCard({ alert }: { alert: RiskAlert }) {
-  const cfg = severityConfig(alert.severity)
-  const Icon = cfg.icon
+function ScoreBar({ score, label }: { score: number; label: string }) {
+  const color =
+    score >= 68 ? "bg-green-500" :
+    score >= 52 ? "bg-yellow-400" :
+    score >= 38 ? "bg-orange-400" : "bg-red-500"
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-xs text-muted-foreground w-20 shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className={cn("h-full rounded-full transition-all duration-700", color)} style={{ width: `${score}%` }} />
+      </div>
+      <span className="text-xs tabular-nums font-semibold text-foreground w-7 text-right">{score}</span>
+    </div>
+  )
+}
+
+function HealthCard({ health }: { health: BusinessHealthScore }) {
+  const gradeColor =
+    health.grade === "A" ? "text-green-600" :
+    health.grade === "B" ? "text-blue-600" :
+    health.grade === "C" ? "text-yellow-600" :
+    health.grade === "D" ? "text-orange-600" : "text-red-600"
+
+  const labelColor =
+    health.overall >= 68 ? "text-green-700 bg-green-100 border-green-200" :
+    health.overall >= 52 ? "text-yellow-700 bg-yellow-100 border-yellow-200" :
+    health.overall >= 38 ? "text-orange-700 bg-orange-100 border-orange-200" :
+                           "text-red-700 bg-red-100 border-red-200"
+
+  const dims = [health.inventory, health.profit, health.cashflow, health.operations]
+  const worstDim = dims.reduce((a, b) => a.score < b.score ? a : b)
 
   return (
-    <div className={cn("rounded-2xl border p-5 transition-shadow hover:shadow-md", cfg.bg)}>
-      <div className="flex items-start gap-3">
-        <div className={cn("mt-0.5 rounded-lg p-1.5 flex-shrink-0", cfg.iconBg)}>
-          <Icon className={cn("h-4 w-4", cfg.iconColor)} />
+    <div className="rounded-2xl border border-border bg-card p-6 flex flex-col gap-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Business Health</p>
+          <div className="flex items-baseline gap-3">
+            <span className={cn("text-5xl font-black leading-none", gradeColor)}>{health.grade}</span>
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-foreground">{health.overall}</span>
+                <span className="text-sm text-muted-foreground">/100</span>
+              </div>
+            </div>
+          </div>
         </div>
+        <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold mt-1", labelColor)}>
+          {health.label}
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        <ScoreBar score={health.inventory.score}  label="Inventory"  />
+        <ScoreBar score={health.profit.score}     label="Profit"     />
+        <ScoreBar score={health.cashflow.score}   label="Cashflow"   />
+        <ScoreBar score={health.operations.score} label="Operations" />
+      </div>
+
+      {worstDim.score < 68 && (
+        <p className="text-xs text-muted-foreground border-t border-border/60 pt-3 leading-relaxed">
+          <span className="font-semibold text-foreground">{worstDim.label}: </span>
+          {worstDim.detail}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ─── Since Yesterday Card ─────────────────────────────────────────────────────
+
+function DeltaRow({ change }: { change: DeltaChange }) {
+  const isWorse = change.delta < 0 || change.type === "acos_spike" || change.type === "return_spike"
+  const arrowColor =
+    change.severity === "critical" ? "text-red-500" :
+    change.severity === "high"     ? "text-orange-500" : "text-yellow-500"
+
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-b border-border/50 last:border-0">
+      <span className={cn("text-sm font-bold leading-tight mt-0.5 shrink-0", arrowColor)}>
+        {isWorse ? "↓" : "↑"}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-foreground leading-snug">{change.headline}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{change.detail}</p>
+      </div>
+    </div>
+  )
+}
+
+function SinceYesterdayCard({ deltas }: { deltas: DeltaChange[] }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-6 flex flex-col">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Since Yesterday</p>
+        {deltas.length > 0 ? (
+          <span className="rounded-full bg-orange-100 text-orange-700 border border-orange-200 text-xs font-semibold px-2 py-0.5">
+            {deltas.length} change{deltas.length !== 1 ? "s" : ""}
+          </span>
+        ) : (
+          <span className="rounded-full bg-green-100 text-green-700 border border-green-200 text-xs font-semibold px-2 py-0.5">
+            Stable
+          </span>
+        )}
+      </div>
+
+      {deltas.length === 0 ? (
+        <div className="flex-1 flex flex-col justify-center items-center gap-2 text-center py-8">
+          <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-base">✓</div>
+          <p className="text-sm font-semibold text-foreground">No significant changes</p>
+          <p className="text-xs text-muted-foreground max-w-[240px]">Your key metrics are stable since the last session.</p>
+        </div>
+      ) : (
+        <div className="mt-1">
+          {deltas.map(d => <DeltaRow key={`${d.skuId}-${d.type}`} change={d} />)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Priority Feed ────────────────────────────────────────────────────────────
+
+function PriorityItemCard({ item }: { item: PriorityItem }) {
+  const cfg = severityConfig(item.severity)
+  const router = useRouter()
+
+  return (
+    <div className={cn("rounded-2xl border p-5 transition-colors hover:shadow-sm", cfg.bar)}>
+      <div className="flex items-start gap-4">
+        {/* Rank number */}
+        <span className="text-xl font-black text-muted-foreground/25 leading-none pt-1 w-6 text-center shrink-0">
+          {item.rank}
+        </span>
+
+        {/* Main content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", cfg.badge)}>
-              <span className={cn("h-1.5 w-1.5 rounded-full", cfg.dot)} />
+          {/* Badges */}
+          <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+            <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold tracking-wide", cfg.pill)}>
+              <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", cfg.dot)} />
               {cfg.label}
             </span>
-            <span className="rounded-full bg-background/80 border border-border px-2 py-0.5 text-[10px] text-muted-foreground font-medium truncate max-w-[200px]">
-              {alert.skuName}
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted border border-border/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground capitalize">
+              {categoryIcon(item.category)}
+              {item.category}
             </span>
           </div>
-          <h3 className="text-sm font-semibold text-foreground leading-snug">{alert.title}</h3>
-          <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{alert.description}</p>
-        </div>
-      </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        <div className="rounded-xl bg-background/70 border border-border/60 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Why it matters</p>
-          <p className="text-xs text-foreground leading-relaxed">{alert.whyItMatters}</p>
-        </div>
-        <div className="rounded-xl bg-background/70 border border-border/60 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Recommended action</p>
-          <p className="text-xs text-foreground leading-relaxed">{alert.recommendedAction}</p>
-        </div>
-      </div>
+          {/* Headline */}
+          <p className="text-[15px] font-bold text-foreground leading-snug mb-1.5">{item.headline}</p>
 
-      <div className="mt-3 flex items-center justify-between flex-wrap gap-2">
-        <span className="text-xs font-semibold text-foreground">{alert.estimatedImpact}</span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-muted-foreground">Confidence: {alert.confidence}%</span>
-          {alert.dataUsed.slice(0, 2).map((d, i) => (
-            <span key={i} className="rounded-full bg-background border border-border px-2 py-0.5 text-[10px] text-muted-foreground hidden sm:inline">{d}</span>
-          ))}
+          {/* Context */}
+          <p className="text-sm text-muted-foreground leading-relaxed mb-3">{item.context}</p>
+
+          {/* Action + CTA */}
+          <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+            <div className="flex-1">
+              <div className="flex items-start gap-2">
+                <ArrowRight className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm font-semibold text-foreground leading-snug">{item.action}</p>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5 pl-5">{item.impact}</p>
+            </div>
+
+            <button
+              onClick={() => router.push(`/advisor?q=${encodeURIComponent(item.advisorQ)}`)}
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-primary/25 bg-primary/8 hover:bg-primary/15 px-3 py-2 text-xs font-semibold text-primary transition-colors"
+            >
+              <Zap className="h-3.5 w-3.5" />
+              Ask AI
+            </button>
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-// ─── Demo banner ──────────────────────────────────────────────────────────────
-
-function DemoBanner() {
-  return (
-    <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] px-5 py-4 flex items-center justify-between gap-4 mb-6">
-      <div className="flex items-center gap-3">
-        <Database className="h-4 w-4 text-primary flex-shrink-0" />
-        <div>
-          <p className="text-sm font-semibold text-foreground">You&apos;re viewing sample data</p>
-          <p className="text-xs text-muted-foreground">Upload your SKU data to run the risk engine on your real business.</p>
-        </div>
+function PriorityFeed({ items }: { items: PriorityItem[] }) {
+  if (items.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-10 text-center">
+        <div className="mx-auto mb-3 h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl">✓</div>
+        <p className="text-base font-semibold text-foreground">No actions required</p>
+        <p className="text-sm text-muted-foreground mt-1">All SKUs are operating within healthy parameters.</p>
       </div>
-      <Link href="/data"
-        className="flex-shrink-0 flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
-        <Upload className="h-3.5 w-3.5" />
-        Import CSV
-      </Link>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {items.map(item => <PriorityItemCard key={item.id} item={item} />)}
+    </div>
+  )
+}
+
+// ─── KPI Strip ────────────────────────────────────────────────────────────────
+
+function KpiStrip({ revenue, profit, adSpend }: { revenue: number; profit: number; adSpend: number }) {
+  const margin = revenue > 0 ? (profit / revenue) * 100 : 0
+  return (
+    <div className="grid grid-cols-3 gap-4 mt-8 pt-8 border-t border-border/50">
+      <div className="text-center">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Monthly Revenue</p>
+        <p className="text-xl font-bold text-foreground">${revenue.toLocaleString()}</p>
+      </div>
+      <div className="text-center">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Net Profit</p>
+        <p className={cn("text-xl font-bold", profit >= 0 ? "text-green-600" : "text-red-600")}>
+          {profit >= 0 ? "$" : "-$"}{Math.abs(Math.round(profit)).toLocaleString()}
+        </p>
+        <p className={cn("text-xs mt-0.5", profit >= 0 ? "text-green-600" : "text-red-500")}>{margin.toFixed(1)}% margin</p>
+      </div>
+      <div className="text-center">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Ad Spend</p>
+        <p className="text-xl font-bold text-foreground">${adSpend.toLocaleString()}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{revenue > 0 ? ((adSpend / revenue) * 100).toFixed(0) : 0}% of revenue</p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
+
+function LoadingSkeleton() {
+  return (
+    <div className="animate-pulse space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="rounded-2xl bg-muted/40 h-56" />
+        <div className="rounded-2xl bg-muted/40 h-56" />
+      </div>
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="rounded-2xl bg-muted/40 h-28" />
+      ))}
     </div>
   )
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function CommandCenterPage() {
+export default function DashboardPage() {
   const { skus, meta, hydrated } = useSkus()
 
-  const alerts = hydrated ? generateRiskAlerts(skus) : []
-  const health = hydrated ? getBusinessHealthSummary(skus, alerts) : null
+  const alerts = hydrated ? generateRiskAlerts(skus)                       : []
+  const health = hydrated ? getBusinessHealthScore(skus, alerts)            : null
+  const deltas = hydrated ? computeDeltas(skus, meta.source === "demo")    : []
+  const feed   = hydrated ? getPriorityFeed(skus, alerts)                  : []
 
-  const criticalAlerts = alerts.filter(a => a.severity === "critical")
-  const highAlerts = alerts.filter(a => a.severity === "high")
-  const mediumAlerts = alerts.filter(a => a.severity === "medium")
-  const urgentActions = alerts.filter(a => a.severity === "critical" || a.severity === "high").slice(0, 4)
-
-  const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
-  const hcfg = health ? healthConfig(health.healthStatus) : healthConfig("healthy")
-
-  // Skeleton while hydrating
-  if (!hydrated) {
-    return (
-      <div className="flex min-h-screen flex-col bg-background">
-        <Navbar />
-        <main className="flex-1">
-          <div className="mx-auto max-w-[1200px] px-6 py-8">
-            <div className="h-8 w-48 rounded-xl bg-muted animate-pulse mb-4" />
-            <div className="grid grid-cols-4 gap-4 mb-6">
-              {[...Array(4)].map((_, i) => <div key={i} className="h-24 rounded-2xl bg-muted animate-pulse" />)}
-            </div>
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => <div key={i} className="h-40 rounded-2xl bg-muted animate-pulse" />)}
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    )
-  }
+  const activeSkus   = skus.filter(s => s.status === "active")
+  const totalRevenue = activeSkus.reduce((s, k) => s + k.monthlyRevenue,   0)
+  const totalProfit  = activeSkus.reduce((s, k) => s + k.netProfitMonthly, 0)
+  const totalAdSpend = activeSkus.reduce((s, k) => s + k.monthlyAdSpend,   0)
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Navbar />
 
+      {/* Data banners */}
+      {hydrated && meta.source === "demo" && (
+        <div className="border-b border-yellow-200 bg-yellow-50 px-6 py-2.5">
+          <div className="mx-auto max-w-[1200px] flex items-center justify-between">
+            <p className="text-xs text-yellow-800">
+              <span className="font-semibold">Demo data</span> — Upload your CSV to run the risk engine on your real SKUs
+            </p>
+            <Link href="/data" className="inline-flex items-center gap-1 text-xs font-semibold text-yellow-900 underline underline-offset-2 hover:text-yellow-700">
+              <Upload className="h-3 w-3" />
+              Import my data
+            </Link>
+          </div>
+        </div>
+      )}
+      {hydrated && meta.source === "live" && (
+        <div className="border-b border-green-200 bg-green-50 px-6 py-2.5">
+          <div className="mx-auto max-w-[1200px]">
+            <p className="text-xs text-green-800">
+              <span className="font-semibold">Live data</span>
+              {meta.filename && ` — ${meta.filename}`}
+              {meta.rowCount && ` · ${meta.rowCount} SKUs`}
+            </p>
+          </div>
+        </div>
+      )}
+
       <main className="flex-1">
         <div className="mx-auto max-w-[1200px] px-6 py-8">
 
-          {/* ── Demo banner ────────────────────────────────────────────────── */}
-          {meta.source === "demo" && <DemoBanner />}
-
-          {/* ── Live data banner ───────────────────────────────────────────── */}
-          {meta.source === "live" && (
-            <div className="rounded-2xl border border-green-200 bg-green-50 px-5 py-3 flex items-center gap-3 mb-6">
-              <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
-              <p className="text-sm text-green-700">
-                <span className="font-semibold">Live data active</span>
-                {meta.filename ? ` — ${meta.filename}` : ""}
-                {meta.uploadedAt ? ` · Uploaded ${new Date(meta.uploadedAt).toLocaleDateString()}` : ""}
-              </p>
-              <Link href="/data" className="ml-auto text-xs text-green-600 hover:text-green-700 underline-offset-2 hover:underline flex-shrink-0">Update</Link>
-            </div>
-          )}
-
-          {/* ── Header ─────────────────────────────────────────────────────── */}
-          <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          {/* Header */}
+          <div className="flex items-start justify-between mb-8">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">{today}</p>
               <h1 className="text-2xl font-bold text-foreground">Command Center</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {alerts.length === 0
-                  ? "All systems healthy — no active risks detected."
-                  : `${alerts.length} active risk${alerts.length !== 1 ? "s" : ""} across ${skus.filter(s => s.status === "active").length} SKUs need attention.`}
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {!hydrated
+                  ? "Loading your business state..."
+                  : meta.source === "demo"
+                  ? `Demo portfolio · ${activeSkus.length} SKUs`
+                  : `${activeSkus.length} active SKU${activeSkus.length !== 1 ? "s" : ""}${meta.filename ? ` · ${meta.filename}` : ""}`
+                }
               </p>
             </div>
-            {health && (
-              <div className={cn("flex items-center gap-2 rounded-xl border px-4 py-2.5 self-start sm:self-auto", hcfg.bg)}>
-                <span className={cn("h-2 w-2 rounded-full", hcfg.dot)} />
-                <span className={cn("text-sm font-semibold", hcfg.color)}>Business Status: {health.healthStatusLabel}</span>
-              </div>
-            )}
+            <Link
+              href="/advisor"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold hover:bg-primary/90 transition-colors"
+            >
+              <Zap className="h-4 w-4" />
+              Ask AI Advisor
+            </Link>
           </div>
 
-          {/* ── KPI Row ────────────────────────────────────────────────────── */}
-          {health && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="rounded-lg bg-primary/10 p-1.5"><DollarSign className="h-4 w-4 text-primary" /></div>
-                  <span className="text-xs font-medium text-muted-foreground">Monthly Revenue</span>
-                </div>
-                <p className="text-2xl font-bold text-foreground">${health.totalMonthlyRevenue.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground mt-1">{health.activeSkus} active SKUs</p>
+          {!hydrated && <LoadingSkeleton />}
+
+          {hydrated && (
+            <>
+              {/* Row 1: Health Score + Since Yesterday */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {health && <HealthCard health={health} />}
+                <SinceYesterdayCard deltas={deltas} />
               </div>
 
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className={cn("rounded-lg p-1.5", health.totalNetProfitMonthly >= 0 ? "bg-green-50" : "bg-red-50")}>
-                    <TrendingUp className={cn("h-4 w-4", health.totalNetProfitMonthly >= 0 ? "text-green-600" : "text-red-500")} />
-                  </div>
-                  <span className="text-xs font-medium text-muted-foreground">Net Profit</span>
+              {/* Priority Feed */}
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xs font-bold text-foreground uppercase tracking-widest">
+                    What needs attention now
+                  </h2>
+                  {feed.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {feed.length} action{feed.length !== 1 ? "s" : ""}
+                    </span>
+                  )}
                 </div>
-                <p className={cn("text-2xl font-bold", health.totalNetProfitMonthly >= 0 ? "text-foreground" : "text-red-600")}>
-                  {health.totalNetProfitMonthly >= 0 ? "$" : "-$"}{Math.abs(health.totalNetProfitMonthly).toLocaleString()}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">{health.overallMarginPercent}% margin</p>
+                <PriorityFeed items={feed} />
               </div>
 
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="rounded-lg bg-orange-50 p-1.5"><Activity className="h-4 w-4 text-orange-500" /></div>
-                  <span className="text-xs font-medium text-muted-foreground">Active Risks</span>
-                </div>
-                <p className="text-2xl font-bold text-foreground">{health.totalAlerts}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  {health.criticalAlerts > 0 && <span className="text-xs font-semibold text-red-600">{health.criticalAlerts} critical</span>}
-                  {health.highAlerts > 0 && <span className="text-xs font-semibold text-orange-600">{health.highAlerts} high</span>}
-                  {health.criticalAlerts === 0 && health.highAlerts === 0 && <span className="text-xs text-muted-foreground">none critical</span>}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="rounded-lg bg-red-50 p-1.5"><TrendingDown className="h-4 w-4 text-red-500" /></div>
-                  <span className="text-xs font-medium text-muted-foreground">At-Risk Profit</span>
-                </div>
-                <p className="text-2xl font-bold text-red-600">-${health.projectedImpactIfUnaddressed.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground mt-1">if risks unaddressed</p>
-              </div>
-            </div>
+              {/* KPI strip */}
+              <KpiStrip revenue={totalRevenue} profit={totalProfit} adSpend={totalAdSpend} />
+            </>
           )}
-
-          <div className="grid lg:grid-cols-3 gap-6">
-
-            {/* ── Risk Feed ──────────────────────────────────────────────────── */}
-            <div className="lg:col-span-2">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-sm font-bold text-foreground">Risk Alerts</h2>
-                <div className="flex items-center gap-2">
-                  {criticalAlerts.length > 0 && <span className="rounded-full bg-red-100 text-red-700 border border-red-200 px-2.5 py-0.5 text-xs font-bold">{criticalAlerts.length} Critical</span>}
-                  {highAlerts.length > 0 && <span className="rounded-full bg-orange-100 text-orange-700 border border-orange-200 px-2.5 py-0.5 text-xs font-bold">{highAlerts.length} High</span>}
-                  {mediumAlerts.length > 0 && <span className="rounded-full bg-yellow-100 text-yellow-700 border border-yellow-200 px-2.5 py-0.5 text-xs font-bold">{mediumAlerts.length} Medium</span>}
-                </div>
-              </div>
-
-              {alerts.length === 0 ? (
-                <div className="rounded-2xl border border-green-200 bg-green-50 p-10 text-center">
-                  <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-3" />
-                  <p className="font-semibold text-green-700">All clear</p>
-                  <p className="text-sm text-green-600 mt-1">No active risks detected across your SKUs.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {alerts.map(alert => <RiskCard key={alert.id} alert={alert} />)}
-                </div>
-              )}
-            </div>
-
-            {/* ── Sidebar ────────────────────────────────────────────────────── */}
-            <div className="space-y-4">
-
-              {/* Urgent Actions */}
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <Zap className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-bold text-foreground">Urgent Actions</h3>
-                </div>
-                {urgentActions.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No urgent actions required.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {urgentActions.map((alert, i) => (
-                      <div key={alert.id} className="flex items-start gap-3">
-                        <span className={cn("mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white", alert.severity === "critical" ? "bg-red-500" : "bg-orange-500")}>
-                          {i + 1}
-                        </span>
-                        <div>
-                          <p className="text-xs font-semibold text-foreground leading-snug">{alert.title}</p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">{alert.recommendedAction}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Navigation shortcuts */}
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <h3 className="text-sm font-bold text-foreground mb-4">Intelligence Modules</h3>
-                <div className="space-y-2">
-                  {[
-                    { href: "/inventory", icon: Package,  label: "Inventory Risk",   desc: "Stockout & overstock tracking" },
-                    { href: "/profit",    icon: BarChart3, label: "Profit & Margin",  desc: "Per-SKU profitability" },
-                    { href: "/advisor",   icon: Zap,       label: "AI Advisor",       desc: "Ask operational questions" },
-                    { href: "/analyze",   icon: Activity,  label: "Product Validator",desc: "GO / NO-GO analysis" },
-                  ].map(item => (
-                    <Link key={item.href} href={item.href}
-                      className="flex items-center justify-between rounded-xl border border-border/60 bg-background/50 px-3 py-2.5 hover:bg-muted/50 transition-colors group">
-                      <div className="flex items-center gap-3">
-                        <item.icon className="h-4 w-4 text-primary" />
-                        <div>
-                          <p className="text-xs font-semibold text-foreground">{item.label}</p>
-                          <p className="text-[10px] text-muted-foreground">{item.desc}</p>
-                        </div>
-                      </div>
-                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              {/* SKU Health Snapshot */}
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <h3 className="text-sm font-bold text-foreground mb-4">SKU Health</h3>
-                <div className="space-y-2">
-                  {skus.filter(s => s.status === "active").map(sku => {
-                    const skuAlerts = alerts.filter(a => a.skuId === sku.id)
-                    const worst = skuAlerts[0]
-                    const statusColor = worst?.severity === "critical" ? "text-red-600" : worst?.severity === "high" ? "text-orange-600" : worst?.severity === "medium" ? "text-yellow-600" : "text-green-600"
-                    const dot = worst?.severity === "critical" ? "bg-red-500 animate-pulse" : worst?.severity === "high" ? "bg-orange-500" : worst?.severity === "medium" ? "bg-yellow-500" : "bg-green-500"
-                    return (
-                      <div key={sku.id} className="flex items-center justify-between py-1.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className={cn("h-2 w-2 rounded-full flex-shrink-0", dot)} />
-                          <span className="text-xs text-foreground truncate max-w-[140px]">{sku.name.split(" ").slice(0, 3).join(" ")}</span>
-                        </div>
-                        <span className={cn("text-xs font-semibold flex-shrink-0", statusColor)}>
-                          {worst ? `${skuAlerts.length} alert${skuAlerts.length !== 1 ? "s" : ""}` : "Healthy"}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </main>
 

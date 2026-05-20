@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -190,13 +191,25 @@ ${skuSummaries}
 
 export default function AdvisorPage() {
   const { skus, hydrated } = useSkus()
+  const searchParams = useSearchParams()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const didPreFill = useRef(false)
 
   const alerts = hydrated ? generateRiskAlerts(skus) : []
   const health = hydrated ? getBusinessHealthSummary(skus, alerts) : null
+
+  // Pre-fill from ?q= URL param (passed from Command Center "Ask AI" buttons)
+  useEffect(() => {
+    if (!hydrated || didPreFill.current) return
+    const q = searchParams.get("q")
+    if (q) {
+      setInput(decodeURIComponent(q))
+      didPreFill.current = true
+    }
+  }, [hydrated, searchParams])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
