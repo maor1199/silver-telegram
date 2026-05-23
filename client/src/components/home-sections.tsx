@@ -122,13 +122,13 @@ export function PillarsSection() {
   return (
     <section className="py-20 border-t border-border">
       <div className="mx-auto max-w-[1200px] px-6">
-        <div className="grid md:grid-cols-3 gap-px bg-border rounded-2xl overflow-hidden border border-border">
+        <div className="grid md:grid-cols-3 gap-16">
           {PILLARS.map((pillar, i) => (
-            <div key={i} className="bg-card px-8 py-8">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-4">
+            <div key={i}>
+              <p className="text-[10px] font-medium uppercase tracking-widest text-primary mb-4">
                 {String(i + 1).padStart(2, "0")}
               </p>
-              <h3 className="text-base font-bold text-foreground mb-2 leading-snug">{pillar.title}</h3>
+              <h3 className="text-base font-semibold text-foreground mb-3 leading-snug">{pillar.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">{pillar.body}</p>
             </div>
           ))}

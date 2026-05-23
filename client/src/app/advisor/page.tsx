@@ -169,8 +169,8 @@ function BusinessBriefing({
       {expanded && (
         <div className="border-t border-border">
 
-          {/* KPI strip */}
-          <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
+          {/* KPI strip — flat row, no dividers */}
+          <div className="flex gap-8 px-5 py-4 border-b border-border">
             {[
               { label: "Revenue",    value: `$${health.totalMonthlyRevenue.toLocaleString()}`,  sub: "monthly" },
               {
@@ -181,9 +181,9 @@ function BusinessBriefing({
               },
               { label: "Ad Spend",  value: `$${health.totalAdSpendMonthly.toLocaleString()}`,  sub: `ACoS ${health.overallAcos}%` },
             ].map(k => (
-              <div key={k.label} className="px-4 py-3">
+              <div key={k.label}>
                 <p className="text-[10px] text-muted-foreground font-medium mb-0.5">{k.label}</p>
-                <p className={cn("text-sm font-bold tabular-nums", (k as {danger?: boolean}).danger ? "text-red-600" : "text-foreground")}>{k.value}</p>
+                <p className={cn("text-sm font-semibold tabular-nums", (k as {danger?: boolean}).danger ? "text-red-600" : "text-foreground")}>{k.value}</p>
                 <p className="text-[10px] text-muted-foreground">{k.sub}</p>
               </div>
             ))}
@@ -192,7 +192,7 @@ function BusinessBriefing({
           {/* Active alerts */}
           {topAlerts.length > 0 && (
             <div className="px-5 py-3 space-y-2 border-b border-border">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+              <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
                 Active signals
               </p>
               {topAlerts.map(alert => (
@@ -212,7 +212,7 @@ function BusinessBriefing({
 
           {/* Investigation questions */}
           <div className="px-5 pb-4 pt-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+            <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
               Investigate an operational issue
             </p>
             <div className="grid sm:grid-cols-2 gap-2">

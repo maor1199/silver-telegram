@@ -220,31 +220,31 @@ function OperationalStateBar({ health, feed, deltas, yesterdayScore }: {
   const scoreDelta = yesterdayScore !== null ? health.overall - yesterdayScore : null
 
   return (
-    <div className="rounded-2xl border border-border bg-card px-6 py-5 mb-6">
+    <div className="pb-6 mb-6 border-b border-border/50">
       <div className="flex items-start justify-between flex-wrap gap-4">
-        <div className="flex gap-8 flex-wrap">
+        <div className="flex gap-10 flex-wrap">
           {[
             { label: "Business Stability", value: state.stabilityLabel, color: state.stabilityColor },
             { label: "Operational Risk",   value: state.riskLabel,      color: state.riskColor      },
             { label: "Margin Pressure",    value: state.marginLabel,    color: state.marginColor    },
           ].map(s => (
             <div key={s.label}>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">{s.label}</p>
-              <p className={cn("text-xl font-bold leading-none", s.color)}>{s.value}</p>
+              <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-1.5">{s.label}</p>
+              <p className={cn("text-2xl font-semibold leading-none", s.color)}>{s.value}</p>
             </div>
           ))}
         </div>
-        <div className="text-right text-xs space-y-0.5">
+        <div className="text-right text-xs space-y-1">
           {feed.length > 0 && (
-            <p className="font-semibold text-foreground">{feed.length} issue{feed.length !== 1 ? "s" : ""} need attention</p>
+            <p className="font-medium text-foreground">{feed.length} issue{feed.length !== 1 ? "s" : ""} need attention</p>
           )}
           {deltas.length > 0 && (
-            <p className="text-orange-600 font-medium">
-              {deltas.length} change{deltas.length !== 1 ? "s" : ""} since yesterday · {state.trajectoryLabel}
+            <p className="text-muted-foreground">
+              {deltas.length} change{deltas.length !== 1 ? "s" : ""} since yesterday
             </p>
           )}
           {scoreDelta !== null && scoreDelta !== 0 && (
-            <p className={cn("tabular-nums", scoreDelta > 0 ? "text-green-600" : "text-red-500")}>
+            <p className={cn("tabular-nums text-muted-foreground", scoreDelta > 0 ? "text-green-600" : "text-red-500")}>
               Health {scoreDelta > 0 ? "+" : ""}{scoreDelta} vs yesterday
             </p>
           )}
@@ -278,9 +278,9 @@ function DeltaRow({ change }: { change: DeltaChange }) {
 function SinceYesterdayCard({ deltas }: { deltas: DeltaChange[] }) {
   if (deltas.length === 0) return null
   return (
-    <div className="rounded-2xl border border-border bg-card px-6 py-5 mb-6">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
-        Changes since yesterday
+    <div className="pb-6 mb-6 border-b border-border/50">
+      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-3">
+        Since your last visit
       </p>
       {deltas.map(d => <DeltaRow key={`${d.skuId}-${d.type}`} change={d} />)}
     </div>
@@ -581,11 +581,9 @@ function PriorityItemCard({
 
       {/* Projected impact */}
       {item.projectedImpact && (
-        <div className="mb-3 rounded-lg bg-amber-50/70 border border-amber-200/60 px-3 py-2">
-          <p className="text-[11px] text-amber-800 leading-snug">
-            <span className="font-semibold">If nothing changes:</span> {item.projectedImpact}
-          </p>
-        </div>
+        <p className="text-[11px] text-amber-700 leading-snug mb-3">
+          <span className="font-semibold">If nothing changes:</span> {item.projectedImpact}
+        </p>
       )}
 
       {/* Action row */}
@@ -897,7 +895,7 @@ export default function DashboardPage() {
         <div className="mx-auto max-w-[1200px] px-6 py-8">
 
           {/* Header */}
-          <div className="flex items-start justify-between mb-8">
+          <div className="flex items-start justify-between mb-10">
             <div>
               <h1 className="text-2xl font-bold text-foreground">Command Center</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
