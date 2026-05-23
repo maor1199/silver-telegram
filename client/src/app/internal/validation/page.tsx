@@ -6,14 +6,16 @@
 // All data lives in localStorage — no server required.
 
 import { useState, useEffect, useCallback } from "react"
+import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import {
   getEngagementSummary,
   getRecentEvents,
+  getSessionReplay,
   resetEngagement,
   resetDemoSession,
 } from "@/lib/intelligence/engagement-tracker"
-import type { EngagementSummary, EngagementEvent } from "@/lib/intelligence/engagement-tracker"
+import type { EngagementSummary, EngagementEvent, SessionReplay } from "@/lib/intelligence/engagement-tracker"
 import { cn } from "@/lib/utils"
 
 // ─── Stat row ─────────────────────────────────────────────────────────────────
@@ -63,12 +65,14 @@ function EventTypeBadge({ type }: { type: EngagementEvent["type"] }) {
 
 export default function ValidationPage() {
   const [summary, setSummary] = useState<EngagementSummary | null>(null)
+  const [replay,  setReplay]  = useState<SessionReplay | null>(null)
   const [events,  setEvents]  = useState<EngagementEvent[]>([])
   const [msg,     setMsg]     = useState("")
   const [mounted, setMounted] = useState(false)
 
   const refresh = useCallback(() => {
     setSummary(getEngagementSummary())
+    setReplay(getSessionReplay())
     setEvents(getRecentEvents(10))
   }, [])
 
@@ -260,6 +264,47 @@ export default function ValidationPage() {
             </div>
           </Section>
 
+          {/* Session replay */}
+          {replay && (
+            <Section title="Session Replay">
+              <div className="rounded-xl border border-border bg-card px-4 divide-y divide-border/50 mb-2">
+                <StatRow
+                  label="First expanded category"
+                  value={replay.firstExpandCategory ?? "—"}
+                />
+                <StatRow
+                  label="First expand time"
+                  value={replay.firstExpandAt
+                    ? new Date(replay.firstExpandAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+                    : "—"}
+                />
+                <StatRow
+                  label="Time to first Ask AI"
+                  value={replay.timeToFirstAiClickMs != null
+                    ? `${Math.round(replay.timeToFirstAiClickMs / 1000)}s after first expand`
+                    : replay.aiClickCount === 0 ? "No AI clicks yet" : "—"}
+                />
+                <StatRow
+                  label="Most engaged alert"
+                  value={replay.mostEngagedAlertId ?? "—"}
+                />
+                <StatRow
+                  label="Ignored categories"
+                  value={replay.ignoredCategories.length > 0
+                    ? replay.ignoredCategories.join(", ")
+                    : "None — all rendered categories explored"}
+                />
+                <StatRow
+                  label="Projected impact views"
+                  value={replay.projectedImpactViews.toString()}
+                  sub="alerts expanded where 'if nothing changes' was visible"
+                />
+                <StatRow label="Feedback responses"  value={replay.feedbackCount.toString()} />
+                <StatRow label="Total feed visits"   value={replay.sessionCount.toString()} />
+              </div>
+            </Section>
+          )}
+
           {/* Reset section */}
           <div className="pt-6 border-t border-border">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
@@ -281,6 +326,12 @@ export default function ValidationPage() {
               >
                 Reset Full Demo Session
               </button>
+              <Link
+                href="/internal/demo-session"
+                className="rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors"
+              >
+                Open Demo Control Panel →
+              </Link>
             </div>
             {msg && (
               <p className="mt-3 text-xs text-muted-foreground">{msg}</p>

@@ -2,97 +2,41 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useState, useEffect, useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { Menu, X, LogOut, ChevronDown, Sparkles, BookOpen, Package, BarChart3, Zap, Activity, Upload } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Menu, X, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import type { Session } from "@supabase/supabase-js"
 
-// ─── Platform modules (main nav dropdown) ────────────────────────────────────
-const PLATFORM_MENU_ITEMS = [
-  {
-    name: "Command Center",
-    href: "/dashboard",
-    description: "Today's risks — inventory, margin, and PPC alerts in one view",
-    icon: Activity,
-  },
-  {
-    name: "Inventory Risk",
-    href: "/inventory",
-    description: "Stockout and overstock tracking with reorder signals",
-    icon: Package,
-  },
-  {
-    name: "Profit & Margin",
-    href: "/profit",
-    description: "True profitability per SKU after all costs",
-    icon: BarChart3,
-  },
-  {
-    name: "AI Advisor",
-    href: "/advisor",
-    description: "Ask operational questions about your business",
-    icon: Zap,
-  },
-  {
-    name: "Import Data",
-    href: "/data",
-    description: "Upload your CSV to run the risk engine on real SKU data",
-    icon: Upload,
-  },
-]
+// ─── Navbar ────────────────────────────────────────────────────────────────────
+// Intentionally minimal. The nav does one thing: orient the user and authenticate.
+// Product navigation happens inside the app, not from a mega-menu.
 
-// ─── Tools (secondary dropdown) ──────────────────────────────────────────────
-const TOOLS_MENU_ITEMS = [
-  {
-    name: "Product Validator",
-    href: "/analyze",
-    description: "GO / NO-GO verdict before you commit capital",
-    icon: Activity,
-  },
-  {
-    name: "Listing Builder",
-    href: "/listing-builder",
-    description: "AI-optimized Amazon titles, bullets & descriptions",
-    icon: Sparkles,
-  },
-  {
-    name: "FBA Seller's Guide",
-    href: "/guide",
-    description: "9-chapter guide for Amazon FBA sellers — 2026",
-    icon: BookOpen,
-  },
-]
-
-const ALL_DROPDOWN_HREFS = [
-  ...PLATFORM_MENU_ITEMS.map(i => i.href),
-  ...TOOLS_MENU_ITEMS.map(i => i.href),
+const NAV_LINKS = [
+  { label: "Command Center", href: "/dashboard" },
+  { label: "Pricing",        href: "/pricing"   },
 ]
 
 export function Navbar() {
   const pathname = usePathname()
-  const router = useRouter()
+  const router   = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [session, setSession] = useState<Session | null>(null)
+  const [session,    setSession]    = useState<Session | null>(null)
 
   useEffect(() => {
-    let isMounted = true
+    let mounted = true
     const supabase = createClient()
     if (!supabase) return
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (isMounted) setSession(session)
+      if (mounted) setSession(session)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isMounted) setSession(session)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (mounted) setSession(s)
     })
 
-    return () => {
-      isMounted = false
-      subscription.unsubscribe()
-    }
+    return () => { mounted = false; subscription.unsubscribe() }
   }, [])
 
   const handleLogout = async () => {
@@ -104,88 +48,85 @@ export function Navbar() {
     router.refresh()
   }
 
+  const isInsideApp = pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/inventory") || pathname.startsWith("/profit") ||
+    pathname.startsWith("/advisor")   || pathname.startsWith("/data")   ||
+    pathname.startsWith("/account")   || pathname.startsWith("/analyze") ||
+    pathname.startsWith("/listing-builder")
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6">
+      <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between px-6">
 
         {/* Logo */}
-        <div className="flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <span className="text-sm font-bold text-primary-foreground">S</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-foreground leading-none">SellerMentor</span>
-              <span className="text-[10px] text-muted-foreground leading-none mt-0.5">Ecommerce intelligence</span>
-            </div>
-          </Link>
-        </div>
+        <Link href="/" className="flex items-center gap-2.5 shrink-0">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
+            <span className="text-xs font-bold text-primary-foreground">S</span>
+          </div>
+          <span className="text-sm font-semibold text-foreground">SellerMentor</span>
+        </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-1 md:flex">
-          <Link
-            href="/"
-            className={cn(
-              "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              pathname === "/" ? "text-foreground bg-secondary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            )}
-          >
-            Home
-          </Link>
-          <PlatformDropdown pathname={pathname} />
-          <ToolsDropdown pathname={pathname} />
-          <Link
-            href="/pricing"
-            className={cn(
-              "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              pathname === "/pricing" ? "text-foreground bg-secondary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            )}
-          >
-            Pricing
-          </Link>
-          <Link
-            href="/about"
-            className={cn(
-              "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              pathname === "/about" ? "text-foreground bg-secondary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            )}
-          >
-            About
-          </Link>
+        <nav className="hidden items-center gap-0.5 md:flex">
+          {NAV_LINKS.map(link => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href))
+                  ? "text-foreground bg-secondary"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              )}
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
         {/* Desktop auth */}
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-2 md:flex">
           {session ? (
             <>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/dashboard">Dashboard</Link>
-              </Button>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/account">My Account</Link>
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
-                <LogOut className="mr-1.5 h-3.5 w-3.5" />
+              {!isInsideApp && (
+                <Link
+                  href="/dashboard"
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                >
+                  Dashboard
+                </Link>
+              )}
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5" />
                 Log out
-              </Button>
+              </button>
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/login">Log in</Link>
-              </Button>
-              <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg" asChild>
-                <Link href="/signup">Get started</Link>
-              </Button>
+              <Link
+                href="/login"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Get started
+              </Link>
             </>
           )}
         </div>
 
         {/* Mobile toggle */}
         <button
-          className="flex items-center justify-center md:hidden"
+          className="flex items-center justify-center md:hidden text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle navigation menu"
+          aria-label="Toggle navigation"
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -194,72 +135,45 @@ export function Navbar() {
       {/* Mobile menu */}
       {mobileOpen && (
         <div className="border-t border-border/50 bg-background/95 backdrop-blur-xl md:hidden">
-          <div className="mx-auto max-w-[1200px] px-6 py-4">
-            <nav className="flex flex-col gap-1">
-              <Link href="/" onClick={() => setMobileOpen(false)}
-                className={cn("rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                  pathname === "/" ? "text-foreground bg-secondary" : "text-muted-foreground hover:text-foreground")}>
-                Home
+          <div className="mx-auto max-w-[1200px] px-6 py-4 flex flex-col gap-1">
+            {NAV_LINKS.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  pathname.startsWith(link.href)
+                    ? "text-foreground bg-secondary"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {link.label}
               </Link>
+            ))}
 
-              <div className="px-3 pt-2 pb-1">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Platform</span>
-              </div>
-              {PLATFORM_MENU_ITEMS.map((item) => (
-                <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}
-                  className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    pathname === item.href ? "text-foreground bg-secondary" : "text-muted-foreground hover:text-foreground")}>
-                  <item.icon className="h-4 w-4 text-primary" />
-                  {item.name}
-                </Link>
-              ))}
-
-              <div className="px-3 pt-2 pb-1">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Tools</span>
-              </div>
-              {TOOLS_MENU_ITEMS.map((tool) => (
-                <Link key={tool.href} href={tool.href} onClick={() => setMobileOpen(false)}
-                  className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    pathname === tool.href ? "text-foreground bg-secondary" : "text-muted-foreground hover:text-foreground")}>
-                  <tool.icon className="h-4 w-4 text-primary" />
-                  {tool.name}
-                </Link>
-              ))}
-
-              <Link href="/pricing" onClick={() => setMobileOpen(false)}
-                className={cn("rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                  pathname === "/pricing" ? "text-foreground bg-secondary" : "text-muted-foreground hover:text-foreground")}>
-                Pricing
-              </Link>
-              <Link href="/about" onClick={() => setMobileOpen(false)}
-                className={cn("rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                  pathname === "/about" ? "text-foreground bg-secondary" : "text-muted-foreground hover:text-foreground")}>
-                About
-              </Link>
-            </nav>
-
-            <div className="mt-4 flex flex-col gap-2 border-t border-border/50 pt-4">
+            <div className="mt-3 pt-3 border-t border-border/50 flex flex-col gap-1">
               {session ? (
                 <>
-                  <Button variant="ghost" size="sm" asChild className="justify-start" onClick={() => setMobileOpen(false)}>
-                    <Link href="/dashboard">Dashboard</Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" asChild className="justify-start" onClick={() => setMobileOpen(false)}>
-                    <Link href="/account">My Account</Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={handleLogout} className="justify-start text-muted-foreground hover:text-foreground">
-                    <LogOut className="mr-1.5 h-3.5 w-3.5" />
-                    Log out
-                  </Button>
+                  <Link href="/account" onClick={() => setMobileOpen(false)}
+                    className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                    My Account
+                  </Link>
+                  <button onClick={handleLogout}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors text-left">
+                    <LogOut className="h-3.5 w-3.5" /> Log out
+                  </button>
                 </>
               ) : (
                 <>
-                  <Button variant="ghost" size="sm" asChild className="justify-start" onClick={() => setMobileOpen(false)}>
-                    <Link href="/login">Log in</Link>
-                  </Button>
-                  <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg" asChild onClick={() => setMobileOpen(false)}>
-                    <Link href="/signup">Get started</Link>
-                  </Button>
+                  <Link href="/login" onClick={() => setMobileOpen(false)}
+                    className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                    Log in
+                  </Link>
+                  <Link href="/signup" onClick={() => setMobileOpen(false)}
+                    className="rounded-lg bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors text-center">
+                    Get started
+                  </Link>
                 </>
               )}
             </div>
@@ -267,95 +181,5 @@ export function Navbar() {
         </div>
       )}
     </header>
-  )
-}
-
-// ─── Platform dropdown ────────────────────────────────────────────────────────
-function PlatformDropdown({ pathname }: { pathname: string }) {
-  const [open, setOpen] = useState(false)
-  const timeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const isActive = PLATFORM_MENU_ITEMS.some(t => pathname.startsWith(t.href))
-
-  const handleEnter = () => { if (timeout.current) clearTimeout(timeout.current); setOpen(true) }
-  const handleLeave = () => { timeout.current = setTimeout(() => setOpen(false), 150) }
-
-  return (
-    <div className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
-      <button
-        className={cn(
-          "flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-          isActive ? "text-foreground bg-secondary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-        )}
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-      >
-        Platform
-        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-full z-[100] mt-1.5 w-72 rounded-xl border border-border bg-background/95 p-2 shadow-2xl backdrop-blur-md">
-          {PLATFORM_MENU_ITEMS.map((item) => (
-            <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
-              className={cn(
-                "flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors",
-                pathname === item.href ? "bg-secondary text-foreground" : "hover:bg-secondary/50 text-foreground"
-              )}>
-              <item.icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <div className="flex flex-col">
-                <span className="text-sm font-medium leading-tight">{item.name}</span>
-                <span className="mt-0.5 text-xs text-muted-foreground leading-snug">{item.description}</span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Tools dropdown ───────────────────────────────────────────────────────────
-function ToolsDropdown({ pathname }: { pathname: string }) {
-  const [open, setOpen] = useState(false)
-  const timeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const isActive = TOOLS_MENU_ITEMS.some(t => pathname.startsWith(t.href))
-
-  const handleEnter = () => { if (timeout.current) clearTimeout(timeout.current); setOpen(true) }
-  const handleLeave = () => { timeout.current = setTimeout(() => setOpen(false), 150) }
-
-  return (
-    <div className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
-      <button
-        className={cn(
-          "flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-          isActive ? "text-foreground bg-secondary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-        )}
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-      >
-        Tools
-        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-full z-[100] mt-1.5 w-64 rounded-xl border border-border bg-background/95 p-2 shadow-2xl backdrop-blur-md">
-          {TOOLS_MENU_ITEMS.map((tool) => (
-            <Link key={tool.href} href={tool.href} onClick={() => setOpen(false)}
-              className={cn(
-                "flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors",
-                pathname.startsWith(tool.href) ? "bg-secondary text-foreground" : "hover:bg-secondary/50 text-foreground"
-              )}>
-              <tool.icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <div className="flex flex-col">
-                <span className="text-sm font-medium leading-tight">{tool.name}</span>
-                <span className="mt-0.5 text-xs text-muted-foreground leading-snug">{tool.description}</span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
   )
 }
