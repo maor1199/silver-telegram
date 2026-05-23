@@ -17,7 +17,7 @@ export function HeroSection() {
         {/* Headline block */}
         <div className="max-w-[600px]">
           <p className="text-xs font-bold uppercase tracking-widest text-primary mb-5">
-            Operational intelligence for ecommerce
+            Operational monitoring for ecommerce
           </p>
           <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-5xl leading-[1.1] text-balance">
             Detect operational deterioration before it becomes expensive.

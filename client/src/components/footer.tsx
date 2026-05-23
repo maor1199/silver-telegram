@@ -24,7 +24,7 @@ export function Footer() {
               </div>
               <div className="flex flex-col">
                 <span className="text-sm font-semibold text-foreground leading-none">SellerMentor</span>
-                <span className="text-[10px] text-muted-foreground leading-none mt-0.5">Operational intelligence</span>
+                <span className="text-[10px] text-muted-foreground leading-none mt-0.5">Operational monitoring</span>
               </div>
             </div>
             <p className="mt-4 text-sm text-muted-foreground leading-relaxed">

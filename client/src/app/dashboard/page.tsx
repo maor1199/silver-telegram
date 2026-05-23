@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import { Zap, Upload, ChevronDown, X } from "lucide-react"
+import { Upload, ChevronDown, X } from "lucide-react"
 import { useSkus } from "@/lib/intelligence/store"
 import { generateRiskAlerts } from "@/lib/intelligence/risk-engine"
 import { getBusinessHealthScore } from "@/lib/intelligence/health-score"
@@ -486,10 +486,10 @@ function ExpandedDetail({
         <IssueTimeline record={persistRecord} severity={item.severity} />
       )}
 
-      {/* Signal quality */}
-      <DetailSection label="Signal Quality">
+      {/* Confidence */}
+      <DetailSection label="Confidence">
         <p className="text-xs text-muted-foreground leading-relaxed">
-          <span className="font-semibold text-foreground">{item.confidence}% confidence</span> — {item.confidenceReason}
+          <span className="font-semibold text-foreground">{item.confidence}%</span> — {item.confidenceReason}
         </p>
       </DetailSection>
 
@@ -610,7 +610,7 @@ function PriorityItemCard({
             onClick={handleAiClick}
             className="text-xs font-medium text-primary hover:text-primary/70 transition-colors whitespace-nowrap"
           >
-            Ask AI →
+            Advisor →
           </button>
         </div>
       </div>
@@ -910,10 +910,9 @@ export default function DashboardPage() {
             </div>
             <Link
               href="/advisor"
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold hover:bg-primary/90 transition-colors"
+              className="hidden sm:inline-flex items-center rounded-xl bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold hover:bg-primary/90 transition-colors"
             >
-              <Zap className="h-4 w-4" />
-              Ask AI Advisor
+              Advisor
             </Link>
           </div>
 
