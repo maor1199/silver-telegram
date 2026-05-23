@@ -14,6 +14,9 @@ import { computeDeltas, DEMO_YESTERDAY_SCORE, loadYesterdayScore } from "@/lib/i
 import type { DeltaChange } from "@/lib/intelligence/delta-engine"
 import { getPriorityFeed } from "@/lib/intelligence/priority-feed"
 import type { PriorityItem, Trajectory } from "@/lib/intelligence/priority-feed"
+import { buildDailyBrief, saveFeedSnapshot } from "@/lib/intelligence/daily-brief"
+import type { DailyBrief } from "@/lib/intelligence/daily-brief"
+import type { AlertRecord } from "@/lib/intelligence/persistence-tracker"
 import {
   trackFeedVisit,
   trackFeedRendered,
@@ -28,7 +31,6 @@ import {
 import { cn } from "@/lib/utils"
 
 // ─── First-Run Overlay ────────────────────────────────────────────────────────
-// Shown once to demo users. 3 steps. Stored in localStorage.
 
 const INTRO_KEY = "sellermentor_intro_v1"
 
@@ -52,7 +54,7 @@ const INTRO_STEPS = [
 
 function FirstRunOverlay({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0)
-  const isLast = step === INTRO_STEPS.length - 1
+  const isLast  = step === INTRO_STEPS.length - 1
   const current = INTRO_STEPS[step]
 
   function handleNext() {
@@ -67,46 +69,20 @@ function FirstRunOverlay({ onDone }: { onDone: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div className="relative w-full max-w-[400px] rounded-2xl border border-border bg-card shadow-2xl px-8 py-8">
-
-        {/* Step dots */}
         <div className="flex items-center gap-1.5 mb-6">
           {INTRO_STEPS.map((_, i) => (
-            <div
-              key={i}
-              className={cn(
-                "h-1.5 rounded-full transition-all duration-300",
-                i === step ? "w-6 bg-primary" : "w-1.5 bg-border"
-              )}
-            />
+            <div key={i} className={cn("h-1.5 rounded-full transition-all duration-300", i === step ? "w-6 bg-primary" : "w-1.5 bg-border")} />
           ))}
         </div>
-
-        {/* Icon */}
         <div className="text-3xl mb-4">{current.icon}</div>
-
-        {/* Content */}
-        <h2 className="text-[17px] font-bold text-foreground leading-snug mb-2">
-          {current.title}
-        </h2>
-        <p className="text-sm text-muted-foreground leading-relaxed mb-8">
-          {current.body}
-        </p>
-
-        {/* CTA */}
-        <button
-          onClick={handleNext}
-          className="w-full rounded-xl bg-primary text-primary-foreground py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors"
-        >
+        <h2 className="text-[17px] font-bold text-foreground leading-snug mb-2">{current.title}</h2>
+        <p className="text-sm text-muted-foreground leading-relaxed mb-8">{current.body}</p>
+        <button onClick={handleNext} className="w-full rounded-xl bg-primary text-primary-foreground py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors">
           {isLast ? "Got it — show me the feed" : "Next →"}
         </button>
-
-        {/* Skip */}
         {!isLast && (
           <button
-            onClick={() => {
-              try { localStorage.setItem(INTRO_KEY, "1") } catch { /* ignore */ }
-              onDone()
-            }}
+            onClick={() => { try { localStorage.setItem(INTRO_KEY, "1") } catch { /* ignore */ } onDone() }}
             className="w-full mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             Skip intro
@@ -118,7 +94,6 @@ function FirstRunOverlay({ onDone }: { onDone: () => void }) {
 }
 
 // ─── Session Survey ───────────────────────────────────────────────────────────
-// Fixed bottom-right. Fires after 2+ interactions + 3 s delay.
 
 const SURVEY_OPTIONS: { value: SurveyValue; label: string }[] = [
   { value: "yes",      label: "Yes"      },
@@ -165,25 +140,33 @@ function SessionSurvey({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ─── Test with your business CTA ─────────────────────────────────────────────
-// Demo-only. Shown below the priority feed.
+// ─── Daily Check-In Brief ─────────────────────────────────────────────────────
+// Makes the system feel alive and aware of business movement.
 
-function TestCTA() {
+function DailyBriefBanner({ brief }: { brief: DailyBrief }) {
+  if (brief.isFirstVisit || !brief.message) return null
+
+  const borderColor =
+    brief.tone === "critical" ? "border-red-200 bg-red-50/60"       :
+    brief.tone === "warning"  ? "border-orange-200 bg-orange-50/60" :
+    brief.tone === "positive" ? "border-green-200 bg-green-50/60"   :
+                                "border-border bg-muted/30"
+
+  const textColor =
+    brief.tone === "critical" ? "text-red-800"    :
+    brief.tone === "warning"  ? "text-orange-800" :
+    brief.tone === "positive" ? "text-green-800"  :
+                                "text-muted-foreground"
+
+  const dot =
+    brief.tone === "critical" ? "bg-red-500"    :
+    brief.tone === "warning"  ? "bg-orange-500" :
+    brief.tone === "positive" ? "bg-green-500"  : "bg-muted-foreground/50"
+
   return (
-    <div className="mt-6 rounded-2xl border border-dashed border-border bg-card px-6 py-6 flex items-center justify-between gap-4 flex-wrap">
-      <div>
-        <p className="text-sm font-semibold text-foreground">Test this with your business</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Upload your SKU export — the risk engine runs entirely on your own data.
-        </p>
-      </div>
-      <Link
-        href="/data"
-        className="inline-flex items-center gap-1.5 rounded-xl bg-foreground text-background px-4 py-2 text-sm font-semibold hover:bg-foreground/80 transition-colors shrink-0"
-      >
-        <Upload className="h-3.5 w-3.5" />
-        Import my data
-      </Link>
+    <div className={cn("rounded-xl border px-4 py-3 mb-6 flex items-start gap-3", borderColor)}>
+      <div className={cn("mt-1.5 h-1.5 w-1.5 rounded-full shrink-0", dot)} />
+      <p className={cn("text-xs leading-relaxed", textColor)}>{brief.message}</p>
     </div>
   )
 }
@@ -192,7 +175,7 @@ function TestCTA() {
 
 function deriveOperationalState(
   health: BusinessHealthScore,
-  feed: PriorityItem[],
+  feed:   PriorityItem[],
   deltas: DeltaChange[]
 ) {
   const criticalCount     = feed.filter(f => f.severity === "critical").length
@@ -228,13 +211,9 @@ function deriveOperationalState(
   return { stabilityLabel, stabilityColor, riskLabel, riskColor, marginLabel, marginColor, trajectoryLabel }
 }
 
-function OperationalStateBar({
-  health, feed, deltas, yesterdayScore,
-}: {
-  health: BusinessHealthScore
-  feed: PriorityItem[]
-  deltas: DeltaChange[]
-  yesterdayScore: number | null
+function OperationalStateBar({ health, feed, deltas, yesterdayScore }: {
+  health: BusinessHealthScore; feed: PriorityItem[]
+  deltas: DeltaChange[]; yesterdayScore: number | null
 }) {
   const state      = deriveOperationalState(health, feed, deltas)
   const scoreDelta = yesterdayScore !== null ? health.overall - yesterdayScore : null
@@ -256,9 +235,7 @@ function OperationalStateBar({
         </div>
         <div className="text-right text-xs space-y-0.5">
           {feed.length > 0 && (
-            <p className="font-semibold text-foreground">
-              {feed.length} issue{feed.length !== 1 ? "s" : ""} need attention
-            </p>
+            <p className="font-semibold text-foreground">{feed.length} issue{feed.length !== 1 ? "s" : ""} need attention</p>
           )}
           {deltas.length > 0 && (
             <p className="text-orange-600 font-medium">
@@ -279,7 +256,8 @@ function OperationalStateBar({
 // ─── Since Yesterday ──────────────────────────────────────────────────────────
 
 function DeltaRow({ change }: { change: DeltaChange }) {
-  const isWorse    = change.delta < 0 || change.type === "acos_spike" || change.type === "return_spike"
+  const isWorse =
+    change.delta < 0 || change.type === "acos_spike" || change.type === "return_spike"
   const arrowColor =
     change.severity === "critical" ? "text-red-500"    :
     change.severity === "high"     ? "text-orange-500" : "text-yellow-500"
@@ -317,14 +295,114 @@ const TRAJECTORY_CONFIG: Record<Trajectory, { label: string; color: string }> = 
   recovering:    { label: "Recovering",     color: "text-green-600"  },
 }
 
+// ─── Issue Timeline ────────────────────────────────────────────────────────────
+// Compact operational history inside the expanded detail panel.
+
+function formatDate(isoDate: string): string {
+  return new Date(isoDate).toLocaleDateString([], { month: "short", day: "numeric" })
+}
+
+function daysAgo(isoDate: string): number {
+  return Math.max(1, Math.round((Date.now() - new Date(isoDate).getTime()) / 86_400_000))
+}
+
+function estimateDateAt(lastSeenAt: string, sessionCount: number, targetSession: number): string {
+  // Estimate date of targetSession by counting backwards from lastSeenAt
+  const sessionsAgo = sessionCount - targetSession
+  return new Date(new Date(lastSeenAt).getTime() - sessionsAgo * 86_400_000).toISOString()
+}
+
+type TimelineEntry = { date: string; label: string; sub?: string; isCurrent?: boolean }
+
+function buildTimelineEntries(record: AlertRecord, currentSeverity: string): TimelineEntry[] {
+  const entries: TimelineEntry[] = []
+  const n = record.sessionCount
+
+  // Entry 1: First detected
+  entries.push({
+    date:  formatDate(record.firstSeenAt),
+    label: `First detected`,
+    sub:   `${daysAgo(record.firstSeenAt)} days ago · initial severity: ${record.lastSeverity}`,
+  })
+
+  // Entry 2: Confirmed recurring (around session 3-4)
+  if (n >= 4) {
+    const confirmedAt = estimateDateAt(record.lastSeenAt, n, 3)
+    entries.push({
+      date:  formatDate(confirmedAt),
+      label: "Confirmed recurring",
+      sub:   "Issue persisted across 3 consecutive check-ins",
+    })
+  }
+
+  // Entry 3: Reached persistent threshold (session 7+)
+  if (n >= 7) {
+    const persistedAt = estimateDateAt(record.lastSeenAt, n, 7)
+    entries.push({
+      date:  formatDate(persistedAt),
+      label: "Classified as persistent",
+      sub:   "7 sessions without resolution — compounding risk",
+    })
+  }
+
+  // Entry 4: Current state
+  entries.push({
+    date:     "Today",
+    label:    `Still active`,
+    sub:      `${n} session${n !== 1 ? "s" : ""} observed · current severity: ${currentSeverity}`,
+    isCurrent: true,
+  })
+
+  return entries
+}
+
+function IssueTimeline({ record, severity }: { record: AlertRecord; severity: string }) {
+  const entries = buildTimelineEntries(record, severity)
+
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Issue Timeline</p>
+      <div className="relative flex flex-col gap-0">
+        {entries.map((entry, i) => (
+          <div key={i} className="flex gap-3 pb-3 last:pb-0">
+            {/* Timeline line + dot */}
+            <div className="flex flex-col items-center shrink-0 pt-0.5">
+              <div className={cn(
+                "h-2 w-2 rounded-full shrink-0",
+                entry.isCurrent ? "bg-foreground" : "bg-border"
+              )} />
+              {i < entries.length - 1 && (
+                <div className="w-px flex-1 mt-1 bg-border/50" style={{ minHeight: "16px" }} />
+              )}
+            </div>
+            {/* Content */}
+            <div className="pb-0 min-w-0">
+              <div className="flex items-baseline gap-2">
+                <span className={cn(
+                  "text-[10px] font-bold uppercase tracking-wider",
+                  entry.isCurrent ? "text-foreground" : "text-muted-foreground"
+                )}>
+                  {entry.date}
+                </span>
+                <span className="text-xs text-foreground">{entry.label}</span>
+              </div>
+              {entry.sub && (
+                <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{entry.sub}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Expanded Detail Panel ────────────────────────────────────────────────────
 
 function DetailSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
-        {label}
-      </p>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">{label}</p>
       {children}
     </div>
   )
@@ -350,9 +428,7 @@ function FeedbackWidget({ item }: { item: PriorityItem }) {
 
   return (
     <div className="mt-3 pt-3 border-t border-border/30">
-      <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">
-        Was this useful?
-      </p>
+      <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">Was this useful?</p>
       {selected ? (
         <p className="text-[11px] text-muted-foreground">Recorded — thanks.</p>
       ) : (
@@ -372,7 +448,15 @@ function FeedbackWidget({ item }: { item: PriorityItem }) {
   )
 }
 
-function ExpandedDetail({ item }: { item: PriorityItem }) {
+// ─── Expanded detail (full panel) ─────────────────────────────────────────────
+
+function ExpandedDetail({
+  item,
+  persistRecord,
+}: {
+  item:          PriorityItem
+  persistRecord: AlertRecord | undefined
+}) {
   const hasCausal = item.causedBy || item.impacts || item.chainLabel
 
   return (
@@ -397,25 +481,15 @@ function ExpandedDetail({ item }: { item: PriorityItem }) {
         </DetailSection>
       )}
 
-      {/* Issue history */}
-      {item.persistenceSince && (
-        <DetailSection label="Issue History">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Active for {item.persistenceSince}.{" "}
-            {item.persistenceLabel
-              ? <span className={cn("font-semibold", item.persistenceColorClass)}>{item.persistenceLabel}.</span>
-              : "First occurrence."
-            }{" "}
-            Persistent issues compound operational risk — resolution becomes more disruptive the longer this runs.
-          </p>
-        </DetailSection>
+      {/* Issue timeline — shown when we have persistence data */}
+      {persistRecord && persistRecord.sessionCount > 1 && (
+        <IssueTimeline record={persistRecord} severity={item.severity} />
       )}
 
       {/* Signal quality */}
       <DetailSection label="Signal Quality">
         <p className="text-xs text-muted-foreground leading-relaxed">
-          <span className="font-semibold text-foreground">{item.confidence}% confidence</span> —{" "}
-          {item.confidenceReason}
+          <span className="font-semibold text-foreground">{item.confidence}% confidence</span> — {item.confidenceReason}
         </p>
       </DetailSection>
 
@@ -433,12 +507,17 @@ function ExpandedDetail({ item }: { item: PriorityItem }) {
 
 // ─── Priority Item Card ───────────────────────────────────────────────────────
 
+// Shared persistence map — populated by the page and passed down
+type PersistMap = Map<string, AlertRecord>
+
 function PriorityItemCard({
   item,
+  persistMap,
   onInteract,
 }: {
-  item: PriorityItem
-  onInteract: () => void
+  item:        PriorityItem
+  persistMap:  PersistMap
+  onInteract:  () => void
 }) {
   const router                  = useRouter()
   const [expanded, setExpanded] = useState(false)
@@ -453,6 +532,10 @@ function PriorityItemCard({
   const showPersistence =
     item.persistenceLabel &&
     item.persistenceColorClass !== "text-muted-foreground"
+
+  // Look up the raw AlertRecord for the timeline
+  const persistKey = `${item.skuId}-${item.category}`
+  const persistRecord = persistMap.get(persistKey)
 
   function handleToggle() {
     const next = !expanded
@@ -495,7 +578,7 @@ function PriorityItemCard({
       {/* Context */}
       <p className="text-sm text-muted-foreground leading-relaxed mb-3">{item.context}</p>
 
-      {/* Projected impact — the "If nothing changes" hook */}
+      {/* Projected impact */}
       {item.projectedImpact && (
         <div className="mb-3 rounded-lg bg-amber-50/70 border border-amber-200/60 px-3 py-2">
           <p className="text-[11px] text-amber-800 leading-snug">
@@ -504,7 +587,7 @@ function PriorityItemCard({
         </div>
       )}
 
-      {/* Causal context (surface) — only causedBy, full chain in expanded */}
+      {/* Causal surface (collapsed only) */}
       {item.causedBy && !expanded && (
         <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
           <span className="font-semibold text-foreground/80">Driven by:</span> {item.causedBy}
@@ -521,7 +604,6 @@ function PriorityItemCard({
             </p>
           )}
         </div>
-        {/* Controls: expand + Ask AI */}
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={handleToggle}
@@ -540,19 +622,25 @@ function PriorityItemCard({
         </div>
       </div>
 
-      {/* Progressive disclosure — expanded detail */}
-      {expanded && <ExpandedDetail item={item} />}
+      {/* Expanded detail */}
+      {expanded && <ExpandedDetail item={item} persistRecord={persistRecord} />}
 
     </div>
   )
 }
 
+// ─── Priority Feed ────────────────────────────────────────────────────────────
+
 function PriorityFeed({
   items,
+  suppressedCount,
+  persistMap,
   onInteract,
 }: {
-  items: PriorityItem[]
-  onInteract: () => void
+  items:          PriorityItem[]
+  suppressedCount: number
+  persistMap:     PersistMap
+  onInteract:     () => void
 }) {
   if (items.length === 0) {
     const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -561,17 +649,48 @@ function PriorityFeed({
         <div className="mx-auto mb-3 h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-base">✓</div>
         <p className="text-sm font-semibold text-foreground">No material deterioration detected</p>
         <p className="text-sm text-muted-foreground mt-1 leading-relaxed max-w-[320px] mx-auto">
-          We&apos;ll surface issues when something becomes operationally meaningful.
+          {suppressedCount > 0
+            ? `${suppressedCount} minor signal${suppressedCount !== 1 ? "s" : ""} filtered automatically — none exceeded the confidence threshold.`
+            : "We'll surface issues when something becomes operationally meaningful."
+          }
         </p>
         <p className="text-[11px] text-muted-foreground/60 mt-3">Last checked: {now}</p>
       </div>
     )
   }
+
   return (
     <div className="rounded-2xl border border-border bg-card px-6">
       {items.map(item => (
-        <PriorityItemCard key={item.id} item={item} onInteract={onInteract} />
+        <PriorityItemCard
+          key={item.id}
+          item={item}
+          persistMap={persistMap}
+          onInteract={onInteract}
+        />
       ))}
+    </div>
+  )
+}
+
+// ─── Test with your business CTA ─────────────────────────────────────────────
+
+function TestCTA() {
+  return (
+    <div className="mt-6 rounded-2xl border border-dashed border-border bg-card px-6 py-6 flex items-center justify-between gap-4 flex-wrap">
+      <div>
+        <p className="text-sm font-semibold text-foreground">Test this with your business</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Upload your SKU export — the risk engine runs on your real data.
+        </p>
+      </div>
+      <Link
+        href="/data"
+        className="inline-flex items-center gap-1.5 rounded-xl bg-foreground text-background px-4 py-2 text-sm font-semibold hover:bg-foreground/80 transition-colors shrink-0"
+      >
+        <Upload className="h-3.5 w-3.5" />
+        Import my data
+      </Link>
     </div>
   )
 }
@@ -623,13 +742,18 @@ function LoadingSkeleton() {
 export default function DashboardPage() {
   const { skus, meta, hydrated } = useSkus()
 
-  const alerts = hydrated ? generateRiskAlerts(skus)                             : []
-  const health = hydrated ? getBusinessHealthScore(skus, alerts)                  : null
-  const deltas = hydrated ? computeDeltas(skus, meta.source === "demo")           : []
-  const feed   = hydrated ? getPriorityFeed(skus, alerts, meta.source === "demo") : []
+  const isDemo = meta.source === "demo"
+
+  const alerts = hydrated ? generateRiskAlerts(skus) : []
+  const health = hydrated ? getBusinessHealthScore(skus, alerts) : null
+  const deltas = hydrated ? computeDeltas(skus, isDemo) : []
+
+  const feedResult = hydrated ? getPriorityFeed(skus, alerts, isDemo) : { items: [], suppressedCount: 0, candidateCount: 0 }
+  const feed            = feedResult.items
+  const suppressedCount = feedResult.suppressedCount
 
   const yesterdayScore = hydrated
-    ? meta.source === "demo" ? DEMO_YESTERDAY_SCORE : loadYesterdayScore()
+    ? isDemo ? DEMO_YESTERDAY_SCORE : loadYesterdayScore()
     : null
 
   const activeSkus   = skus.filter(s => s.status === "active")
@@ -637,22 +761,55 @@ export default function DashboardPage() {
   const totalProfit  = activeSkus.reduce((s, k) => s + k.netProfitMonthly, 0)
   const totalAdSpend = activeSkus.reduce((s, k) => s + k.monthlyAdSpend,   0)
 
-  // ─── Intro overlay state ───────────────────────────────────────────────────
+  // ─── Persistence map for timeline (rebuild from feed enrichment) ───────────
+  // We need the raw AlertRecord map to pass to timeline components.
+  // Re-derive it from alerts here (updatePersistence is idempotent for demo).
+  const [persistMap, setPersistMap] = useState<PersistMap>(new Map())
+
+  useEffect(() => {
+    if (!hydrated) return
+    // Dynamically import to avoid SSR issues
+    import("@/lib/intelligence/persistence-tracker").then(({ updatePersistence }) => {
+      setPersistMap(updatePersistence(alerts, isDemo))
+    })
+  }, [hydrated]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Daily brief ──────────────────────────────────────────────────────────
+  const [brief, setBrief] = useState<DailyBrief | null>(null)
+  const didSaveSnapshot = useRef(false)
+
+  useEffect(() => {
+    if (!hydrated) return
+    const b = buildDailyBrief(feed, isDemo)
+    setBrief(b)
+    // Save current feed as new snapshot after computing brief
+    if (!didSaveSnapshot.current && !isDemo) {
+      saveFeedSnapshot(feed)
+      didSaveSnapshot.current = true
+    } else if (!didSaveSnapshot.current && isDemo) {
+      // For demo, save after first view so subsequent visits show "no change"
+      // But only save if we have a real comparison (not using demo baseline)
+      // This lets demo users see the "worsened" message once, then "no change"
+      saveFeedSnapshot(feed)
+      didSaveSnapshot.current = true
+    }
+  }, [hydrated]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Intro overlay ────────────────────────────────────────────────────────
   const [showIntro, setShowIntro] = useState(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
-    if (meta.source === "demo") {
+    if (isDemo) {
       try {
-        const seen = localStorage.getItem(INTRO_KEY)
-        if (!seen) setShowIntro(true)
+        if (!localStorage.getItem(INTRO_KEY)) setShowIntro(true)
       } catch { /* ignore */ }
     }
-  }, [meta.source])
+  }, [isDemo])
 
-  // ─── Session survey state ──────────────────────────────────────────────────
-  const interactionCount  = useRef(0)
-  const surveyScheduled   = useRef(false)
+  // ─── Session survey ───────────────────────────────────────────────────────
+  const interactionCount = useRef(0)
+  const surveyScheduled  = useRef(false)
   const [showSurvey, setShowSurvey] = useState(false)
   const [surveyDone, setSurveyDone] = useState(false)
 
@@ -669,30 +826,21 @@ export default function DashboardPage() {
     setSurveyDone(true)
   }
 
-  // ─── Trust instrumentation ─────────────────────────────────────────────────
+  // ─── Trust instrumentation ────────────────────────────────────────────────
   const didTrackRender = useRef(false)
   useEffect(() => {
     if (!hydrated) return
     trackFeedVisit()
     if (feed.length > 0 && !didTrackRender.current) {
-      trackFeedRendered(feed.map(i => ({
-        alertId:  i.alertId,
-        category: i.category,
-        severity: i.severity,
-      })))
+      trackFeedRendered(feed.map(i => ({ alertId: i.alertId, category: i.category, severity: i.severity })))
       didTrackRender.current = true
     }
   }, [hydrated]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isDemo = meta.source === "demo"
-
   return (
     <div className="flex min-h-screen flex-col bg-background">
 
-      {/* First-run overlay */}
       {showIntro && <FirstRunOverlay onDone={() => setShowIntro(false)} />}
-
-      {/* Session survey */}
       {showSurvey && !surveyDone && <SessionSurvey onClose={handleSurveyClose} />}
 
       <Navbar />
@@ -752,6 +900,9 @@ export default function DashboardPage() {
 
           {hydrated && (
             <>
+              {/* Daily brief — the "since your last visit" intelligence */}
+              {brief && <DailyBriefBanner brief={brief} />}
+
               {health && (
                 <OperationalStateBar
                   health={health}
@@ -768,16 +919,27 @@ export default function DashboardPage() {
                   <h2 className="text-xs font-bold text-foreground uppercase tracking-widest">
                     What needs attention now
                   </h2>
-                  {feed.length > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      {feed.length} action{feed.length !== 1 ? "s" : ""}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-4">
+                    {suppressedCount > 0 && (
+                      <span className="text-[10px] text-muted-foreground/60">
+                        {suppressedCount} signal{suppressedCount !== 1 ? "s" : ""} filtered
+                      </span>
+                    )}
+                    {feed.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {feed.length} action{feed.length !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <PriorityFeed items={feed} onInteract={handleInteract} />
+                <PriorityFeed
+                  items={feed}
+                  suppressedCount={suppressedCount}
+                  persistMap={persistMap}
+                  onInteract={handleInteract}
+                />
               </div>
 
-              {/* "Test with your business" CTA — demo only */}
               {isDemo && <TestCTA />}
 
               <KpiStrip revenue={totalRevenue} profit={totalProfit} adSpend={totalAdSpend} />

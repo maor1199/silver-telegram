@@ -47,6 +47,14 @@ export type PriorityItem = {
 
 const MIN_CONFIDENCE = 72
 
+// ─── Feed result (items + suppression metadata) ───────────────────────────────
+
+export type PriorityFeedResult = {
+  items:            PriorityItem[]
+  suppressedCount:  number    // raw candidates filtered below confidence threshold
+  candidateCount:   number    // unique de-duplicated candidates before filter+cap
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function acosRecommendation(confidence: number, marginPct: number, _acosPct: number): string {
@@ -96,51 +104,84 @@ function buildConfidenceReason(type: RiskAlert["type"], confidence: number): str
 
 function buildProjectedImpact(type: RiskAlert["type"], sku: SKU, confidence: number): string | null {
   if (confidence < 75) return null
-  const hi          = confidence >= 88
-  const dailyRev    = sku.monthlyRevenue / 30
+  const hi       = confidence >= 88
+  const dailyRev = sku.monthlyRevenue / 30
 
   switch (type) {
+
     case "stockout": {
-      const d = sku.daysUntilStockout
+      const d         = sku.daysUntilStockout
+      const gapDays   = sku.reorderLeadTimeDays - d
+      const exposedDays = Math.max(gapDays, 7) // minimum realistic gap
       if (hi) {
-        const lo  = Math.round(dailyRev * 5)
-        const high = Math.round(dailyRev * 14)
-        return `At current velocity, a stockout in ${d} day${d !== 1 ? "s" : ""} could cost $${lo.toLocaleString()}–$${high.toLocaleString()} in lost revenue over a typical 1–2 week gap, plus compounded rank damage.`
+        const gapLoss = Math.round(dailyRev * exposedDays)
+        const rankNote = exposedDays >= 7
+          ? " Search ranking typically falls 20–30 positions after a 7-day gap — recovery takes 2–4× the stockout duration."
+          : ""
+        return `At current velocity, a stockout gap of ~${exposedDays} day${exposedDays !== 1 ? "s" : ""} costs approximately $${gapLoss.toLocaleString()} in lost revenue.${rankNote}`
       }
-      return `A stockout at this stage causes significant revenue loss and search rank damage that takes weeks to recover.`
+      return `A stockout at this stage produces a revenue gap and ranking damage that typically takes 2–4 weeks to recover. The longer it runs, the more expensive the recovery.`
     }
+
     case "negative_margin": {
-      const loss = Math.abs(sku.netProfitMonthly)
-      if (hi) return `At the current rate, this SKU destroys $${loss.toLocaleString()}/mo — $${Math.round(loss * 12).toLocaleString()} annualized if nothing changes.`
-      return `Losses will compound monthly and continue draining portfolio cashflow until the root cause is addressed.`
+      const loss   = Math.abs(sku.netProfitMonthly)
+      const annualLoss = Math.round(loss * 12)
+      const q2Loss = Math.round(loss * 3)
+      if (hi) {
+        return `At $${loss.toLocaleString()}/mo in losses, this SKU will consume $${q2Loss.toLocaleString()} in the next 90 days. Annualised: $${annualLoss.toLocaleString()} destroyed if the root cause is not resolved. Every unit sold accelerates the drain.`
+      }
+      return `Each month of inaction compounds the loss. The damage will not self-correct — either ad spend, COGS, or price needs to change.`
     }
+
     case "margin_erosion": {
-      if (hi) return `At ${sku.marginPercent.toFixed(1)}% margin, one cost variance — a fee increase, ACoS spike, or returns surge — flips this SKU to net negative.`
-      return `Continued erosion at this rate may produce a net-negative SKU within 30–60 days.`
+      const margin = sku.marginPercent
+      const breakeven = Math.round(sku.monthlyAdSpend * 0.10)
+      if (hi) {
+        return `At ${margin.toFixed(1)}% margin, a single cost event — a 5pp ACoS rise, a fee increase, or a returns surge — flips this SKU to net negative. At current trajectory, that crossover is likely within 30–45 days without intervention.`
+      }
+      return `Margin this thin offers no buffer for normal operational variance. One bad week on PPC or returns tips it negative.`
     }
+
     case "ppc_pressure": {
-      const acos  = (sku.acos * 100).toFixed(0)
-      const spend = Math.round(sku.monthlyAdSpend)
-      if (hi) return `$${spend.toLocaleString()}/mo consumed by ads at ${acos}% ACoS. Unless ACoS drops toward your margin breakeven, net profit remains negative from ads alone.`
-      return `If ad spend continues at this level, net margin erosion will accelerate over the coming weeks.`
+      const acos       = (sku.acos * 100).toFixed(0)
+      const spend      = Math.round(sku.monthlyAdSpend)
+      const tacosEst   = ((sku.monthlyAdSpend / sku.monthlyRevenue) * 100).toFixed(1)
+      const breakeven  = Math.round(sku.marginPercent * 0.65)
+      if (hi) {
+        return `$${spend.toLocaleString()}/mo in ads at ${acos}% ACoS against ~${breakeven}% breakeven. Effective TACoS is ~${tacosEst}% — meaning ad spend is consuming more than the net margin this SKU generates. Every day at this spend rate deepens the hole.`
+      }
+      return `Ad spend at this ACoS is consuming most of the available margin. If TACoS exceeds net margin, the business is paying to sell at a loss.`
     }
+
     case "return_rate": {
-      const rate = (sku.returnRate * 100).toFixed(0)
-      const est  = Math.round(sku.monthlyRevenue * sku.returnRate * 0.25)
-      if (hi && est > 0) return `At a ${rate}% return rate, an estimated $${est.toLocaleString()}/mo is lost to refunds and return processing. Root cause unaddressed means this drain continues every month.`
-      return `High returns are steadily reducing effective revenue. Unresolved, this compounds month over month.`
+      const rate      = (sku.returnRate * 100).toFixed(0)
+      const units     = Math.round(sku.avgMonthlySales * sku.returnRate)
+      const costPerReturn = Math.round((sku.monthlyReturns / Math.max(units, 1)))
+      if (hi && units > 0) {
+        return `~${units} returns/mo at an estimated $${costPerReturn.toLocaleString()} cost per return unit (refund + FBA removal + relisting). ${rate}% return rate also increases suppression risk — Amazon flags listings with sustained returns above category average.`
+      }
+      return `High return rates erode net revenue every month and increase the risk of listing suppression if they exceed Amazon's category threshold.`
     }
+
     case "dead_inventory": {
-      const months  = (sku.daysUntilStockout / 30).toFixed(1)
-      const storage = Math.round(sku.monthlyStorageFee * 3)
-      if (hi && storage > 0) return `With ${months} months of stock and declining velocity, storage fees alone will add ~$${storage.toLocaleString()} over the next 90 days. Capital remains locked in idle units.`
-      return `Without a velocity recovery or clearance action, storage fees will compound on idle inventory for months.`
+      const months  = Math.round(sku.daysUntilStockout / 30)
+      const q3Fees  = Math.round(sku.monthlyStorageFee * 3)
+      const surcharge = months > 6 ? `Long-term storage fees apply to units over 365 days — these are significantly higher than standard rates.` : ""
+      if (hi && q3Fees > 0) {
+        return `At current velocity, ${months} months of stock generates ~$${q3Fees.toLocaleString()} in storage fees over the next 90 days with no revenue offset. Working capital remains locked. ${surcharge}`
+      }
+      return `Storage costs compound month over month without a velocity recovery or clearance action. Capital tied up in idle units cannot be redeployed.`
     }
+
     case "overstock": {
-      const months = (sku.daysUntilStockout / 30).toFixed(1)
-      if (hi) return `At ${months} months of stock, working capital is locked in inventory that won't convert to cash at current velocity.`
-      return `Excess inventory ties up capital and accumulates storage costs. Velocity is too low to clear stock at a healthy rate.`
+      const months    = (sku.daysUntilStockout / 30).toFixed(1)
+      const storage90 = Math.round(sku.monthlyStorageFee * 3)
+      if (hi) {
+        return `${months} months of inventory at current velocity locks up working capital and accumulates ~$${storage90.toLocaleString()} in storage costs over the next 90 days. A velocity recovery or clearance is needed to free the capital.`
+      }
+      return `Excess stock ties up capital and generates storage costs until velocity recovers. The longer it sits, the more expensive the resolution.`
     }
+
     default: return null
   }
 }
@@ -152,7 +193,7 @@ function daysAgoLabel(isoDate: string): string {
 
 // ─── Build feed ───────────────────────────────────────────────────────────────
 
-export function getPriorityFeed(skus: SKU[], alerts: RiskAlert[], isDemo = false): PriorityItem[] {
+export function getPriorityFeed(skus: SKU[], alerts: RiskAlert[], isDemo = false): PriorityFeedResult {
   const rawItems: PriorityItem[] = []
   const skuMap = new Map(skus.map(s => [s.id, s]))
 
@@ -360,10 +401,15 @@ export function getPriorityFeed(skus: SKU[], alerts: RiskAlert[], isDemo = false
     }
   }
 
-  // ── Filter by confidence, sort, cap at 5 ─────────────────────────────────
+  const candidateCount = seen.size
+
+  // ── Filter by confidence ──────────────────────────────────────────────────
   const stateOrder: Record<string, number> = { escalating: 0, new: 1, stable: 2 }
-  const sorted = [...seen.values()]
-    .filter(i => i.confidence >= MIN_CONFIDENCE)
+  const aboveThreshold  = [...seen.values()].filter(i => i.confidence >= MIN_CONFIDENCE)
+  const suppressedCount = candidateCount - aboveThreshold.length
+
+  // ── Sort and cap at 5 ─────────────────────────────────────────────────────
+  const sorted = aboveThreshold
     .sort((a, b) =>
       sevOrder[a.severity] - sevOrder[b.severity] ||
       stateOrder[a.state] - stateOrder[b.state]   ||
@@ -376,7 +422,7 @@ export function getPriorityFeed(skus: SKU[], alerts: RiskAlert[], isDemo = false
   const persistMap = updatePersistence(alerts, isDemo)
   const alertById  = new Map(alerts.map(a => [a.id, a]))
 
-  return sorted.map((item, i) => {
+  const items = sorted.map((item, i) => {
     const causal   = causalMap.get(item.alertId) ?? null
     const pKey     = alertById.has(item.alertId)
       ? alertKey({ skuId: item.skuId, type: alertById.get(item.alertId)!.type })
@@ -402,4 +448,6 @@ export function getPriorityFeed(skus: SKU[], alerts: RiskAlert[], isDemo = false
       persistenceSince,
     }
   })
+
+  return { items, suppressedCount, candidateCount }
 }
