@@ -22,7 +22,7 @@ type AnalysisRow = {
 
 const sidebarItems = [
   { id: "profile", label: "Profile", icon: User },
-  { id: "analyses", label: "My Analyses", icon: FileText },
+  { id: "analyses", label: "My Reports", icon: FileText },
   { id: "billing", label: "Billing", icon: CreditCard, disabled: true },
 ]
 
@@ -88,7 +88,7 @@ export default function AccountPage() {
           <div className="mb-8">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">My Account</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Manage your profile and view your saved analyses.
+              Manage your profile and view your saved reports.
             </p>
           </div>
 
@@ -448,9 +448,9 @@ function AnalysesSection() {
   return (
     <div className="animate-in fade-in duration-300">
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-foreground">My Analyses</h2>
+        <h2 className="text-lg font-semibold text-foreground">My Reports</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Your saved product analysis reports.
+          Your saved analysis reports.
         </p>
       </div>
 
@@ -469,17 +469,17 @@ function AnalysesSection() {
             <FileText className="h-7 w-7 text-muted-foreground/40" />
           </div>
           <h3 className="mt-6 text-base font-semibold text-foreground">
-            No analyses yet
+            No saved reports
           </h3>
           <p className="mt-2 max-w-xs text-sm text-muted-foreground leading-relaxed">
-            Run your first product analysis to see reports here.
+            Reports saved from analysis sessions will appear here.
           </p>
           <Button
             className="mt-8 h-10 rounded-xl bg-primary px-6 text-primary-foreground hover:bg-primary/90 font-medium"
             asChild
           >
-            <Link href="/analyze">
-              Start Analysis
+            <Link href="/dashboard">
+              Open Command Center
               <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
           </Button>

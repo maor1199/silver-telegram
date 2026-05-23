@@ -1,333 +1,232 @@
+import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
+import { ArrowRight } from "lucide-react"
 
 export default function AboutPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Navbar />
       <main className="flex-1">
-        {/* Header */}
-        <section className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#fef3c7]/60 via-background to-[#dbeafe]/30" />
-          <div className="relative mx-auto max-w-[1200px] px-6 py-20 text-center">
-            <h1 className="text-4xl font-bold text-foreground text-balance md:text-5xl">
-              Built by a seller who lost money first
+
+        {/* ── Hero ──────────────────────────────────────────────────────────── */}
+        <section className="border-b border-border/50">
+          <div className="mx-auto max-w-[1200px] px-6 py-20">
+            <p className="text-xs font-bold uppercase tracking-widest text-primary mb-4">
+              Our story
+            </p>
+            <h1 className="text-4xl font-bold text-foreground leading-tight text-balance md:text-5xl max-w-[640px]">
+              Built by a seller who learned the hard way.
             </h1>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground leading-relaxed">
-              The honest story behind SellerMentor.
+            <p className="mt-4 text-lg text-muted-foreground leading-relaxed max-w-[520px]">
+              The honest story behind SellerMentor — and why operational awareness matters more than any product research tool.
             </p>
           </div>
         </section>
 
-        {/* Story */}
+        {/* ── Story ─────────────────────────────────────────────────────────── */}
         <section className="mx-auto max-w-[700px] px-6 py-16">
-          <div className="prose prose-lg">
-            <div className="flex flex-col gap-8 text-muted-foreground leading-relaxed">
-              <p className="text-lg">
-                In 2019, I launched my first Amazon product — a premium kitchen gadget I was
-                convinced would sell. I spent $12,000 on inventory, $3,000 on photography and
-                listing optimization, and another $2,500 on PPC in the first month.
+          <div className="flex flex-col gap-7 text-muted-foreground leading-relaxed">
+
+            <p className="text-lg">
+              In 2019, I launched my first Amazon product — a premium kitchen gadget I was convinced
+              would sell. I spent $12,000 on inventory, $3,000 on photography, and another $2,500 on
+              PPC in the first month.
+            </p>
+
+            <p className="text-lg">
+              Six months later, I had $4,200 in unsold inventory sitting in FBA and a hard lesson
+              learned. For a long time I thought I just chose the wrong product.
+            </p>
+
+            <p className="text-lg">
+              That was wrong. The product wasn&apos;t the problem. <strong className="text-foreground font-semibold">Operational blindness was.</strong>
+            </p>
+
+            <div className="rounded-2xl border border-border bg-card p-7">
+              <p className="text-base font-medium text-foreground leading-relaxed italic">
+                &quot;For months, my inventory was approaching stockout. My ACoS was drifting. My margin
+                was compressing under fees I hadn&apos;t properly modelled. The signals were there — buried
+                in Seller Central reports I didn&apos;t know to look at.&quot;
               </p>
+            </div>
 
-              <p className="text-lg">
-                Six months later, I had $4,200 in unsold inventory sitting in FBA, a negative ROI,
-                and a hard lesson learned. The product wasn{"'"}t bad — the economics were. I entered a
-                category with brutal PPC costs, entrenched competitors with thousands of reviews, and
-                margins that couldn{"'"}t survive the ad spend required to rank.
+            <p className="text-lg">
+              I rebuilt. Three years of failed SKUs, successful launches, and a close education in
+              what actually determines whether an ecommerce business survives.
+            </p>
+
+            <p className="text-lg">
+              The sellers who last aren&apos;t the ones with the best products. They&apos;re the ones who
+              notice problems early — while there&apos;s still time to act. A stockout caught three weeks
+              before it happens is manageable. Noticed the day you go out of stock, it costs you
+              rank, revenue, and recovery time.
+            </p>
+
+            <p className="text-lg">
+              SellerMentor exists because of that lesson. It monitors your active portfolio —
+              inventory pressure, margin erosion, ad efficiency, return rate patterns — and surfaces
+              what&apos;s quietly deteriorating before it becomes expensive.
+            </p>
+
+            <div className="rounded-2xl border border-border bg-card p-7">
+              <p className="text-base text-foreground leading-relaxed">
+                We help ecommerce operators notice business problems before they become expensive.
+                Not after the month closes. Not after revenue drops. Early — while something can
+                still be done about it.
               </p>
+            </div>
 
-              <div className="rounded-2xl border border-border bg-card p-8">
-                <p className="text-base font-semibold text-card-foreground italic">
-                  {"\""}The problem wasn{"'"}t my product. It was that nobody told me the truth about the
-                  numbers before I invested.{"\""}
-                </p>
-              </div>
+            <p className="text-lg font-medium text-foreground">
+              That&apos;s the whole point.
+            </p>
 
-              <p className="text-lg">
-                I didn{"'"}t quit. I spent the next three years studying Amazon economics obsessively —
-                analyzing hundreds of products, building spreadsheets, learning PPC inside out, and
-                talking to every successful seller I could find.
-              </p>
-
-              <p className="text-lg">
-                I found a pattern. The sellers who consistently won weren{"'"}t the ones with the best
-                products. They were the ones who validated the economics first. They knew their
-                break-even ACoS before they placed their first order. They understood competitive
-                moats. They could spot a money pit from the listing data alone.
-              </p>
-
-              <p className="text-lg">
-                I built SellerMentor to be the advisor I wish I{"'"}d had before that first $12,000
-                mistake. It{"'"}s not a keyword tool. It{"'"}s not a product research tool. It{"'"}s an economics-first
-                decision engine that gives you an expert GO or NO-GO verdict before you commit capital.
-              </p>
-
-              <p className="text-lg">
-                Every analysis reads like a consultant memo — because that{"'"}s exactly what it is. The
-                kind of advice that used to cost $500/hour, now available for every product idea you
-                have.
-              </p>
-
-              <div className="rounded-2xl border border-border bg-card p-8">
-                <p className="text-base text-card-foreground">
-                  Today, SellerMentor has helped thousands of sellers make better decisions. Some of
-                  the best outcomes weren{"'"}t GO verdicts — they were NO-GOs that saved sellers from
-                  expensive mistakes.
-                </p>
-              </div>
-
-              <p className="text-lg">
-                I{"'"}m not here to hype you up or sell you dreams. I{"'"}m here to tell you the truth about
-                your product idea — even when the truth is uncomfortable.
-              </p>
-
-              <p className="text-lg font-medium text-foreground">
-                That{"'"}s the whole point.
-              </p>
-
-              <div className="mt-4 border-t border-border pt-8">
-                <p className="text-sm text-muted-foreground">
-                  — The team at SellerMentor
-                </p>
-              </div>
+            <div className="border-t border-border pt-6">
+              <p className="text-sm text-muted-foreground">— The team at SellerMentor</p>
             </div>
           </div>
         </section>
 
-        {/* Values */}
+        {/* ── What we believe ───────────────────────────────────────────────── */}
         <section className="border-t border-border bg-secondary/30">
           <div className="mx-auto max-w-[1200px] px-6 py-20">
-            <h2 className="text-center text-2xl font-bold text-foreground mb-12">What we believe</h2>
-            <div className="grid gap-8 md:grid-cols-3">
-              <div className="rounded-2xl border border-border bg-card p-6">
-                <h3 className="text-base font-semibold text-card-foreground">Honesty over hype</h3>
-                <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-                  We{"'"}d rather give you an uncomfortable NO-GO than a false sense of confidence. Your
-                  money deserves the truth.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border bg-card p-6">
-                <h3 className="text-base font-semibold text-card-foreground">Economics first</h3>
-                <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-                  Trends fade. Demand fluctuates. But unit economics don{"'"}t lie. Every decision should
-                  start with the numbers.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border bg-card p-6">
-                <h3 className="text-base font-semibold text-card-foreground">Decisions, not data</h3>
-                <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-                  You don{"'"}t need more data. You need a clear answer. GO or NO-GO. That{"'"}s what we
-                  deliver.
-                </p>
-              </div>
+            <h2 className="text-2xl font-bold text-foreground mb-10">What we believe</h2>
+            <div className="grid gap-5 md:grid-cols-3">
+              {[
+                {
+                  title: "Early warning over post-mortem",
+                  body: "Issues surface while there's still time to act — not after the month closes, not after revenue drops. The value of monitoring is timing.",
+                },
+                {
+                  title: "Consequences, not risk scores",
+                  body: "Every alert carries what happens if nothing changes. Concrete estimates — lost revenue, margin drain, storage cost — not abstract indicators.",
+                },
+                {
+                  title: "Signal, not noise",
+                  body: "Not every metric movement is operationally meaningful. The system filters for what matters and ranks by severity. You shouldn't have to decide what to look at first.",
+                },
+              ].map(v => (
+                <div key={v.title} className="rounded-2xl border border-border bg-card p-6">
+                  <h3 className="text-base font-semibold text-foreground mb-3">{v.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{v.body}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* How the Advisor Works */}
-        <section className="bg-card">
-          <div className="mx-auto max-w-[1200px] px-6 py-24">
-            <div className="mx-auto max-w-3xl">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FF9900]/10">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#FF9900]">
-                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                    <path d="M2 17l10 5 10-5" />
-                    <path d="M2 12l10 5 10-5" />
-                  </svg>
+        {/* ── How it works ──────────────────────────────────────────────────── */}
+        <section className="border-t border-border bg-card">
+          <div className="mx-auto max-w-[1200px] px-6 py-20">
+            <div className="max-w-[640px]">
+              <p className="text-xs font-bold uppercase tracking-widest text-primary mb-4">Methodology</p>
+              <h2 className="text-2xl font-bold text-foreground mb-4">How the system works</h2>
+              <p className="text-base text-muted-foreground leading-relaxed mb-10">
+                SellerMentor watches your SKUs continuously and surfaces issues that cross operational
+                thresholds — not every fluctuation, only what matters.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 max-w-[860px]">
+              {[
+                {
+                  label: "Inventory velocity monitoring",
+                  desc: "Tracks days-until-stockout against supplier lead time. Surfaces reorder signals before the window closes.",
+                },
+                {
+                  label: "Margin trend analysis",
+                  desc: "Measures true profitability per SKU after all costs — fees, PPC, returns, storage. Detects compression early.",
+                },
+                {
+                  label: "Ad efficiency tracking",
+                  desc: "Monitors ACoS, TACoS, and ad spend trends. Flags when ad efficiency is pushing a SKU toward net negative.",
+                },
+                {
+                  label: "Return rate patterns",
+                  desc: "Detects return rate drift and compares against category norms. Flags listing-level signals before suppression risk.",
+                },
+                {
+                  label: "Confidence filtering",
+                  desc: "Not every signal is surfaced. Issues must cross a confidence threshold before appearing in your feed — reducing false positives.",
+                },
+                {
+                  label: "Consequence projection",
+                  desc: "Every surfaced issue carries a forward-looking estimate: what happens financially if nothing changes in 30, 60, or 90 days.",
+                },
+              ].map(item => (
+                <div key={item.label} className="rounded-xl border border-border bg-background p-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-1.5">{item.label}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
                 </div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-[#FF9900]">Methodology</p>
-              </div>
-
-              <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-                How the Advisor Works
-              </h2>
-              <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-                SellerMentor combines multiple analytical dimensions into a single, unified verdict.
-                The system simulates the decision process of an experienced Amazon consultant who has
-                evaluated hundreds of product opportunities.
-              </p>
-              <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-                Every analysis synthesizes seven core intelligence layers to determine whether a
-                product opportunity is worth your capital:
-              </p>
-
-              <div className="mt-10 grid gap-4 sm:grid-cols-2">
-                {[
-                  { label: "Economic Modeling", desc: "Full unit economics including FBA fees, shipping, returns, and true landed cost." },
-                  { label: "Competition Analysis", desc: "Listing quality, review velocity, brand saturation, and market concentration." },
-                  { label: "PPC Pressure Estimation", desc: "Expected CPC, break-even ACoS, bid inflation trends, and launch budget." },
-                  { label: "Risk Signal Detection", desc: "Regulatory barriers, seasonal fragility, return rate patterns, and supply chain risk." },
-                  { label: "Differentiation Opportunities", desc: "Bundling potential, listing gaps, review weaknesses, and branding plays." },
-                  { label: "Review Intelligence", desc: "Moat depth, sentiment analysis, rating distribution, and entry barriers." },
-                  { label: "Market Indicators", desc: "Demand trajectory, category maturity, search volume trends, and seasonality." },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-xl border border-border bg-background p-5">
-                    <h3 className="text-sm font-semibold text-foreground">{item.label}</h3>
-                    <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-10 rounded-2xl border border-[#FF9900]/20 bg-[#FF9900]/5 p-6">
-                <p className="text-base font-medium text-foreground leading-relaxed">
-                  The goal is singular: prevent expensive mistakes before inventory is ordered. Every
-                  data point, every score, every recommendation exists to answer one question — should
-                  you invest, or should you walk away?
-                </p>
-              </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* AI Transparency */}
-        <section className="border-y border-border bg-background">
-          <div className="mx-auto max-w-[1200px] px-6 py-24">
-            <div className="mx-auto max-w-3xl">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#3b82f6]/10">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#3b82f6]">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 16v-4" />
-                    <path d="M12 8h.01" />
-                  </svg>
-                </div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-[#3b82f6]">Responsible AI</p>
-              </div>
-
-              <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-                AI Transparency
-              </h2>
-              <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-                SellerMentor uses artificial intelligence to analyze patterns across market data,
-                competitive landscapes, and economic indicators. The advisor generates insights by
-                processing publicly available information and applying decision frameworks trained on
-                real Amazon selling outcomes.
+        {/* ── System transparency ───────────────────────────────────────────── */}
+        <section className="border-t border-border">
+          <div className="mx-auto max-w-[1200px] px-6 py-20">
+            <div className="max-w-[640px]">
+              <p className="text-xs font-bold uppercase tracking-widest text-primary mb-4">Transparency</p>
+              <h2 className="text-2xl font-bold text-foreground mb-4">How we use AI</h2>
+              <p className="text-base text-muted-foreground leading-relaxed mb-8">
+                The risk engine uses deterministic rules grounded in operational data — inventory math,
+                margin calculations, lead time logic. The AI Advisor layer uses language models to help
+                operators interpret signals and reason through decisions.
               </p>
+            </div>
 
-              <div className="mt-10 flex flex-col gap-5">
-                {[
-                  {
-                    title: "Probabilistic, not deterministic",
-                    text: "Every score, estimate, and recommendation is a probabilistic output. The advisor communicates confidence levels alongside verdicts because certainty in market analysis is impossible.",
-                  },
-                  {
-                    title: "Market-dependent results",
-                    text: "Outputs depend on current market conditions. A GO verdict today may become a NO-GO tomorrow if competitive dynamics shift. We recommend re-analyzing before major purchasing decisions.",
-                  },
-                  {
-                    title: "Uncertainty is highlighted, not hidden",
-                    text: "When the data is ambiguous or the risk is hard to quantify, the advisor says so. We believe that acknowledging uncertainty is more valuable than projecting false confidence.",
-                  },
-                  {
-                    title: "Human judgment remains essential",
-                    text: "The AI is designed to support human decision-making — not replace it. The advisor provides analysis and recommendations, but the final decision always belongs to you.",
-                  },
-                ].map((item) => (
-                  <div key={item.title} className="rounded-xl border border-border bg-card p-6">
-                    <h3 className="text-base font-semibold text-card-foreground">{item.title}</h3>
-                    <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{item.text}</p>
-                  </div>
-                ))}
-              </div>
+            <div className="flex flex-col gap-4 max-w-[640px]">
+              {[
+                {
+                  title: "Probabilistic, not deterministic",
+                  text: "Impact projections are estimates based on current trajectory, not guarantees. Every consequence estimate includes a confidence range.",
+                },
+                {
+                  title: "Uncertainty is shown, not hidden",
+                  text: "When data is incomplete or signals are ambiguous, the system says so. Low-confidence issues are filtered out rather than surfaced with false precision.",
+                },
+                {
+                  title: "Human judgment is always final",
+                  text: "The system surfaces, ranks, and projects — but decisions belong to you. We're an early warning system, not an autopilot.",
+                },
+              ].map(item => (
+                <div key={item.title} className="rounded-xl border border-border bg-card p-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-1.5">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.text}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* Why Trust Our Analysis */}
-        <section className="bg-card">
-          <div className="mx-auto max-w-[1200px] px-6 py-24">
-            <div className="mx-auto max-w-3xl">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#16a34a]/10">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#16a34a]">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  </svg>
-                </div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-[#16a34a]">Trust</p>
-              </div>
-
-              <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-                Why Trust Our Analysis
-              </h2>
-              <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-                SellerMentor wasn{"'"}t built in a lab by people who read about e-commerce. It was built
-                by someone who experienced failed launches, absorbed the financial pain, and spent years
-                understanding exactly why products fail on Amazon.
-              </p>
-
-              <div className="mt-10 grid gap-6 sm:grid-cols-2">
-                <div className="flex flex-col gap-4 rounded-2xl border border-border bg-background p-6">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#16a34a]/10">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#16a34a]">
-                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  </div>
-                  <h3 className="text-base font-semibold text-foreground">Battle-tested detection</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    The system is specifically designed to detect the traps that hurt new sellers —
-                    hidden PPC costs, review moats, seasonal cliffs, and margin compression that
-                    basic research tools completely miss.
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-4 rounded-2xl border border-border bg-background p-6">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#16a34a]/10">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#16a34a]">
-                      <line x1="12" y1="1" x2="12" y2="23" />
-                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                    </svg>
-                  </div>
-                  <h3 className="text-base font-semibold text-foreground">Economics first, always</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    We don{"'"}t lead with trends, hype, or demand volume. Every analysis starts with
-                    unit economics — because a product that can{"'"}t make money at scale will never be a
-                    successful business.
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-4 rounded-2xl border border-border bg-background p-6">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#16a34a]/10">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#16a34a]">
-                      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                    </svg>
-                  </div>
-                  <h3 className="text-base font-semibold text-foreground">Long-term sustainability</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    The advisor prioritizes products with sustainable competitive advantages — not
-                    quick wins that collapse after three months. We optimize for businesses that last,
-                    not launches that spike.
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-4 rounded-2xl border border-border bg-background p-6">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#16a34a]/10">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#16a34a]">
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                      <polyline points="22 4 12 14.01 9 11.01" />
-                    </svg>
-                  </div>
-                  <h3 className="text-base font-semibold text-foreground">Built from real failure</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Every risk signal, every economic model, every NO-GO trigger exists because
-                    someone lost real money on a product that looked good on paper. We turned that
-                    pain into protection.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-12 rounded-2xl border border-[#16a34a]/20 bg-[#16a34a]/5 p-8 text-center">
-                <p className="text-lg font-semibold text-foreground leading-relaxed">
-                  We built this advisor so sellers can make smarter decisions with clarity instead of guesswork.
-                </p>
-                <p className="mt-3 text-sm text-muted-foreground">
-                  That{"'"}s not a tagline. That{"'"}s the reason this product exists.
-                </p>
-              </div>
+        {/* ── CTA ───────────────────────────────────────────────────────────── */}
+        <section className="border-t border-border bg-secondary/30">
+          <div className="mx-auto max-w-[1200px] px-6 py-16 text-center">
+            <h2 className="text-2xl font-bold text-foreground mb-3 text-balance">
+              See what&apos;s quietly deteriorating in your business.
+            </h2>
+            <p className="text-sm text-muted-foreground mb-8 max-w-[420px] mx-auto leading-relaxed">
+              Open the Command Center with demo data. Or import your SKU export — the risk engine runs in seconds.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 py-3 text-sm font-semibold hover:bg-primary/90 transition-colors"
+              >
+                Open Command Center
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/data"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground hover:bg-muted/50 transition-colors"
+              >
+                Import my data
+              </Link>
             </div>
           </div>
         </section>
+
       </main>
       <Footer />
     </div>

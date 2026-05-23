@@ -141,21 +141,21 @@ export default function GuidePage() {
           </div>
 
           {/* ── Bottom CTA ── */}
-          <div className="mt-12 bg-gradient-to-br from-[#fff8eb] via-white to-[#eff6ff] border border-border rounded-2xl p-8 flex flex-wrap items-center justify-between gap-5">
+          <div className="mt-12 rounded-2xl border border-border bg-card p-8 flex flex-wrap items-center justify-between gap-5">
             <div>
-              <h3 className="text-lg font-black text-foreground mb-1.5" style={{ letterSpacing: "-0.02em" }}>
-                Ready to validate your product idea?
+              <h3 className="text-lg font-bold text-foreground mb-1.5">
+                Ready to monitor your business?
               </h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                After reading the guide, run a free analysis on SellerMentor to see if your numbers actually work.
+                Open the Command Center to see what&apos;s happening across your active SKUs — inventory pressure, margin trends, ad efficiency.
               </p>
             </div>
             <Button
-              className="bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl shadow-lg shadow-primary/20 whitespace-nowrap"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl shadow-sm whitespace-nowrap"
               asChild
             >
-              <Link href="/analyze">
-                Analyze My Product Free
+              <Link href="/dashboard">
+                Open Command Center
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
