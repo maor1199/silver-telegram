@@ -336,6 +336,8 @@ function AdvisorInner() {
   const [loading, setLoading]           = useState(false)
   // Set when arriving via ?q= from an issue card — clears after first send
   const [investigatingSource, setInvestigatingSource] = useState(false)
+  // Stores the last user message that failed — enables one-click retry
+  const [lastFailedMessage, setLastFailedMessage]     = useState<string | null>(null)
   const bottomRef                       = useRef<HTMLDivElement>(null)
   const didPreFill                      = useRef(false)
 
@@ -368,7 +370,12 @@ function AdvisorInner() {
     setMessages(prev => [...prev, userMessage])
     setInput("")
     setInvestigatingSource(false)
+    setLastFailedMessage(null)
     setLoading(true)
+
+    // 30-second client-side timeout — prevents infinite spinner if the network hangs
+    const controller = new AbortController()
+    const timeoutId  = setTimeout(() => controller.abort(), 30_000)
 
     try {
       const context  = buildBusinessContext(skus, alerts, health, priorityItems)
@@ -376,15 +383,23 @@ function AdvisorInner() {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ messages: [...messages, userMessage], context }),
+        signal:  controller.signal,
       })
-      if (!response.ok) throw new Error("API error")
+      clearTimeout(timeoutId)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const data = await response.json()
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }])
-    } catch {
+    } catch (err) {
+      clearTimeout(timeoutId)
+      const isTimeout = err instanceof Error && err.name === "AbortError"
       setMessages(prev => [...prev, {
         role:    "assistant",
-        content: "I'm having trouble connecting right now. Please try again in a moment.",
+        content: isTimeout
+          ? "Request timed out — took too long to respond."
+          : "Something went wrong. Please try again.",
       }])
+      // Store so the retry button can re-send without the user retyping
+      setLastFailedMessage(text.trim())
     } finally {
       setLoading(false)
     }
@@ -460,6 +475,22 @@ function AdvisorInner() {
                     )}
                   </div>
                 ))}
+
+                {/* Retry — shown below a failed response so the user doesn't have to retype */}
+                {lastFailedMessage && !loading && (
+                  <div className="flex justify-start pl-11">
+                    <button
+                      onClick={() => {
+                        const msg = lastFailedMessage
+                        setLastFailedMessage(null)
+                        sendMessage(msg)
+                      }}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/70 transition-colors"
+                    >
+                      ↩ Retry
+                    </button>
+                  </div>
+                )}
 
                 {loading && (
                   <div className="flex gap-3 justify-start">

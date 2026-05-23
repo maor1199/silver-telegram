@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       }, { status: 200 })
     }
 
-    const client = new OpenAI({ apiKey })
+    const client = new OpenAI({ apiKey, timeout: 25_000 })
     const model  = process.env.OPENAI_MODEL || "gpt-4o"
 
     const systemWithContext = context

@@ -36,17 +36,14 @@ const INTRO_KEY = "sellermentor_intro_v1"
 
 const INTRO_STEPS = [
   {
-    icon: "📡",
     title: "Monitors operational deterioration",
     body: "SellerMentor watches your SKUs continuously — inventory, margin, ad efficiency, returns. It surfaces issues before they become expensive problems.",
   },
   {
-    icon: "📉",
     title: "Shows what happens if nothing changes",
     body: "Every alert carries a projected impact. Not vague warnings — concrete estimates of what drifts away if the issue goes unaddressed.",
   },
   {
-    icon: "🎯",
     title: "Helps you decide what to act on first",
     body: "Issues are ranked by severity and trajectory. Expand any card to see the causal chain, confidence level, and a precise recommended action.",
   },
@@ -67,25 +64,29 @@ function FirstRunOverlay({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="relative w-full max-w-[400px] rounded-2xl border border-border bg-card shadow-2xl px-8 py-8">
-        <div className="flex items-center gap-1.5 mb-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+      <div className="relative w-full max-w-[380px] rounded-2xl border border-border bg-card shadow-2xl px-8 py-9">
+        {/* Progress bar */}
+        <div className="flex items-center gap-1 mb-8">
           {INTRO_STEPS.map((_, i) => (
-            <div key={i} className={cn("h-1.5 rounded-full transition-all duration-300", i === step ? "w-6 bg-primary" : "w-1.5 bg-border")} />
+            <div key={i} className={cn("h-0.5 rounded-full transition-all duration-300", i === step ? "flex-1 bg-primary" : "flex-1 bg-border")} />
           ))}
         </div>
-        <div className="text-3xl mb-4">{current.icon}</div>
-        <h2 className="text-[17px] font-bold text-foreground leading-snug mb-2">{current.title}</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed mb-8">{current.body}</p>
+        {/* Step counter */}
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
+          {step + 1} of {INTRO_STEPS.length}
+        </p>
+        <h2 className="text-base font-bold text-foreground leading-snug mb-3">{current.title}</h2>
+        <p className="text-sm text-muted-foreground leading-relaxed mb-9">{current.body}</p>
         <button onClick={handleNext} className="w-full rounded-xl bg-primary text-primary-foreground py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors">
-          {isLast ? "Got it — show me the feed" : "Next →"}
+          {isLast ? "Got it" : "Next"}
         </button>
         {!isLast && (
           <button
             onClick={() => { try { localStorage.setItem(INTRO_KEY, "1") } catch { /* ignore */ } onDone() }}
             className="w-full mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            Skip intro
+            Skip
           </button>
         )}
       </div>
@@ -670,7 +671,7 @@ function PriorityFeed({
 
 function TestCTA() {
   return (
-    <div className="mt-6 rounded-2xl border border-dashed border-border bg-card px-6 py-6 flex items-center justify-between gap-4 flex-wrap">
+    <div className="mt-6 rounded-2xl border border-border bg-muted/20 px-6 py-6 flex items-center justify-between gap-4 flex-wrap">
       <div>
         <p className="text-sm font-semibold text-foreground">Test this with your business</p>
         <p className="text-xs text-muted-foreground mt-0.5">
