@@ -2,18 +2,13 @@ import Link from "next/link"
 
 const footerLinks = {
   Product: [
-    { name: "Analyze", href: "/analyze" },
-    { name: "Pricing", href: "/pricing" },
-    { name: "Dashboard", href: "/dashboard" },
-  ],
-  Company: [
-    { name: "About", href: "/about" },
-    { name: "Blog", href: "#" },
-    { name: "Careers", href: "#" },
+    { name: "Command Center", href: "/dashboard" },
+    { name: "Pricing",        href: "/pricing"   },
+    { name: "Import Data",    href: "/data"       },
   ],
   Legal: [
-    { name: "Privacy Policy", href: "/privacy" },
-    { name: "Terms of Service", href: "/terms" },
+    { name: "Privacy Policy",   href: "/privacy" },
+    { name: "Terms of Service", href: "/terms"   },
   ],
 }
 
@@ -29,11 +24,11 @@ export function Footer() {
               </div>
               <div className="flex flex-col">
                 <span className="text-sm font-semibold text-foreground leading-none">SellerMentor</span>
-                <span className="text-[10px] text-muted-foreground leading-none mt-0.5">Expert product analysis</span>
+                <span className="text-[10px] text-muted-foreground leading-none mt-0.5">Operational intelligence</span>
               </div>
             </div>
             <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-              Economics-first product validation for Amazon sellers. Know before you invest.
+              Continuous operational monitoring for ecommerce businesses. Surface deterioration before it costs you.
             </p>
           </div>
 
@@ -60,17 +55,9 @@ export function Footer() {
           <p className="text-sm text-muted-foreground">
             {"2026 SellerMentor. All rights reserved."}
           </p>
-          <div className="flex items-center gap-6">
-            <Link href="#" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-              Twitter
-            </Link>
-            <Link href="#" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-              LinkedIn
-            </Link>
-            <Link href="#" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-              YouTube
-            </Link>
-          </div>
+          <Link href="mailto:pardilov11@gmail.com" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+            Contact
+          </Link>
         </div>
       </div>
     </footer>

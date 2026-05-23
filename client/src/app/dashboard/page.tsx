@@ -460,7 +460,7 @@ function ExpandedDetail({
   const hasCausal = item.causedBy || item.impacts || item.chainLabel
 
   return (
-    <div className="mt-4 pt-4 border-t border-border/50 flex flex-col gap-4">
+    <div className="mt-4 pt-4 border-t border-border/50 flex flex-col gap-4 animate-in fade-in duration-200">
 
       {/* Causal chain */}
       {hasCausal && (
@@ -555,7 +555,7 @@ function PriorityItemCard({
   }
 
   return (
-    <div className={cn("border-l-2 pl-5 py-5 border-b border-border/60 last:border-b-0", borderColor)}>
+    <div className={cn("border-l-2 pl-5 py-6 border-b border-border/60 last:border-b-0", borderColor)}>
 
       {/* Meta: SKU · category | trajectory */}
       <div className="flex items-center justify-between mb-1.5">
@@ -573,7 +573,7 @@ function PriorityItemCard({
       </div>
 
       {/* Headline */}
-      <p className="text-[15px] font-bold text-foreground leading-snug mb-1.5">{item.headline}</p>
+      <p className="text-base font-bold text-foreground leading-snug mb-1.5">{item.headline}</p>
 
       {/* Context */}
       <p className="text-sm text-muted-foreground leading-relaxed mb-3">{item.context}</p>
@@ -585,13 +585,6 @@ function PriorityItemCard({
             <span className="font-semibold">If nothing changes:</span> {item.projectedImpact}
           </p>
         </div>
-      )}
-
-      {/* Causal surface (collapsed only) */}
-      {item.causedBy && !expanded && (
-        <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
-          <span className="font-semibold text-foreground/80">Driven by:</span> {item.causedBy}
-        </p>
       )}
 
       {/* Action row */}
@@ -607,7 +600,7 @@ function PriorityItemCard({
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={handleToggle}
-            className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-0.5 rounded-md border border-border/60 bg-background/60 px-2 py-1 text-xs text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground transition-colors"
             aria-label={expanded ? "Collapse detail" : "Expand detail"}
           >
             Details
@@ -686,7 +679,7 @@ function TestCTA() {
       </div>
       <Link
         href="/data"
-        className="inline-flex items-center gap-1.5 rounded-xl bg-foreground text-background px-4 py-2 text-sm font-semibold hover:bg-foreground/80 transition-colors shrink-0"
+        className="inline-flex items-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold hover:bg-primary/90 transition-colors shrink-0"
       >
         <Upload className="h-3.5 w-3.5" />
         Import my data
@@ -730,9 +723,43 @@ function KpiStrip({ revenue, profit, adSpend }: {
 
 function LoadingSkeleton() {
   return (
-    <div className="animate-pulse space-y-6">
-      <div className="rounded-2xl bg-muted/40 h-24" />
-      {[...Array(3)].map((_, i) => <div key={i} className="rounded-2xl bg-muted/40 h-28" />)}
+    <div className="space-y-6">
+      {/* Operational state bar */}
+      <div className="animate-pulse rounded-2xl border border-border bg-card px-6 py-5">
+        <div className="flex gap-10">
+          {[...Array(3)].map((_, i) => (
+            <div key={i}>
+              <div className="h-2 w-24 rounded-full bg-muted mb-3" />
+              <div className="h-6 w-16 rounded bg-muted" />
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Feed cards */}
+      <div className="rounded-2xl border border-border bg-card px-6 divide-y divide-border/60">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="animate-pulse py-6">
+            <div className="flex justify-between items-start mb-2.5">
+              <div className="flex gap-2 items-center">
+                <div className="h-2.5 w-28 rounded-full bg-muted" />
+                <div className="h-2.5 w-1 rounded-full bg-muted/40" />
+                <div className="h-2.5 w-16 rounded-full bg-muted/60" />
+              </div>
+              <div className="h-2.5 w-20 rounded-full bg-muted/60" />
+            </div>
+            <div className="h-4 w-3/4 rounded bg-muted mb-2" />
+            <div className="h-3 w-full rounded-full bg-muted/70 mb-1" />
+            <div className="h-3 w-4/5 rounded-full bg-muted/50 mb-5" />
+            <div className="flex justify-between items-center">
+              <div className="h-3.5 w-2/5 rounded bg-muted/70" />
+              <div className="flex gap-3 items-center">
+                <div className="h-6 w-16 rounded-md bg-muted/60" />
+                <div className="h-3 w-14 rounded-full bg-muted/40" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -782,14 +809,8 @@ export default function DashboardPage() {
     if (!hydrated) return
     const b = buildDailyBrief(feed, isDemo)
     setBrief(b)
-    // Save current feed as new snapshot after computing brief
-    if (!didSaveSnapshot.current && !isDemo) {
-      saveFeedSnapshot(feed)
-      didSaveSnapshot.current = true
-    } else if (!didSaveSnapshot.current && isDemo) {
-      // For demo, save after first view so subsequent visits show "no change"
-      // But only save if we have a real comparison (not using demo baseline)
-      // This lets demo users see the "worsened" message once, then "no change"
+    // Save current feed as snapshot so next visit sees "since your last visit" diff
+    if (!didSaveSnapshot.current) {
       saveFeedSnapshot(feed)
       didSaveSnapshot.current = true
     }
