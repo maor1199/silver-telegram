@@ -7,9 +7,9 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  Zap, Send, User, Bot, Loader2, AlertCircle,
+  Send, User, Bot, Loader2, AlertCircle,
   BarChart3, Package, TrendingDown, ChevronDown,
-  TrendingUp, Minus, Activity, ArrowUpDown,
+  TrendingUp, Minus, Activity, ArrowUpDown, ArrowRight,
 } from "lucide-react"
 import { useSkus } from "@/lib/intelligence/store"
 import { generateRiskAlerts, getBusinessHealthSummary } from "@/lib/intelligence/risk-engine"
@@ -278,8 +278,28 @@ function buildBusinessContext(
       }).join("\n\n")
     : "\n\n=== PRIORITY ISSUES ===\nNo issues above confidence threshold. Business appears operationally stable."
 
+  // ── Data availability — explicit flags for the AI's discipline rules ────────
+  // The AI must know what it CAN and CANNOT reference before giving actions.
+  const activeSkus = skus.filter(s => s.status === "active")
+  const skusWithoutLeadTime = activeSkus.filter(s => !s.reorderLeadTimeDays || s.reorderLeadTimeDays === 0)
+  const skusWithZeroDailySales = activeSkus.filter(s => !s.avgDailySales || s.avgDailySales === 0)
+
+  const dataAvailabilitySection = [
+    `\n=== DATA AVAILABILITY (read before recommending actions) ===`,
+    `Campaign-level PPC data: NOT AVAILABLE — only SKU-level ACoS and total ad spend are present. Do not recommend pausing specific campaign types. Reason from SKU-level ACoS only.`,
+    `Fee breakdown by component: NOT AVAILABLE — only net profit and margin percent present. Root cause of margin deterioration cannot be attributed to specific fee categories.`,
+    skusWithoutLeadTime.length > 0
+      ? `Lead time missing for: ${skusWithoutLeadTime.map(s => s.name).join(", ")} — reorder timing for these SKUs cannot be calculated; do not state a reorder deadline.`
+      : `Lead time: present for all active SKUs — reorder timing calculations are valid.`,
+    skusWithZeroDailySales.length > 0
+      ? `Daily sales rate absent for: ${skusWithZeroDailySales.map(s => s.name).join(", ")} — days-until-stockout calculation unreliable for these SKUs.`
+      : `Daily sales rate: present for all active SKUs.`,
+    `Reorder quantity field: present for all SKUs where shown in data.`,
+    `Historical pricing data: NOT AVAILABLE — cannot calculate percentage price changes or historical margin baseline.`,
+  ].join("\n")
+
   // ── Per-SKU data ───────────────────────────────────────────────────────────
-  const skuSummaries = skus.filter(s => s.status === "active").map(sku => {
+  const skuSummaries = activeSkus.map(sku => {
     const skuAlerts = alerts.filter(a => a.skuId === sku.id)
     return [
       `SKU: ${sku.name} (ID: ${sku.id})`,
@@ -299,6 +319,7 @@ function buildBusinessContext(
     `Ad Spend: $${health.totalAdSpendMonthly.toLocaleString()}/mo | ACoS: ${health.overallAcos}%`,
     `Operational Status: ${health.healthStatusLabel} | Total Alerts: ${health.totalAlerts} (${health.criticalAlerts} critical, ${health.highAlerts} high)`,
     `At-risk profit if alerts unaddressed: -$${health.projectedImpactIfUnaddressed.toLocaleString()}`,
+    dataAvailabilitySection,
     prioritySection,
     `\n=== SKU DATA ===`,
     skuSummaries,
@@ -310,11 +331,13 @@ function buildBusinessContext(
 function AdvisorInner() {
   const { skus, meta, hydrated } = useSkus()
   const searchParams = useSearchParams()
-  const [messages, setMessages]   = useState<Message[]>([])
-  const [input, setInput]         = useState("")
-  const [loading, setLoading]     = useState(false)
-  const bottomRef                 = useRef<HTMLDivElement>(null)
-  const didPreFill                = useRef(false)
+  const [messages, setMessages]         = useState<Message[]>([])
+  const [input, setInput]               = useState("")
+  const [loading, setLoading]           = useState(false)
+  // Set when arriving via ?q= from an issue card — clears after first send
+  const [investigatingSource, setInvestigatingSource] = useState(false)
+  const bottomRef                       = useRef<HTMLDivElement>(null)
+  const didPreFill                      = useRef(false)
 
   const isDemo = meta.source === "demo"
 
@@ -329,6 +352,7 @@ function AdvisorInner() {
     const q = searchParams.get("q")
     if (q) {
       setInput(decodeURIComponent(q))
+      setInvestigatingSource(true)
       didPreFill.current = true
     }
   }, [hydrated, searchParams])
@@ -343,6 +367,7 @@ function AdvisorInner() {
     const userMessage: Message = { role: "user", content: text.trim() }
     setMessages(prev => [...prev, userMessage])
     setInput("")
+    setInvestigatingSource(false)
     setLoading(true)
 
     try {
@@ -393,10 +418,7 @@ function AdvisorInner() {
 
           {/* ── Header ──────────────────────────────────────────────────────── */}
           <div className="mb-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Zap className="h-5 w-5 text-primary" />
-              <h1 className="text-2xl font-bold text-foreground">Operational Advisor</h1>
-            </div>
+            <h1 className="text-2xl font-bold text-foreground mb-1">Operational Advisor</h1>
             <p className="text-sm text-muted-foreground">
               Reasoning from your live business signals. Not generic advice — grounded investigation of detected issues.
             </p>
@@ -458,6 +480,15 @@ function AdvisorInner() {
 
             {/* ── Input ───────────────────────────────────────────────────── */}
             <div className="mt-auto">
+              {/* Investigating source indicator — only shown when arriving via ?q= */}
+              {investigatingSource && (
+                <div className="flex items-center gap-1.5 mb-2 px-1">
+                  <ArrowRight className="h-3 w-3 text-primary flex-shrink-0" />
+                  <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+                    Investigating issue from Command Center
+                  </span>
+                </div>
+              )}
               <div className="rounded-2xl border border-border bg-card p-3 focus-within:border-primary/40 transition-colors">
                 <Textarea
                   value={input}
