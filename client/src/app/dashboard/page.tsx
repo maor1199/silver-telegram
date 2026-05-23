@@ -892,7 +892,7 @@ export default function DashboardPage() {
       )}
 
       <main className="flex-1">
-        <div className="mx-auto max-w-[1200px] px-6 py-8">
+        <div className="mx-auto max-w-[1200px] px-6 py-10">
 
           {/* Header */}
           <div className="flex items-start justify-between mb-10">

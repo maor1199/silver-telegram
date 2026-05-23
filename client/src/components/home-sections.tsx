@@ -6,77 +6,75 @@ import { ArrowRight } from "lucide-react"
 export function HeroSection() {
   return (
     <section className="relative overflow-hidden border-b border-border/50">
-      {/* Subtle grid background */}
+      {/* Subtle dot grid */}
       <div className="absolute inset-0" style={{
-        backgroundImage: `radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0)`,
+        backgroundImage: `radial-gradient(circle at 1px 1px, rgba(0,0,0,0.025) 1px, transparent 0)`,
         backgroundSize: "32px 32px",
       }} />
 
-      <div className="relative mx-auto max-w-[1200px] px-6 pb-20 pt-20 md:pb-28 md:pt-28">
+      <div className="relative mx-auto max-w-[1200px] px-6 pt-24 pb-20 md:pt-32 md:pb-28">
+        <div className="flex flex-col lg:flex-row gap-16 lg:items-start">
 
-        {/* Headline block */}
-        <div className="max-w-[600px]">
-          <p className="text-xs font-bold uppercase tracking-widest text-primary mb-5">
-            Operational monitoring for ecommerce
-          </p>
-          <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-5xl leading-[1.1] text-balance">
-            Detect operational deterioration before it becomes expensive.
-          </h1>
-          <p className="mt-5 text-lg text-muted-foreground leading-relaxed max-w-[520px]">
-            SellerMentor monitors your SKUs continuously — inventory, margin, ad efficiency, returns.
-            It surfaces what&apos;s quietly getting worse, before it costs you money.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row gap-3">
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-            >
-              Open Command Center
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              href="/data"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground hover:bg-secondary/50 transition-colors"
-            >
-              Import your data
-            </Link>
+          {/* ── Headline block ──────────────────────────────────────────── */}
+          <div className="flex-1">
+            <h1 className="text-[2.75rem] font-bold tracking-tight text-foreground md:text-[3.25rem] lg:text-[3.75rem] leading-[1.04] text-balance max-w-[600px]">
+              Detect operational deterioration before it becomes expensive.
+            </h1>
+            <p className="mt-6 text-[1.0625rem] text-muted-foreground leading-relaxed max-w-[480px]">
+              SellerMentor monitors your SKUs continuously — inventory, margin, ad efficiency, returns.
+              It surfaces what&apos;s quietly getting worse, before it costs you money.
+            </p>
+            <div className="mt-9 flex flex-col sm:flex-row gap-3">
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+              >
+                Open Command Center
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/data"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground hover:bg-secondary/50 transition-colors"
+              >
+                Import your data
+              </Link>
+            </div>
+            <p className="mt-5 text-xs text-muted-foreground/60">
+              No credit card. Works with demo data instantly.
+            </p>
           </div>
-          <p className="mt-4 text-xs text-muted-foreground">
-            No credit card. Works with demo data instantly.
-          </p>
-        </div>
 
-        {/* Live feed preview — styled like the real dashboard */}
-        <div className="mt-16 max-w-[560px]">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
-            What needs attention now
-          </p>
-          <div className="rounded-2xl border border-border bg-card divide-y divide-border/60 overflow-hidden shadow-sm">
-            {PREVIEW_ITEMS.map((item, i) => (
-              <div key={i} className={`pl-4 pr-5 py-4 border-l-2 ${item.borderColor}`}>
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{item.sku}</span>
-                    <span className="text-xs text-muted-foreground/40">·</span>
-                    <span className="text-xs text-muted-foreground capitalize">{item.category}</span>
+          {/* ── Feed preview ─────────────────────────────────────────────── */}
+          <div className="w-full lg:w-[420px] shrink-0">
+            <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-3">
+              What needs attention now
+            </p>
+            <div className="rounded-2xl border border-border bg-card divide-y divide-border/60 overflow-hidden shadow-sm">
+              {PREVIEW_ITEMS.map((item, i) => (
+                <div key={i} className={`pl-4 pr-5 py-4 border-l-2 ${item.borderColor}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{item.sku}</span>
+                      <span className="text-xs text-muted-foreground/40">·</span>
+                      <span className="text-xs text-muted-foreground capitalize">{item.category}</span>
+                    </div>
+                    <span className={`text-xs font-semibold ${item.trajectoryColor}`}>{item.trajectory}</span>
                   </div>
-                  <span className={`text-xs font-semibold ${item.trajectoryColor}`}>{item.trajectory}</span>
-                </div>
-                <p className="text-sm font-semibold text-foreground leading-snug">{item.headline}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.context}</p>
-                {item.projection && (
-                  <div className="mt-2 rounded-md bg-amber-50/80 border border-amber-200/60 px-2.5 py-1.5">
-                    <p className="text-[11px] text-amber-800 leading-snug">
+                  <p className="text-sm font-semibold text-foreground leading-snug">{item.headline}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.context}</p>
+                  {item.projection && (
+                    <p className="text-[11px] text-amber-700 mt-1.5 leading-snug">
                       <span className="font-semibold">If nothing changes:</span> {item.projection}
                     </p>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground/50 mt-2.5 text-center">
+              Sample data — your live business replaces this
+            </p>
           </div>
-          <p className="text-[11px] text-muted-foreground/60 mt-2.5 text-center">
-            Sample data — your live business replaces this
-          </p>
+
         </div>
       </div>
     </section>
@@ -120,7 +118,7 @@ const PREVIEW_ITEMS = [
 
 export function PillarsSection() {
   return (
-    <section className="py-20 border-t border-border">
+    <section className="py-24 border-t border-border">
       <div className="mx-auto max-w-[1200px] px-6">
         <div className="grid md:grid-cols-3 gap-16">
           {PILLARS.map((pillar, i) => (
@@ -157,16 +155,15 @@ const PILLARS = [
 
 export function CTASection() {
   return (
-    <section className="py-20 border-t border-border">
+    <section className="py-24 border-t border-border">
       <div className="mx-auto max-w-[1200px] px-6">
         <div className="rounded-2xl border border-border bg-card px-10 py-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
           <div className="max-w-[480px]">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-3">Start now</p>
             <h2 className="text-2xl font-bold text-foreground leading-snug text-balance">
               See what&apos;s quietly deteriorating in your business.
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-              Open the command center with demo data. Or import your own SKU export — the risk engine runs in seconds.
+            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+              Open the Command Center with demo data. Or import your own SKU export — the risk engine runs in seconds.
             </p>
           </div>
           <div className="flex flex-col gap-3 shrink-0">
